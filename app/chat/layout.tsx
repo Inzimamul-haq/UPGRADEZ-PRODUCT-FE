@@ -10,7 +10,6 @@ const chatNavItems = [
 ];
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
-  // Using student nav for chat layout since this is the student section requested
   return (
     <AppShell role="student" navItems={chatNavItems}>
       {children}
