@@ -24,7 +24,6 @@ const initialSubjects = [
     department: 'Computer Science',
     branch: 'CSE',
     year: '3rd Year',
-    academicYear: '2022-2026',
     pdf_url: '/dummy2.pdf',
     pdf_name: 'ML_Syllabus.pdf',
     upload_date: '2023-09-12',
@@ -44,7 +43,6 @@ export default function AdminSyllabusPage() {
   const [newDept, setNewDept] = useState('');
   const [newBranch, setNewBranch] = useState('');
   const [newYear, setNewYear] = useState('1st Year');
-  const [newAcademicYear, setNewAcademicYear] = useState('2023-2027');
 
   const handleAddSubject = () => {
     if (!newName || !newCode || !newDept || !newBranch) return;
@@ -56,7 +54,6 @@ const newSubject = {
   department: newDept,
   branch: newBranch,
   year: newYear,
-  academicYear: newAcademicYear,
   pdf_url: '',
   pdf_name: '',
   upload_date: '',
@@ -69,7 +66,6 @@ const newSubject = {
     setNewDept('');
     setNewBranch('');
     setNewYear('1st Year');
-    setNewAcademicYear('2023-2027');
     setShowAddModal(false);
   };
 
@@ -94,7 +90,7 @@ const newSubject = {
   });
 
   return (
-    <div className="px-6 py-6 w-full">
+    <div className="px-6 py-6 w-full max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Syllabus</h1>
         <button 
@@ -112,9 +108,10 @@ const newSubject = {
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           <option value="All">All Academic Years</option>
-          <option value="2023-2027">2023-2027</option>
-          <option value="2022-2026">2022-2026</option>
-          <option value="2021-2025">2021-2025</option>
+          <option value="1">1st year</option>
+          <option value="2">2nd year</option>
+          <option value="3">3rd year</option>
+          <option value="4">4th year</option>
         </select>
         
         <input 
@@ -190,16 +187,12 @@ const newSubject = {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] text-[#8C8C8A] mb-1">Academic Year</label>
-                  <select 
-                    value={newAcademicYear} onChange={(e) => setNewAcademicYear(e.target.value)}
-                    className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-                  >
-                    <option value="2024-2028">2024-2028</option>
-                    <option value="2023-2027">2023-2027</option>
-                    <option value="2022-2026">2022-2026</option>
-                    <option value="2021-2025">2021-2025</option>
-                  </select>
+                  <label className="block text-[12px] text-[#8C8C8A] mb-1">Upload PDF / DOCX</label>
+                  <input 
+                    type="file"
+                    accept=".pdf,.docx"
+                    className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#8C8C8A] focus:outline-none focus:border-[#4A4A48] file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-[12px] file:bg-[#1F1F1E] file:text-[#ECECEA] hover:file:bg-[#333331] cursor-pointer"
+                  />
                 </div>
               </div>
             </div>

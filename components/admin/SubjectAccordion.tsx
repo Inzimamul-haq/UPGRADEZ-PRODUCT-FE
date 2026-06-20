@@ -63,7 +63,7 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
           )}
         </div>
 
-        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
           {showConfirmDelete ? (
             <InlineConfirm
               message="Delete?"
@@ -74,7 +74,7 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
           ) : (
             <>
               {subject.isPublished ? (
-                <div title="Stop Publishing">
+                <div title="Stop Publishing" onClick={(e) => e.stopPropagation()}>
                   <Ban
                     size={14}
                     className="text-[#5A5A58] hover:text-red-400 cursor-pointer"
@@ -84,13 +84,13 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
               ) : (
                 <button
                   className="text-[11px] text-[#ECECEA] bg-[#1F1F1E] border border-[#4A4A48] rounded px-2 py-0.5 hover:bg-[#333331]"
-                  onClick={() => onTogglePublish(subject.id)}
+                  onClick={(e) => { e.stopPropagation(); onTogglePublish(subject.id); }}
                 >
                   Republish
                 </button>
               )}
-              <Pencil size={14} className="text-[#5A5A58] hover:text-[#ECECEA] cursor-pointer" onClick={() => setShowEditModal(true)} />
-              <Trash2 size={14} className="text-[#5A5A58] hover:text-red-400 cursor-pointer" onClick={() => setShowConfirmDelete(true)} />
+              <Pencil size={14} className="text-[#5A5A58] hover:text-[#ECECEA] cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }} />
+              <Trash2 size={14} className="text-[#5A5A58] hover:text-red-400 cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowConfirmDelete(true); }} />
               {isOpen ? <ChevronUp size={14} className="text-[#8C8C8A]" /> : <ChevronDown size={14} className="text-[#8C8C8A]" />}
             </>
           )}
@@ -113,10 +113,6 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
                 >
                   <Download size={14} /> Download
                 </a>
-                <button className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] text-[#ECECEA] hover:bg-[#333331] transition-colors relative">
-                  Replace PDF
-                  <input type="file" accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
-                </button>
               </div>
             </div>
           ) : (
@@ -166,6 +162,14 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
                 <input
                   value={branch} onChange={(e) => setBranch(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] text-[#8C8C8A] mb-1">Update PDF / DOCX (Optional)</label>
+                <input 
+                  type="file"
+                  accept=".pdf,.docx"
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#8C8C8A] focus:outline-none focus:border-[#4A4A48] file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-[12px] file:bg-[#1F1F1E] file:text-[#ECECEA] hover:file:bg-[#333331] cursor-pointer"
                 />
               </div>
             </div>

@@ -56,8 +56,8 @@ export default function FacultyPapersPage() {
       <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-[18px] font-medium text-[#ECECEA]">Papers</h1>
-            <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view papers</p>
+            <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
+            <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view your generated papers</p>
           </div>
           <Link
             href="/chat/new?role=faculty"

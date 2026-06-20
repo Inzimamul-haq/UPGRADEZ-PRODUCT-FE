@@ -91,8 +91,8 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
         <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* Main content — always full width, sidebar overlays it on desktop too */}
-      <main className="flex-1 flex flex-col overflow-y-auto h-full relative w-full md:ml-[240px]">
+      {/* Main content — smoothly expands to full width when sidebar is closed */}
+      <main className={`flex-1 flex flex-col overflow-y-auto h-full relative w-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}>
         {/* Open toggle — only visible when sidebar is closed */}
         {!isSidebarOpen && (
           <button

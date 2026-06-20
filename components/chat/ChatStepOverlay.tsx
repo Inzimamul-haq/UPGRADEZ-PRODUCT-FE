@@ -11,7 +11,7 @@ interface ChatStepOverlayProps {
   onComplete: (data: { year?: string; branch?: string; subjectId: string; examType: string }) => void;
 }
 
-const YEARS = ['2024-25', '2023-24', '2022-23'];
+const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const BRANCHES = ['CSE', 'IT', 'ECE', 'EEE', 'MECH'];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
 

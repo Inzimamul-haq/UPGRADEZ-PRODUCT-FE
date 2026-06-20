@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Home, Users, GraduationCap, BookOpen } from 'lucide-react';
+import { Home, Users, GraduationCap, BookOpen, FileText, HelpCircle } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 
 const adminNavItems = [
@@ -9,6 +9,9 @@ const adminNavItems = [
   { href: '/admin/students', icon: Users, label: 'Students' },
   { href: '/admin/faculty', icon: GraduationCap, label: 'Faculty' },
   { href: '/admin/syllabus', icon: BookOpen, label: 'Syllabus' },
+  { href: '/admin/papers', icon: FileText, label: 'Papers' },
+
+  { href: '/admin/questions', icon: HelpCircle, label: 'Questions' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
