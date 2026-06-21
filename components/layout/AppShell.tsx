@@ -70,8 +70,7 @@ function DeleteModal() {
         </div>
       </div>
     </div>
-  );
-}
+)}
 
 function AppShellInner({ children, role, navItems }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
