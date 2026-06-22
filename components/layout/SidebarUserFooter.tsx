@@ -3,14 +3,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronsUpDown, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export function SidebarUserFooter() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Mock user for now since context might be null in UI checks
-  const user = { name: 'Alex Johnson', role: 'student' };
+  
+  const { user, logout } = useAuth();
+  
+  // Fallback if user is null somehow
+  const displayUser = user || { name: 'Guest', role: 'student' };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -39,7 +42,7 @@ export function SidebarUserFooter() {
           <button 
             onClick={() => {
               setIsOpen(false);
-              router.push('/login');
+              logout();
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-400 hover:bg-[#333331] transition-colors border-t border-[#3A3A38]"
           >
@@ -54,11 +57,11 @@ export function SidebarUserFooter() {
         className="flex items-center gap-2.5 hover:bg-[#333331] p-2 -mx-2 rounded-lg cursor-pointer transition-colors"
       >
         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#3A3A38] to-[#5A5A58] flex items-center justify-center text-[13px] font-medium text-[#ECECEA] shadow-inner">
-          {user.name[0].toUpperCase()}
+          {displayUser.name ? displayUser.name[0].toUpperCase() : 'U'}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-[#ECECEA] truncate">{user.name}</p>
-          <p className="text-[11px] text-[#8C8C8A] capitalize">Free Plan</p>
+          <p className="text-[13px] font-medium text-[#ECECEA] truncate">{displayUser.name}</p>
+          <p className="text-[11px] text-[#8C8C8A] capitalize">{displayUser.role || 'Free Plan'}</p>
         </div>
         <ChevronsUpDown size={14} className="text-[#5A5A58] flex-shrink-0" />
       </div>

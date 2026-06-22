@@ -2,15 +2,33 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 export default function SignupPage() {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/auth/register`, {
+        name, email, password, role: 'student'
+      });
+
+      router.push('/login');
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,6 +54,7 @@ export default function SignupPage() {
         <div className="flex-grow border-t border-[#3A3A38]"></div>
       </div>
 
+      {error && <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-500 rounded-xl text-sm">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm text-[#ECECEA] mb-1.5" htmlFor="name">Full Name</label>
@@ -47,6 +66,7 @@ export default function SignupPage() {
             className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
             placeholder="John Doe"
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -59,6 +79,7 @@ export default function SignupPage() {
             className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
             placeholder="you@example.com"
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -71,10 +92,11 @@ export default function SignupPage() {
             className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
             placeholder="••••••••"
             required
+            disabled={loading}
           />
         </div>
-        <button type="submit" className="w-full bg-[#ECECEA] text-[#1C1C1B] rounded-xl py-3 px-4 font-medium hover:bg-white transition-colors mt-2">
-          Sign Up
+        <button disabled={loading} type="submit" className="w-full bg-[#ECECEA] text-[#1C1C1B] rounded-xl py-3 px-4 font-medium hover:bg-white transition-colors mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
+          {loading ? 'Signing up...' : 'Sign Up'}
         </button>
       </form>
 

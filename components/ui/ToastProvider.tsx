@@ -7,8 +7,13 @@ import { createPortal } from 'react-dom';
 
 function ToastContainer() {
   const { toasts } = useToast();
+  const [mounted, setMounted] = React.useState(false);
 
-  if (typeof window === 'undefined') return null;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return createPortal(
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User } from '@/lib/types';
+import { useRouter, usePathname } from 'next/navigation';
+import axios from 'axios';
 
 interface AuthContextType {
   user: User | null;
@@ -9,19 +11,93 @@ interface AuthContextType {
   questionsToday: number;
   setUser: (user: User | null) => void;
   setQuestionsToday: (count: number) => void;
+  logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [questionsToday, setQuestionsToday] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const roleToRoute = (role: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'super-admin';
+      default:
+        return role;
+    }
+  };
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('accessToken');
+
+      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup');
+
+      if (!token) {
+        setLoading(false);
+        if (!isPublicRoute) router.push('/login');
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = res.data;
+        setUser(data.user);
+
+        if (isPublicRoute) {
+          router.push(`/${data.user.role}/dashboard`);
+        } else if (data.user?.role === 'student' && !data.user?.year && !pathname?.startsWith('/onboarding') && !localStorage.getItem('onboardingSkipped')) {
+          router.push('/onboarding');
+        } else {
+          // Role based restriction
+          const pathSegments = pathname?.split('/') || [];
+          const topLevelRoute = pathSegments[1];
+          const userPrefix = roleToRoute(data.user.role);
+          
+          let isAllowed = topLevelRoute === userPrefix;
+
+          // Super-admin can access admin shared UI
+          if (topLevelRoute === 'admin' && userPrefix === 'super-admin') {
+            isAllowed = true;
+          }
+
+          if (topLevelRoute && ['student', 'faculty', 'admin', 'super-admin'].includes(topLevelRoute) && !isAllowed) {
+            router.push(`/${userPrefix}/dashboard`);
+          }
+        }
+      } catch (err) {
+        localStorage.removeItem('accessToken');
+        if (!isPublicRoute) router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, [pathname, router]);
+
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    setUser(null);
+    router.push('/login');
+  };
 
   const role = user?.role ?? null;
 
   return (
-    <AuthContext.Provider value={{ user, role, questionsToday, setUser, setQuestionsToday }}>
-      {children}
+    <AuthContext.Provider value={{ user, role, questionsToday, setUser, setQuestionsToday, logout, loading }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

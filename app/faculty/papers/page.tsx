@@ -49,6 +49,9 @@ const examTypeColors: Record<string, string> = {
 export default function FacultyPapersPage() {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [activeTab, setActiveTab] = useState('All');
+  
+  // Get the base path dynamically (admin, faculty, or super-admin)
+  const currentRole = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'faculty';
 
   // Subject list view
   if (!selectedSubject) {
@@ -60,7 +63,7 @@ export default function FacultyPapersPage() {
             <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view your generated papers</p>
           </div>
           <Link
-            href="/chat/new?role=faculty"
+            href={`/chat/new?role=${currentRole}`}
             className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
           >
             <FileText size={14} />
@@ -150,7 +153,7 @@ export default function FacultyPapersPage() {
 
             <div className="flex items-center gap-2 mt-3">
               <Link
-                href="/chat/new?role=faculty"
+                href={`/chat/new?role=${currentRole}`}
                 className="flex items-center gap-1.5 text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
               >
                 <Eye size={13} /> View Questions
