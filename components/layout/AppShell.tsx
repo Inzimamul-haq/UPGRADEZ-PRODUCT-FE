@@ -70,7 +70,8 @@ function DeleteModal() {
         </div>
       </div>
     </div>
-)}
+  )
+}
 
 function AppShellInner({ children, role, navItems }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -96,7 +97,7 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed top-4 left-4 z-30 text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
+            className="fixed top-4 left-4 z-50 text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
           >
             <PanelLeft size={20} />
           </button>

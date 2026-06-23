@@ -7,14 +7,16 @@ import { ChevronRight } from 'lucide-react';
 
 interface SubjectRowProps {
   subject: Subject;
+  href?: string;
 }
 
-export function SubjectRow({ subject }: SubjectRowProps) {
+export function SubjectRow({ subject, href }: SubjectRowProps) {
   const router = useRouter();
+  const destination = href ?? `/student/questions/${subject.id}`;
 
   return (
     <div 
-      onClick={() => router.push(`/student/questions/${subject.id}`)}
+      onClick={() => router.push(destination)}
       className="flex items-center justify-between bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-3 cursor-pointer hover:bg-[#333331] transition-colors duration-150"
     >
       <div>

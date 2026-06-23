@@ -62,7 +62,7 @@ export default function FacultyGlobalQuestionsPage() {
           </div>
         ) : (
           filteredSubjects.map((s) => (
-            <SubjectRow key={s.id} subject={s} />
+            <SubjectRow key={s.id} subject={s} href={`/faculty/questions/${s.id}`} />
           ))
         )}
       </div>

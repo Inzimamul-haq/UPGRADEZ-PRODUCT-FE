@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
-import axios from 'axios';
+import api from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -35,22 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('accessToken');
-
       const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup');
-
-      if (!token) {
-        setLoading(false);
-        if (!isPublicRoute) router.push('/login');
-        return;
-      }
-
       try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await api.get('/api/auth/me');
 
         const data = res.data;
         setUser(data.user);
@@ -77,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (err) {
-        localStorage.removeItem('accessToken');
         if (!isPublicRoute) router.push('/login');
       } finally {
         setLoading(false);
@@ -87,8 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [pathname, router]);
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
+  const logout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch (e) {}
     setUser(null);
     router.push('/login');
   };
