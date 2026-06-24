@@ -6,9 +6,10 @@ import { ChatStepOverlay } from './ChatStepOverlay';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
+import api from '@/lib/api';
 
 
-interface ChatContainerProps {
+interface ChatContainerProps {  
   initialShowOverlay?: boolean;
   initialSessionId?: string;
   initialPaperId?: string;
@@ -74,36 +75,11 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
     const lower = content.toLowerCase();
 
-    setTimeout(() => {
-      setIsStreaming(false);
-
+    try {
       if (role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin') {
-        if (lower.includes('generate') || lower.includes('marks') || lower.includes('question')) {
-          const generated: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: `Here's the generated **${sessionData?.examType}** paper for **${sessionData?.subjectName}**:\n\n` +
-              `**Part A — 2 Marks (5 × 2 = 10)**\n` +
-              `1. Define a stack and list its basic operations.\n` +
-              `2. What is the time complexity of binary search?\n` +
-              `3. Differentiate between linear and binary search.\n` +
-              `4. Define a queue. Mention its types.\n` +
-              `5. What is a linked list?\n\n` +
-              `**Part B — 13 Marks (3 × 13 = 39)**\n` +
-              `6. Write an algorithm to insert a node at the beginning of a singly linked list and analyze its time complexity.\n` +
-              `7. Compare array and linked list data structures in terms of memory allocation and basic operations.\n` +
-              `8. Explain BFS and DFS traversal algorithms with suitable examples.\n\n` +
-              `---\n\n` +
-              `Would you like to:\n- **Modify** any question (e.g. "change Q2 to be about hashing")\n- **Add** questions from a specific chapter\n- **Generate PDF** when ready`,
-            actions: [
-              { id: 'generate_pdf', label: 'Generate PDF', icon: 'file-down' }
-            ]
-          };
-          setMessages(prev => [...prev, generated]);
-          return;
-        }
-
-        if (lower.includes('pdf') || lower.includes('download') || lower.includes('save')) {
+        
+        // Intercept local actions
+        if (lower === 'generate pdf' || lower.includes('download pdf')) {
           const pdfMsg: Message = {
             id: crypto.randomUUID(),
             role: 'assistant',
@@ -113,39 +89,55 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
             ]
           };
           setMessages(prev => [...prev, pdfMsg]);
+          setIsStreaming(false);
           return;
         }
 
-        if (lower.includes('chapter') || lower.includes('modify') || lower.includes('change')) {
-          const modifyMsg: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: `Got it! I've updated the paper accordingly.\n\nThe modifications have been applied. You can:\n- Ask for more changes\n- Generate PDF when you're satisfied`,
-            actions: [
-              { id: 'generate_pdf', label: 'Generate PDF', icon: 'file-down' }
-            ]
-          };
-          setMessages(prev => [...prev, modifyMsg]);
-          return;
-        }
+        // Format history for backend
+        // We skip the first welcome message if we want, or send everything.
+        const history = messages.map(msg => ({
+          role: msg.role, // 'user' or 'assistant'
+          parts: [{ text: msg.content }]
+        }));
 
-        const defaultMsg: Message = {
+        const { data } = await api.post('/api/generate/qp', {
+          subjectName: sessionData?.subjectName || '',
+          examType: sessionData?.examType || '',
+          year: sessionData?.year || '',
+          branch: sessionData?.branch || '',
+          instruction: content,
+          history: history
+        });
+
+        const generatedMsg: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: `I understand. Would you like me to generate the questions now? Just tell me the format (e.g. "5 questions of 2 marks, 3 questions of 13 marks") or type **"generate"** for a standard paper.`,
+          content: data.data,
+          actions: [
+            { id: 'generate_pdf', label: 'Generate PDF', icon: 'file-down' }
+          ]
         };
-        setMessages(prev => [...prev, defaultMsg]);
-        return;
-      }
+        setMessages(prev => [...prev, generatedMsg]);
 
-      // Student logic
+      } else {
+        // Student logic placeholder (you can point this to a real student endpoint later)
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: 'Here\'s a detailed explanation based on your question.',
+          rag_used: true,
+        }]);
+      }
+    } catch (error) {
+      console.error(error);
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Here\'s a detailed explanation based on your question.',
-        rag_used: true,
+        content: 'Sorry, I encountered an error while communicating with the AI. Please try again.',
       }]);
-    }, 1500);
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   const toggleSection = (s: string) => {
