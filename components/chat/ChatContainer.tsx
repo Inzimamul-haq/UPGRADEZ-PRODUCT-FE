@@ -7,12 +7,6 @@ import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 
-const SUBJECTS: Subject[] = [
-  { id: '1', name: 'Data Structures', code: 'CS201', department: 'Computer Science', branch: 'CS', year: '2nd' },
-  { id: '2', name: 'Operating Systems', code: 'CS301', department: 'Computer Science', branch: 'CS', year: '2nd' },
-  { id: '3', name: 'Computer Networks', code: 'CS302', department: 'Computer Science', branch: 'CS', year: '3rd' },
-  { id: '4', name: 'Database Management', code: 'CS401', department: 'Computer Science', branch: 'CS', year: '3rd' },
-];
 
 interface ChatContainerProps {
   initialShowOverlay?: boolean;
@@ -41,22 +35,21 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
   const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const SECTIONS = ['A', 'B', 'C', 'All Sections'];
 
-  const handleCompleteOverlay = (data: { year?: string; branch?: string; subjectId: string; examType: string }) => {
-    const found = SUBJECTS.find(s => s.id === data.subjectId);
-    setSessionData({ ...data, subjectName: found?.name ?? 'Subject' });
+  const handleCompleteOverlay = (data: { year?: string; branch?: string; subject: Subject; examType: string }) => {
+    setSessionData({ ...data, subjectId: data.subject.id, subjectName: data.subject.name });
     setShowOverlay(false);
 
-    if (role === 'faculty') {
+    if (role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin') {
       setMessages([{
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Hello Dr. Chen! 👋\n\nLet's generate a **${data.examType}** paper for **${found?.name}**\n📅 Year: ${data.year} · 🏫 Branch: ${data.branch}\n\nPlease tell me the question format you'd like, for example:\n- *"5 questions of 2 marks and 3 questions of 13 marks"*\n- *"2 questions from Linked Lists chapter, 13 marks each"*\n\nOr just type **"generate"** and I'll create a standard format paper.`,
+        content: `Hello! 👋\n\nLet's generate a **${data.examType}** paper for **${data.subject.name}**\n📅 Year: ${data.year} · 🏫 Branch: ${data.branch}\n\nPlease tell me the question format you'd like, for example:\n- *"5 questions of 2 marks and 3 questions of 13 marks"*\n- *"2 questions from Linked Lists chapter, 13 marks each"*\n\nOr just type **"generate"** and I'll create a standard format paper.`,
       }]);
     } else {
       setMessages([{
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Here are the **${data.examType}** questions for **${found?.name}**.\n\nWhere would you like to start? I can explain a topic, quiz you on key concepts, or walk through a specific question step by step.`,
+        content: `Here are the **${data.examType}** questions for **${data.subject.name}**.\n\nWhere would you like to start? I can explain a topic, quiz you on key concepts, or walk through a specific question step by step.`,
       }]);
     }
   };
@@ -84,7 +77,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     setTimeout(() => {
       setIsStreaming(false);
 
-      if (role === 'faculty') {
+      if (role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin') {
         if (lower.includes('generate') || lower.includes('marks') || lower.includes('question')) {
           const generated: Message = {
             id: crypto.randomUUID(),
@@ -182,7 +175,6 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       {showOverlay && (
         <ChatStepOverlay
           role={role}
-          subjects={SUBJECTS}
           onComplete={handleCompleteOverlay}
         />
       )}

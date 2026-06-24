@@ -1,28 +1,86 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Subject } from '@/lib/types';
 import { SubjectCard } from '@/components/dashboard/SubjectCard';
-import { ChevronLeft } from 'lucide-react';
-
+import { ChevronLeft, Loader2 } from 'lucide-react';
+import api from '@/lib/api';
 interface ChatStepOverlayProps {
   role?: string;
-  subjects: Subject[];
-  onComplete: (data: { year?: string; branch?: string; subjectId: string; examType: string }) => void;
+  onComplete: (data: { year?: string; branch?: string; subject: Subject; examType: string }) => void;
 }
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const BRANCHES = ['CSE', 'IT', 'ECE', 'EEE', 'MECH'];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
 
-export function ChatStepOverlay({ role = 'student', subjects, onComplete }: ChatStepOverlayProps) {
-  const isFaculty = role === 'faculty';
-  const initialStep = isFaculty ? 1 : 3; // Faculty starts at 1, Student starts at 3
-  
+const mapYearToNumber = (y: string) => {
+  if (y.startsWith('1')) return 1;
+  if (y.startsWith('2')) return 2;
+  if (y.startsWith('3')) return 3;
+  if (y.startsWith('4')) return 4;
+  return undefined;
+};
+
+const BRANCH_TO_DEPARTMENT: Record<string, string> = {
+  CSE: 'BE/COMPUTER SCIENCE ENGINEERING',
+  IT: 'BTECH/INFORMATION TECHNOLOGY',
+  ECE: 'BE/ELECTRONICS AND COMMUNICATION ENGINEERING',
+  EEE: 'BE/ELECTRICAL AND ELECTRONICS ENGINEERING',
+  MECH: 'BE/MECHANICAL ENGINEERING',
+};
+
+export const mapBranchToDepartment = (branch: string) => {
+  return BRANCH_TO_DEPARTMENT[branch.trim().toUpperCase()];
+};
+
+export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverlayProps) {
+  const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
+  const initialStep = isFaculty ? 1 : 3;
+
   const [step, setStep] = useState(initialStep);
   const [year, setYear] = useState('');
   const [branch, setBranch] = useState('');
-  const [subjectId, setSubjectId] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+
+  useEffect(() => {
+    if (step === 3) {
+      setLoadingSubjects(true);
+      const fetchSubjects = async () => {
+        try {
+          const params = new URLSearchParams();
+          if (isFaculty && year) {
+            const y = mapYearToNumber(year);
+            if (y) params.append('year', y.toString());
+          }
+          if (isFaculty && branch) {
+            const d = mapBranchToDepartment(branch);
+            if (d) params.append('department', d);
+          }
+
+          const { data } = await api.get('/api/subjects', {
+            params: {
+              ...(isFaculty && year ? { year: mapYearToNumber(year) } : {}),
+              ...(isFaculty && branch
+                ? { department: mapBranchToDepartment(branch) }
+                : {}),
+            },
+          });
+
+          setSubjects(data.subjects ?? []);
+        } catch (err) {
+          console.error('Failed to fetch subjects', err);
+          setSubjects([]);
+        } finally {
+          setLoadingSubjects(false);
+        }
+      };
+      fetchSubjects();
+    }
+  }, [step, year, branch, isFaculty]);
 
   const goBack = () => {
     if (step > initialStep) setStep(step - 1);
@@ -30,9 +88,11 @@ export function ChatStepOverlay({ role = 'student', subjects, onComplete }: Chat
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };
   const handleSelectBranch = (b: string) => { setBranch(b); setStep(3); };
-  const handleSelectSubject = (id: string) => { setSubjectId(id); setStep(4); };
+  const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => {
-    onComplete({ year, branch, subjectId, examType: type });
+    if (selectedSubject) {
+      onComplete({ year, branch, subject: selectedSubject, examType: type });
+    }
   };
 
   return (
@@ -79,14 +139,21 @@ export function ChatStepOverlay({ role = 'student', subjects, onComplete }: Chat
           <p className="text-[13px] text-[#8C8C8A] text-center mb-8">
             {isFaculty ? `${branch} — ${year}` : 'Pick a subject to start your study session'}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {subjects.map(subject => (
-              <SubjectCard key={subject.id} subject={subject} onClick={() => handleSelectSubject(subject.id)} />
-            ))}
-            {subjects.length === 0 && (
-              <p className="text-[13px] text-[#8C8C8A] text-center col-span-full">No subjects available.</p>
-            )}
-          </div>
+
+          {loadingSubjects ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="animate-spin text-[#8C8C8A]" size={24} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {subjects.map(subject => (
+                <SubjectCard key={subject.id} subject={subject} onClick={() => handleSelectSubject(subject)} />
+              ))}
+              {subjects.length === 0 && (
+                <p className="text-[13px] text-[#8C8C8A] text-center col-span-full py-6 bg-[#2C2C2A] rounded-xl border border-[#3A3A38]">No subjects found for {year} {branch}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

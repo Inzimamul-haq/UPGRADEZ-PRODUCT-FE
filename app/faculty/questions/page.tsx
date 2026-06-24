@@ -1,26 +1,37 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen } from 'lucide-react';
 import { SubjectRow } from '@/components/questions/SubjectRow';
 import { EmptyState } from '@/components/ui/EmptyState';
-
-const initialSubjects = [
-  { id: '1', name: 'Data Structures', code: 'CS8351', department: 'Computer Science', branch: 'CSE', year: '2nd Year' },
-  { id: '2', name: 'Machine Learning', code: 'CS8691', department: 'Computer Science', branch: 'CSE', year: '3rd Year' },
-  { id: '3', name: 'Circuit Theory', code: 'EE8251', department: 'Electrical', branch: 'ECE', year: '1st Year' },
-  { id: '4', name: 'Engineering Physics', code: 'PH8151', department: 'Science', branch: 'MECH', year: '1st Year' },
-];
+import api from '@/lib/api';
 
 export default function FacultyGlobalQuestionsPage() {
-  const [subjects, setSubjects] = useState(initialSubjects);
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [yearFilter, setYearFilter] = useState('All');
-  const [branchFilter, setBranchFilter] = useState('All');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const { data } = await api.get('/api/subjects');
+        setSubjects(data.subjects || []);
+      } catch (err) {
+        console.error('Failed to fetch subjects', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubjects();
+  }, []);
 
   const filteredSubjects = subjects.filter((s) => {
-    const matchYear = yearFilter === 'All' || s.year === yearFilter;
-    const matchBranch = branchFilter === 'All' || s.branch.toLowerCase().includes(branchFilter.toLowerCase());
-    return matchYear && matchBranch;
+    const sYearStr = s.year ? `${s.year}st Year`.replace('1st', '1st').replace('2st', '2nd').replace('3st', '3rd').replace('4st', '4th') : '';
+    // A simplified year matching, as DB has numbers (1,2,3,4)
+    const matchYear = yearFilter === 'All' || s.year?.toString() === yearFilter.replace(/\D/g, '');
+    const matchDepartment = departmentFilter === 'All' || (s.department && s.department.toLowerCase().includes(departmentFilter.toLowerCase()));
+    return matchYear && matchDepartment;
   });
 
   return (
@@ -44,15 +55,19 @@ export default function FacultyGlobalQuestionsPage() {
         </select>
         
         <input 
-          placeholder="Filter by Branch (e.g. CSE)" 
-          value={branchFilter === 'All' ? '' : branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value || 'All')}
-          className="w-48 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
+          placeholder="Filter by Department (e.g. COMPUTER SCIENCE)" 
+          value={departmentFilter === 'All' ? '' : departmentFilter}
+          onChange={(e) => setDepartmentFilter(e.target.value || 'All')}
+          className="w-64 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        {filteredSubjects.length === 0 ? (
+        {loading ? (
+          <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E] flex justify-center">
+            <span className="text-[13px] text-[#5A5A58]">Loading subjects...</span>
+          </div>
+        ) : filteredSubjects.length === 0 ? (
           <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
             <EmptyState 
               icon={BookOpen} 

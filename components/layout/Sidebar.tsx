@@ -19,6 +19,8 @@ interface SidebarProps {
 export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   const { openSearch } = useSidebar();
 
+  const isPaperRole = ['faculty', 'admin', 'super_admin', 'super-admin'].includes(role);
+
   const handleLinkClick = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsOpen(false);
@@ -26,33 +28,47 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   };
 
   return (
-    <div className={`
-      fixed left-0 top-0 h-full w-[240px] bg-[#1F1F1E] border-r border-[#2E2E2C] flex flex-col z-50
-      transition-transform duration-300 ease-in-out
-      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-    `}>
+    <div
+      className={`
+        fixed left-0 top-0 z-50 flex h-full w-[240px] flex-col border-r border-[#2E2E2C] bg-[#1F1F1E]
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}
+    >
       {/* Header: Logo + Search + Close toggle */}
       <div className="flex items-center justify-between px-3 py-3">
-        <h1 className="text-[16px] font-medium text-[#ECECEA] tracking-wide pl-1">StudyMate</h1>
+        <h1 className="pl-1 text-[16px] font-medium tracking-wide text-[#ECECEA]">
+          StudyMate
+        </h1>
+
         <div className="flex items-center gap-1.5">
-          <button onClick={openSearch} className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] rounded-md hover:bg-[#2C2C2A] transition-colors">
+          <button
+            onClick={openSearch}
+            className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-[#ECECEA]"
+          >
             <Search size={16} />
           </button>
-          <button onClick={() => setIsOpen(false)} className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] rounded-md hover:bg-[#2C2C2A] transition-colors">
+
+          <button
+            onClick={() => setIsOpen(false)}
+            className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-[#ECECEA]"
+          >
             <PanelLeft size={16} />
           </button>
         </div>
       </div>
 
-      {/* New Chat */}
+      {/* New Chat / New Paper */}
       <div className="px-3 pb-2">
         <Link
-          href={role === 'faculty' ? '/chat/new?role=faculty' : '/chat/new'}
+          href={isPaperRole ? `/chat/new?role=${role}` : '/chat/new'}
           onClick={handleLinkClick}
-          className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#ECECEA] text-[#1C1C1B] hover:bg-white transition-colors font-medium w-full"
+          className="flex w-full items-center gap-2 rounded-md bg-[#ECECEA] px-3 py-2 font-medium text-[#1C1C1B] transition-colors hover:bg-white"
         >
           <Plus size={16} />
-          <span className="text-[13px]">{role === 'faculty' ? 'New paper' : 'New chat'}</span>
+          <span className="text-[13px]">
+            {isPaperRole ? 'New paper' : 'New chat'}
+          </span>
         </Link>
       </div>
 
@@ -65,11 +81,11 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
         ))}
       </div>
 
-      {/* Recent Chats — shared for all roles */}
+      {/* Recent Chats */}
       <SidebarRecentChats />
 
       {/* Footer */}
-      <div className="mt-auto border-t border-[#2E2E2C] px-3 py-3 relative">
+      <div className="relative mt-auto border-t border-[#2E2E2C] px-3 py-3">
         <SidebarUserFooter />
       </div>
     </div>

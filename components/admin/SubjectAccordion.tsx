@@ -1,48 +1,49 @@
-import React, { useState } from 'react';
-import { Pencil, Trash2, ChevronDown, ChevronUp, FileText, Download, Ban } from 'lucide-react';
-import { InlineConfirm } from '@/components/ui/InlineConfirm';
-import { EmptyState } from '@/components/ui/EmptyState';
+"use client";
 
-interface Subject {
+import React, { useState } from "react";
+import {
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Download,
+  Ban,
+} from "lucide-react";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
+import { EmptyState } from "@/components/ui/EmptyState";
+
+export interface Subject {
   id: string;
   name: string;
   code: string;
   department: string;
-  branch?: string;
-  year?: string;
-  academicYear?: string;
-  pdf_url?: string;
-  pdf_name?: string;
-  upload_date?: string;
+  year?: number | string;
+  regulation?: string;
+  pdfUrl?: string | null;
+  pdfName?: string | null;
+  uploadDate?: string | null;
   isPublished?: boolean;
-  stoppedAcademicYear?: string;
+  stoppedAcademicYear?: string | null;
 }
 
 interface SubjectAccordionProps {
   subject: Subject;
   onDelete: (id: string) => void;
+  onEdit: (subject: Subject) => void;
   onTogglePublish: (id: string, academicYear?: string) => void;
 }
 
-export function SubjectAccordion({ subject, onDelete, onTogglePublish }: SubjectAccordionProps) {
+export function SubjectAccordion({
+  subject,
+  onDelete,
+  onEdit,
+  onTogglePublish,
+}: SubjectAccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showStopPublishModal, setShowStopPublishModal] = useState(false);
-
-  // Edit state
-  const [name, setName] = useState(subject.name);
-  const [code, setCode] = useState(subject.code);
-  const [department, setDepartment] = useState(subject.department);
-  const [branch, setBranch] = useState(subject.branch || '');
-
-  // Publish state
-  const [stopAcademicYear, setStopAcademicYear] = useState('2023-2027');
-
-  const handleSaveEdit = () => {
-    setShowEditModal(false);
-    // would dispatch an update here
-  };
+  const [stopAcademicYear, setStopAcademicYear] = useState("2023-2027");
 
   const handleStopPublish = () => {
     onTogglePublish(subject.id, stopAcademicYear);
@@ -50,14 +51,22 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
   };
 
   return (
-    <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[#333331]" onClick={() => setIsOpen(!isOpen)}>
-        <div>
-          <span className="text-[14px] font-medium text-[#ECECEA]">{name}</span>
-          <span className="text-[12px] text-[#8C8C8A] ml-2">{code}</span>
-          <span className="text-[12px] text-[#5A5A58] ml-2">· {department} ({branch})</span>
-          {!subject.isPublished && (
-            <span className="ml-3 text-[10px] text-red-400 border border-red-400/50 rounded px-1.5 py-0.5">
+    <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#2C2C2A]">
+      <div
+        className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-[#333331]"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="min-w-0">
+          <span className="text-[14px] font-medium text-[#ECECEA]">
+            {subject.name}
+          </span>
+          <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
+          <span className="ml-2 text-[12px] text-[#5A5A58]">
+            · {subject.department}
+          </span>
+
+          {!subject.isPublished && subject.stoppedAcademicYear && (
+            <span className="ml-3 rounded border border-red-400/50 px-1.5 py-0.5 text-[10px] text-red-400">
               Stopped for {subject.stoppedAcademicYear}
             </span>
           )}
@@ -77,21 +86,45 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
                 <div title="Stop Publishing" onClick={(e) => e.stopPropagation()}>
                   <Ban
                     size={14}
-                    className="text-[#5A5A58] hover:text-red-400 cursor-pointer"
+                    className="cursor-pointer text-[#5A5A58] hover:text-red-400"
                     onClick={() => setShowStopPublishModal(true)}
                   />
                 </div>
               ) : (
                 <button
-                  className="text-[11px] text-[#ECECEA] bg-[#1F1F1E] border border-[#4A4A48] rounded px-2 py-0.5 hover:bg-[#333331]"
-                  onClick={(e) => { e.stopPropagation(); onTogglePublish(subject.id); }}
+                  className="rounded border border-[#4A4A48] bg-[#1F1F1E] px-2 py-0.5 text-[11px] text-[#ECECEA] hover:bg-[#333331]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePublish(subject.id);
+                  }}
                 >
                   Republish
                 </button>
               )}
-              <Pencil size={14} className="text-[#5A5A58] hover:text-[#ECECEA] cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }} />
-              <Trash2 size={14} className="text-[#5A5A58] hover:text-red-400 cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowConfirmDelete(true); }} />
-              {isOpen ? <ChevronUp size={14} className="text-[#8C8C8A]" /> : <ChevronDown size={14} className="text-[#8C8C8A]" />}
+
+              <Pencil
+                size={14}
+                className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(subject);
+                }}
+              />
+
+              <Trash2
+                size={14}
+                className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfirmDelete(true);
+                }}
+              />
+
+              {isOpen ? (
+                <ChevronUp size={14} className="text-[#8C8C8A]" />
+              ) : (
+                <ChevronDown size={14} className="text-[#8C8C8A]" />
+              )}
             </>
           )}
         </div>
@@ -99,111 +132,56 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
 
       {isOpen && (
         <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
-          {subject.pdf_url ? (
-            <div className="flex justify-between items-center">
+          {subject.pdfUrl ? (
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-[12px] text-[#ECECEA] font-medium mb-1">Current PDF</p>
-                <p className="text-[12px] text-[#8C8C8A]">{subject.pdf_name} · Uploaded {subject.upload_date}</p>
+                <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
+                  Current File
+                </p>
+                <p className="text-[12px] text-[#8C8C8A]">
+                  {subject.pdfName || "Syllabus file"}
+                  {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <a
-                  href={subject.pdf_url}
-                  download
-                  className="flex items-center gap-1.5 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 hover:bg-[#333331] transition-colors"
-                >
-                  <Download size={14} /> Download
-                </a>
-              </div>
+
+              <a
+                href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
+                download
+                className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+              >
+                <Download size={14} />
+                Download
+              </a>
             </div>
           ) : (
             <EmptyState
               icon={FileText}
-              heading="No PDF uploaded"
-              action={
-                <button className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] transition-colors relative">
-                  Upload PDF
-                  <input type="file" accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
-                </button>
-              }
+              heading="No file uploaded"
+              action={null}
             />
           )}
         </div>
       )}
 
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
-          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-6 max-w-sm w-full z-50">
-            <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Edit Subject</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Subject Name</label>
-                <input
-                  value={name} onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Code</label>
-                <input
-                  value={code} onChange={(e) => setCode(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Department</label>
-                <input
-                  value={department} onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Branch</label>
-                <input
-                  value={branch} onChange={(e) => setBranch(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Update PDF / DOCX (Optional)</label>
-                <input 
-                  type="file"
-                  accept=".pdf,.docx"
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#8C8C8A] focus:outline-none focus:border-[#4A4A48] file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-[12px] file:bg-[#1F1F1E] file:text-[#ECECEA] hover:file:bg-[#333331] cursor-pointer"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="text-[13px] text-[#5A5A58] hover:text-[#8C8C8A] transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Stop Publish Modal */}
       {showStopPublishModal && (
-        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
-          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-6 max-w-sm w-full z-50">
-            <h2 className="text-[14px] font-medium text-[#ECECEA] mb-2">Stop Publishing</h2>
-            <p className="text-[12px] text-[#8C8C8A] mb-4">Select the academic year to revoke access for this subject.</p>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
+          <div className="z-50 w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6">
+            <h2 className="mb-2 text-[14px] font-medium text-[#ECECEA]">
+              Stop Publishing
+            </h2>
+            <p className="mb-4 text-[12px] text-[#8C8C8A]">
+              Select the academic year to revoke access for this subject.
+            </p>
 
             <div className="mb-6">
-              <label className="block text-[12px] text-[#8C8C8A] mb-1">Academic Year</label>
+              <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+                Academic Year
+              </label>
               <select
                 value={stopAcademicYear}
                 onChange={(e) => setStopAcademicYear(e.target.value)}
-                className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
               >
                 <option value="2024-2028">2024-2028</option>
                 <option value="2023-2027">2023-2027</option>
@@ -215,13 +193,13 @@ export function SubjectAccordion({ subject, onDelete, onTogglePublish }: Subject
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowStopPublishModal(false)}
-                className="text-[13px] text-[#5A5A58] hover:text-[#8C8C8A] transition-colors"
+                className="text-[13px] text-[#5A5A58] transition-colors hover:text-[#8C8C8A]"
               >
                 Cancel
               </button>
               <button
                 onClick={handleStopPublish}
-                className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-md px-4 py-1.5 text-[13px] hover:bg-red-500/20 transition-colors"
+                className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-1.5 text-[13px] text-red-400 transition-colors hover:bg-red-500/20"
               >
                 Stop Publish
               </button>

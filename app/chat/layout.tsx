@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Home, BookOpen, FileText } from 'lucide-react';
+import { Home, BookOpen, FileText, Users, GraduationCap, HelpCircle, CreditCard } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/context/AuthContext';
 
@@ -17,11 +17,29 @@ const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> 
   ],
   admin: [
     { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
-    { href: '/admin/questions', icon: BookOpen, label: 'Questions' },
+    { href: '/admin/students', icon: Users, label: 'Students' },
+    { href: '/admin/faculty', icon: GraduationCap, label: 'Faculty' },
+    { href: '/admin/syllabus', icon: BookOpen, label: 'Syllabus' },
+    { href: '/admin/papers', icon: FileText, label: 'Papers' },
+    { href: '/admin/questions', icon: HelpCircle, label: 'Questions' },
   ],
   super_admin: [
     { href: '/super-admin/dashboard', icon: Home, label: 'Dashboard' },
-    { href: '/super-admin/questions', icon: BookOpen, label: 'Questions' },
+    { href: '/super-admin/students', icon: Users, label: 'Students' },
+    { href: '/super-admin/faculty', icon: GraduationCap, label: 'Faculty' },
+    { href: '/super-admin/syllabus', icon: BookOpen, label: 'Syllabus' },
+    { href: '/super-admin/papers', icon: FileText, label: 'Papers' },
+    { href: '/super-admin/questions', icon: HelpCircle, label: 'Questions' },
+    { href: '/super-admin/subscriptions', icon: CreditCard, label: 'Subscriptions' },
+  ],
+  'super-admin': [
+    { href: '/super-admin/dashboard', icon: Home, label: 'Dashboard' },
+    { href: '/super-admin/students', icon: Users, label: 'Students' },
+    { href: '/super-admin/faculty', icon: GraduationCap, label: 'Faculty' },
+    { href: '/super-admin/syllabus', icon: BookOpen, label: 'Syllabus' },
+    { href: '/super-admin/papers', icon: FileText, label: 'Papers' },
+    { href: '/super-admin/questions', icon: HelpCircle, label: 'Questions' },
+    { href: '/super-admin/subscriptions', icon: CreditCard, label: 'Subscriptions' },
   ],
 };
 
