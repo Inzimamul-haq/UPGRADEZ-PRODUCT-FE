@@ -11,7 +11,7 @@ interface ChatStepOverlayProps {
 }
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
-const BRANCHES = ['CSE', 'IT', 'ECE', 'EEE', 'MECH'];
+const BRANCHES = ['CSE', 'IT', 'ECE', 'EEE', 'MECH' , `CIVIL`];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
 
 const mapYearToNumber = (y: string) => {

@@ -101,6 +101,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         }));
 
         const { data } = await api.post('/api/generate/qp', {
+          subjectId: sessionData?.subjectId || '',
           subjectName: sessionData?.subjectName || '',
           examType: sessionData?.examType || '',
           year: sessionData?.year || '',
@@ -109,13 +110,18 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
           history: history
         });
 
+        const responseText = data.data as string;
+        const isPaper = responseText.length > 300 && (responseText.includes('Part A') || responseText.includes('Section A') || responseText.includes('Marks'));
+
         const generatedMsg: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: data.data,
-          actions: [
-            { id: 'generate_pdf', label: 'Generate PDF', icon: 'file-down' }
-          ]
+          content: responseText,
+          ...(isPaper && {
+            actions: [
+              { id: 'generate_pdf', label: 'Generate PDF', icon: 'file-down' }
+            ]
+          })
         };
         setMessages(prev => [...prev, generatedMsg]);
 
