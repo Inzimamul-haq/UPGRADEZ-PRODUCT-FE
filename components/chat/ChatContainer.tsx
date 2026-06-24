@@ -6,6 +6,7 @@ import { ChatStepOverlay } from './ChatStepOverlay';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
+import { AssignModal } from './AssignModal';
 import api from '@/lib/api';
 
 
@@ -29,15 +30,14 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     subjectId: string;
     examType: string;
     subjectName?: string;
+    subject?: Subject;
   } | null>(null);
 
-  // Faculty-specific state
-  const [showAssign, setShowAssign] = useState(false);
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
-  const SECTIONS = ['A', 'B', 'C', 'All Sections'];
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [paperRawText, setPaperRawText] = useState("");
 
   const handleCompleteOverlay = (data: { year?: string; branch?: string; subject: Subject; examType: string }) => {
-    setSessionData({ ...data, subjectId: data.subject.id, subjectName: data.subject.name });
+    setSessionData({ ...data, subjectId: data.subject.id, subjectName: data.subject.name, subject: data.subject });
     setShowOverlay(false);
 
     if (role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin') {
@@ -57,9 +57,11 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
   const handleAction = (messageId: string, actionId: string) => {
     if (actionId === 'generate_pdf') {
-      handleSend('Generate PDF');
-    } else if (actionId === 'assign_sections') {
-      setShowAssign(true);
+      const msg = messages.find(m => m.id === messageId);
+      if (msg) {
+        setPaperRawText(msg.content);
+        setAssignModalOpen(true);
+      }
     }
   };
 
@@ -73,30 +75,10 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     setMessages(prev => [...prev, userMsg]);
     setIsStreaming(true);
 
-    const lower = content.toLowerCase();
-
     try {
       if (role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin') {
-        
-        // Intercept local actions
-        if (lower === 'generate pdf' || lower.includes('download pdf')) {
-          const pdfMsg: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: `✅ **PDF Generated Successfully!**\n\n📄 ${sessionData?.subjectName}_${sessionData?.examType?.replace(' ', '')}_${sessionData?.year}.pdf\n\nThe paper has been saved with proper formatting and university template.\n\nWould you like to **assign** this paper to sections?`,
-            actions: [
-              { id: 'assign_sections', label: 'Assign to Sections', icon: 'users' }
-            ]
-          };
-          setMessages(prev => [...prev, pdfMsg]);
-          setIsStreaming(false);
-          return;
-        }
-
-        // Format history for backend
-        // We skip the first welcome message if we want, or send everything.
         const history = messages.map(msg => ({
-          role: msg.role, // 'user' or 'assistant'
+          role: msg.role,
           parts: [{ text: msg.content }]
         }));
 
@@ -126,7 +108,6 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         setMessages(prev => [...prev, generatedMsg]);
 
       } else {
-        // Student logic placeholder (you can point this to a real student endpoint later)
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -146,26 +127,12 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     }
   };
 
-  const toggleSection = (s: string) => {
-    if (s === 'All Sections') {
-      setSelectedSections(prev => prev.includes('All Sections') ? [] : ['All Sections']);
-      return;
-    }
-    setSelectedSections(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev.filter(x => x !== 'All Sections'), s]
-    );
-  };
-
-  const handleAssign = () => {
-    if (selectedSections.length === 0) return;
-    setShowAssign(false);
-    const sections = selectedSections.includes('All Sections') ? 'All Sections' : selectedSections.join(', ');
-    const assignMsg: Message = {
+  const handleAssignSuccess = (message: string) => {
+    setMessages(prev => [...prev, {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: `✅ **Paper Assigned Successfully!**\n\n📋 ${sessionData?.subjectName} — ${sessionData?.examType}\n🏫 ${sessionData?.branch} · ${sessionData?.year}\n📌 Assigned to: **Section ${sections}**\n\nAll students in the selected sections will see this in their Recent Activity feed. They can now access and practice this paper.`,
-    };
-    setMessages(prev => [...prev, assignMsg]);
+      content: message
+    }]);
   };
 
   return (
@@ -186,45 +153,13 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
       <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
 
-      {/* Section Assignment Overlay for Faculty */}
-      {showAssign && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowAssign(false)}>
-          <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-2xl p-6 w-[360px] shadow-2xl mx-4" onClick={e => e.stopPropagation()}>
-            <p className="text-[16px] font-medium text-[#ECECEA] mb-1">Assign Paper</p>
-            <p className="text-[12px] text-[#8C8C8A] mb-5">
-              {sessionData?.subjectName} — {sessionData?.examType} · {sessionData?.branch} · {sessionData?.year}
-            </p>
-
-            <p className="text-[12px] text-[#8C8C8A] mb-2">Select sections:</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              {SECTIONS.map(s => (
-                <button
-                  key={s}
-                  onClick={() => toggleSection(s)}
-                  className={`py-2.5 rounded-lg text-[13px] font-medium border transition-colors ${selectedSections.includes(s)
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'bg-[#1C1C1B] text-[#8C8C8A] border-[#3A3A38] hover:border-[#4A4A48]'
-                    }`}
-                >
-                  {s === 'All Sections' ? s : `Section ${s}`}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-3">
-              <button onClick={() => setShowAssign(false)} className="flex-1 border border-[#3A3A38] rounded-xl py-2.5 text-[13px] text-[#8C8C8A] hover:bg-[#333331] transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={handleAssign}
-                disabled={selectedSections.length === 0}
-                className="flex-1 bg-orange-500 rounded-xl py-2.5 text-[13px] font-medium text-white hover:bg-orange-400 disabled:opacity-40 transition-colors"
-              >
-                Assign
-              </button>
-            </div>
-          </div>
-        </div>
+      {assignModalOpen && sessionData && (
+        <AssignModal
+          sessionData={sessionData}
+          rawText={paperRawText}
+          onClose={() => setAssignModalOpen(false)}
+          onSuccess={handleAssignSuccess}
+        />
       )}
 
       <ChatInput
