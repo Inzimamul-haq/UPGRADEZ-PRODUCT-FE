@@ -1,20 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { z } from "zod";
 
-const subjectSchema = z.object({
-  name: z.string().min(1, "Subject name is required"),
-  code: z.string().min(1, "Subject code is required"),
-  departmentBranch: z
-    .string()
-    .min(1, "Department / Branch is required")
-    .refine((val) => val.includes("/"), {
-      message: "Must follow format: DEGREE/BRANCH",
-    }),
-  year: z.string().min(1, "Year is required"),
-  regulation: z.string().min(1, "Regulation is required"),
-});
+
+import { subjectSchema } from "@/Schema/validations";
 
 export type SubjectFormValues = {
   name: string;
@@ -225,13 +214,13 @@ export default function SubjectFormModal({
                   : "Update PDF / DOCX (Optional)"}
               </label>
             </div>
-            
+
             {mode === "edit" && initialValues?.pdfUrl && (
               <div className="mb-2 rounded border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#8C8C8A]">
                 <span className="text-[#ECECEA]">A syllabus file is already uploaded. </span>
               </div>
             )}
-            
+
             <input
               type="file"
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -264,8 +253,8 @@ export default function SubjectFormModal({
                   ? "Uploading..."
                   : "Saving..."
                 : mode === "add"
-                ? "Add Subject"
-                : "Save Changes"}
+                  ? "Add Subject"
+                  : "Save Changes"}
             </button>
           </div>
         </div>

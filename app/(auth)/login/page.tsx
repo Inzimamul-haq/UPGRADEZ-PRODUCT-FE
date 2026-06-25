@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
+import { loginSchema } from '@/Schema/validations';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,7 +28,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
+      setLoading(false);
+      return;
+    }
+
     try {
       await api.post('/api/auth/login', {
         email, password

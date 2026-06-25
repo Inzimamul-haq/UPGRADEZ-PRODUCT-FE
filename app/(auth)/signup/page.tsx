@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
+import { signupSchema } from '@/Schema/validations';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -28,6 +29,13 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    const parsed = signupSchema.safeParse({ name, email, password });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
+      setLoading(false);
+      return;
+    }
 
     try {
       await api.post('/api/auth/register', {

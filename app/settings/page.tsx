@@ -5,6 +5,7 @@ import { Home, BookOpen, Users, GraduationCap, FileText, HelpCircle, CreditCard 
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { settingsNameSchema } from '@/Schema/validations';
 
 const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> = {
   student: [
@@ -54,6 +55,14 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
+
+    const parsed = settingsNameSchema.safeParse({ name });
+    if (!parsed.success) {
+      alert(parsed.error.issues[0].message);
+      setIsSaving(false);
+      return;
+    }
+
     try {
       await api.put('/api/auth/me', { name });
       if (user) setUser({ ...user, name });

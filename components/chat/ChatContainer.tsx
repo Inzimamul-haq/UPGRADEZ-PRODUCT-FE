@@ -44,7 +44,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       setMessages([{
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Hello! 👋\n\nLet's generate a **${data.examType}** paper for **${data.subject.name}**\n📅 Year: ${data.year} · 🏫 Branch: ${data.branch}\n\nPlease tell me the question format you'd like, for example:\n- *"5 questions of 2 marks and 3 questions of 13 marks"*\n- *"2 questions from Linked Lists chapter, 13 marks each"*\n\nOr just type **"generate"** and I'll create a standard format paper.`,
+        content: `Hello! 👋\n\nLet's generate a **${data.examType}** paper for **${data.subject.name}**\n Year: ${data.year} ·  Branch: ${data.branch}\n\nPlease tell me the question format you'd like, for example:\n- "5 questions of 2 marks and 3 questions of 13 marks"*\n- *"2 questions from Linked Lists chapter, 13 marks each"*\n`,
       }]);
     } else {
       setMessages([{
