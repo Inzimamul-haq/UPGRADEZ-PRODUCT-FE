@@ -9,6 +9,7 @@ import {
   SubjectAccordion,
   Subject,
 } from "@/components/admin/SubjectAccordion";
+import { useToast } from "@/context/ToastContext";
 
 type SubjectApiRow = {
   id: string;
@@ -47,6 +48,8 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
 });
 
 export default function AdminSyllabusPage() {
+  const toast = useToast();
+
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,7 +59,6 @@ export default function AdminSyllabusPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [filterBranch, setFilterBranch] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // fetch subjects
@@ -70,12 +72,14 @@ export default function AdminSyllabusPage() {
         setSubjects(rows.map(normalizeSubject));
       } catch (err) {
         console.error("Failed to fetch subjects", err);
+        toast.error("Failed to load subjects. Please refresh.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // filtered subjects
@@ -88,7 +92,6 @@ export default function AdminSyllabusPage() {
 
   // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
-    setErrorMsg("");
     setIsSubmitting(true);
 
     try {
@@ -104,9 +107,7 @@ export default function AdminSyllabusPage() {
       }
 
       const { data } = await api.post("/api/subjects", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       // supports either {subject} or {subject, upload}
@@ -120,18 +121,18 @@ export default function AdminSyllabusPage() {
       if (rawSubject) {
         setSubjects((prev) => [normalizeSubject(rawSubject), ...prev]);
       } else {
-        // fallback reload if API shape differs
         const refreshed = await api.get<SubjectsResponse>("/api/subjects");
         setSubjects((refreshed.data.subjects || []).map(normalizeSubject));
       }
 
       setShowAddModal(false);
+      toast.success(`"${values.name.trim()}" added. PDF queued for embedding.`);
     } catch (err: any) {
-      setErrorMsg(
-        err.response?.data?.error ??
-        err.message ??
-        "Failed to add subject"
-      );
+      const msg =
+        err.response?.data?.error ?? err.message ?? "Failed to add subject";
+      toast.error(msg);
+      // re-throw so the modal can also show inline error
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -140,7 +141,6 @@ export default function AdminSyllabusPage() {
   // open edit modal
   const handleOpenEdit = (subject: Subject) => {
     setEditingSubject(subject);
-    setErrorMsg("");
     setShowEditModal(true);
   };
 
@@ -148,7 +148,6 @@ export default function AdminSyllabusPage() {
   const handleUpdateSubject = async (values: SubjectFormValues) => {
     if (!editingSubject) return;
 
-    setErrorMsg("");
     setIsSubmitting(true);
 
     try {
@@ -166,11 +165,7 @@ export default function AdminSyllabusPage() {
       const { data } = await api.put(
         `/api/subjects/${editingSubject.id}`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
 
       const updatedRaw = data?.subject
@@ -186,12 +181,10 @@ export default function AdminSyllabusPage() {
 
       if (updatedRaw) {
         const normalized = normalizeSubject(updatedRaw);
-
         setSubjects((prev) =>
           prev.map((s) => (s.id === editingSubject.id ? normalized : s))
         );
       } else {
-        // fallback optimistic merge if backend returns minimal response
         setSubjects((prev) =>
           prev.map((s) =>
             s.id === editingSubject.id
@@ -210,32 +203,38 @@ export default function AdminSyllabusPage() {
 
       setShowEditModal(false);
       setEditingSubject(null);
+
+      const pdfMsg = values.file
+        ? " Old embeddings removed and new PDF queued."
+        : "";
+      toast.success(`"${values.name.trim()}" updated.${pdfMsg}`);
     } catch (err: any) {
-      setErrorMsg(
-        err.response?.data?.error ??
-        err.message ??
-        "Failed to update subject"
-      );
+      const msg =
+        err.response?.data?.error ?? err.message ?? "Failed to update subject";
+      toast.error(msg);
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // delete subject
+  // delete subject — now async for the modal loading state
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this subject?")) return;
-
+    const subject = subjects.find((s) => s.id === id);
     try {
       await api.delete(`/api/subjects/${id}`);
       setSubjects((prev) => prev.filter((s) => s.id !== id));
-    } catch (err) {
-      alert("Failed to delete subject. Please try again.");
+      toast.success(`"${subject?.name ?? 'Subject'}" deleted successfully.`);
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.error ?? err.message ?? "Failed to delete subject";
+      toast.error(msg);
+      throw err; // let the modal know it failed
     }
   };
 
   // publish toggle placeholder
   const handleTogglePublish = async (id: string, academicYear?: string) => {
-    // Replace with your real publish / unpublish API
     console.log("toggle publish", { id, academicYear });
 
     setSubjects((prev) =>
@@ -259,7 +258,6 @@ export default function AdminSyllabusPage() {
 
         <button
           onClick={() => {
-            setErrorMsg("");
             setShowAddModal(true);
           }}
           className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
@@ -297,16 +295,15 @@ export default function AdminSyllabusPage() {
         )}
       </div>
 
+      {/* Add Modal */}
       <SubjectFormModal
         open={showAddModal}
         mode="add"
         title="Add New Subject"
         isSubmitting={isSubmitting}
-        serverError={errorMsg}
         onClose={() => {
           if (isSubmitting) return;
           setShowAddModal(false);
-          setErrorMsg("");
         }}
         onSubmit={handleAddSubject}
       />
@@ -317,7 +314,6 @@ export default function AdminSyllabusPage() {
         mode="edit"
         title="Edit Subject"
         isSubmitting={isSubmitting}
-        serverError={errorMsg}
         initialValues={
           editingSubject
             ? {
@@ -334,7 +330,6 @@ export default function AdminSyllabusPage() {
           if (isSubmitting) return;
           setShowEditModal(false);
           setEditingSubject(null);
-          setErrorMsg("");
         }}
         onSubmit={handleUpdateSubject}
       />

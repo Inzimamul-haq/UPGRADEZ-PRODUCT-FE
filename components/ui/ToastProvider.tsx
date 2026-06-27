@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { ToastProviderCore, useToast } from '@/context/ToastContext';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 function ToastContainer() {
-  const { toasts } = useToast();
+  const { toasts, removeToast } = useToast();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -16,18 +16,42 @@ function ToastContainer() {
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none">
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-3 flex items-center gap-2.5 min-w-[260px] animate-in slide-in-from-bottom-2 fade-in duration-200"
+          className={`
+            pointer-events-auto flex items-start gap-3 min-w-[300px] max-w-[380px]
+            rounded-xl border px-4 py-3 shadow-2xl
+            backdrop-blur-sm
+            animate-in slide-in-from-bottom-3 fade-in duration-300
+            ${toast.type === 'success'
+              ? 'bg-[#1a2a1a]/90 border-[#2a4a2a] text-[#ECECEA]'
+              : 'bg-[#2a1a1a]/90 border-[#4a2a2a] text-[#ECECEA]'
+            }
+          `}
         >
-          {toast.type === 'success' ? (
-            <CheckCircle size={14} className="text-[#8C8C8A]" />
-          ) : (
-            <XCircle size={14} className="text-red-400" />
-          )}
-          <span className="text-[13px] text-[#ECECEA]">{toast.message}</span>
+          {/* Icon */}
+          <div className="mt-0.5 shrink-0">
+            {toast.type === 'success' ? (
+              <CheckCircle2 size={15} className="text-emerald-400" />
+            ) : (
+              <XCircle size={15} className="text-red-400" />
+            )}
+          </div>
+
+          {/* Message */}
+          <span className="flex-1 text-[13px] leading-snug text-[#ECECEA]">
+            {toast.message}
+          </span>
+
+          {/* Dismiss */}
+          <button
+            onClick={() => removeToast(toast.id)}
+            className="mt-0.5 shrink-0 text-[#5A5A58] transition-colors hover:text-[#8C8C8A]"
+          >
+            <X size={13} />
+          </button>
         </div>
       ))}
     </div>,

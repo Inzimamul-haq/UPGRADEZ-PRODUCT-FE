@@ -10,7 +10,7 @@ import {
   Download,
   Ban,
 } from "lucide-react";
-import { InlineConfirm } from "@/components/ui/InlineConfirm";
+import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export interface Subject {
@@ -29,7 +29,7 @@ export interface Subject {
 
 interface SubjectAccordionProps {
   subject: Subject;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
   onEdit: (subject: Subject) => void;
   onTogglePublish: (id: string, academicYear?: string) => void;
 }
@@ -41,7 +41,8 @@ export function SubjectAccordion({
   onTogglePublish,
 }: SubjectAccordionProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showStopPublishModal, setShowStopPublishModal] = useState(false);
   const [stopAcademicYear, setStopAcademicYear] = useState("2023-2027");
 
@@ -50,123 +51,134 @@ export function SubjectAccordion({
     setShowStopPublishModal(false);
   };
 
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(subject.id);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
-    <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#2C2C2A]">
-      <div
-        className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-[#333331]"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="min-w-0">
-          <span className="text-[14px] font-medium text-[#ECECEA]">
-            {subject.name}
-          </span>
-          <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
-          <span className="ml-2 text-[12px] text-[#5A5A58]">
-            · {subject.department}
-          </span>
-
-          {!subject.isPublished && subject.stoppedAcademicYear && (
-            <span className="ml-3 rounded border border-red-400/50 px-1.5 py-0.5 text-[10px] text-red-400">
-              Stopped for {subject.stoppedAcademicYear}
+    <>
+      <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#2C2C2A]">
+        <div
+          className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-[#333331]"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <div className="min-w-0">
+            <span className="text-[14px] font-medium text-[#ECECEA]">
+              {subject.name}
             </span>
-          )}
-        </div>
+            <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
+            <span className="ml-2 text-[12px] text-[#5A5A58]">
+              · {subject.department}
+            </span>
 
-        <div className="flex items-center gap-3">
-          {showConfirmDelete ? (
-            <InlineConfirm
-              message="Delete?"
-              confirmLabel="Delete"
-              onConfirm={() => onDelete(subject.id)}
-              onCancel={() => setShowConfirmDelete(false)}
+            {!subject.isPublished && subject.stoppedAcademicYear && (
+              <span className="ml-3 rounded border border-red-400/50 px-1.5 py-0.5 text-[10px] text-red-400">
+                Stopped for {subject.stoppedAcademicYear}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {subject.isPublished ? (
+              <div title="Stop Publishing" onClick={(e) => e.stopPropagation()}>
+                <Ban
+                  size={14}
+                  className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+                  onClick={() => setShowStopPublishModal(true)}
+                />
+              </div>
+            ) : (
+              <button
+                className="rounded border border-[#4A4A48] bg-[#1F1F1E] px-2 py-0.5 text-[11px] text-[#ECECEA] hover:bg-[#333331]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePublish(subject.id);
+                }}
+              >
+                Republish
+              </button>
+            )}
+
+            <Pencil
+              size={14}
+              className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(subject);
+              }}
             />
-          ) : (
-            <>
-              {subject.isPublished ? (
-                <div title="Stop Publishing" onClick={(e) => e.stopPropagation()}>
-                  <Ban
-                    size={14}
-                    className="cursor-pointer text-[#5A5A58] hover:text-red-400"
-                    onClick={() => setShowStopPublishModal(true)}
-                  />
-                </div>
-              ) : (
-                <button
-                  className="rounded border border-[#4A4A48] bg-[#1F1F1E] px-2 py-0.5 text-[11px] text-[#ECECEA] hover:bg-[#333331]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTogglePublish(subject.id);
-                  }}
-                >
-                  Republish
-                </button>
-              )}
 
-              <Pencil
-                size={14}
-                className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(subject);
-                }}
-              />
+            <Trash2
+              size={14}
+              className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteModal(true);
+              }}
+            />
 
-              <Trash2
-                size={14}
-                className="cursor-pointer text-[#5A5A58] hover:text-red-400"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowConfirmDelete(true);
-                }}
-              />
-
-              {isOpen ? (
-                <ChevronUp size={14} className="text-[#8C8C8A]" />
-              ) : (
-                <ChevronDown size={14} className="text-[#8C8C8A]" />
-              )}
-            </>
-          )}
+            {isOpen ? (
+              <ChevronUp size={14} className="text-[#8C8C8A]" />
+            ) : (
+              <ChevronDown size={14} className="text-[#8C8C8A]" />
+            )}
+          </div>
         </div>
+
+        {isOpen && (
+          <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
+            {subject.pdfUrl ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
+                    Current File
+                  </p>
+                  <p className="text-[12px] text-[#8C8C8A]">
+                    {subject.pdfName || "Syllabus file"}
+                    {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
+                  </p>
+                </div>
+
+                <a
+                  href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
+                  download
+                  className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+                >
+                  <Download size={14} />
+                  Download
+                </a>
+              </div>
+            ) : (
+              <EmptyState
+                icon={FileText}
+                heading="No file uploaded"
+                action={null}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {isOpen && (
-        <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
-          {subject.pdfUrl ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
-                  Current File
-                </p>
-                <p className="text-[12px] text-[#8C8C8A]">
-                  {subject.pdfName || "Syllabus file"}
-                  {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
-                </p>
-              </div>
-
-              <a
-                href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
-                download
-                className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
-              >
-                <Download size={14} />
-                Download
-              </a>
-            </div>
-          ) : (
-            <EmptyState
-              icon={FileText}
-              heading="No file uploaded"
-              action={null}
-            />
-          )}
-        </div>
-      )}
+      {/* Delete Confirm Modal — rendered outside the accordion via fragment */}
+      <DeleteConfirmModal
+        open={showDeleteModal}
+        title={`Delete "${subject.name}"?`}
+        description="This will permanently remove the subject, its syllabus file, and all associated embeddings. This action cannot be undone."
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
 
       {/* Stop Publish Modal */}
       {showStopPublishModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-          <div className="z-50 w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="z-50 w-full max-w-sm rounded-xl border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-2xl">
             <h2 className="mb-2 text-[14px] font-medium text-[#ECECEA]">
               Stop Publishing
             </h2>
@@ -207,6 +219,6 @@ export function SubjectAccordion({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

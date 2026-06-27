@@ -100,19 +100,25 @@ export default function SubjectFormModal({
       return;
     }
 
-    await onSubmit({
-      name: name.trim(),
-      code: code.trim(),
-      departmentBranch: departmentBranch.trim(),
-      year,
-      regulation,
-      file,
-    });
+    try {
+      await onSubmit({
+        name: name.trim(),
+        code: code.trim(),
+        departmentBranch: departmentBranch.trim(),
+        year,
+        regulation,
+        file,
+      });
+    } catch (err: any) {
+      // Page-level handler throws on API error; show it inline here too
+      const msg = err?.response?.data?.error ?? err?.message ?? 'Something went wrong';
+      setLocalError(msg);
+    }
   };
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
@@ -216,8 +222,10 @@ export default function SubjectFormModal({
             </div>
 
             {mode === "edit" && initialValues?.pdfUrl && (
-              <div className="mb-2 rounded border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#8C8C8A]">
-                <span className="text-[#ECECEA]">A syllabus file is already uploaded. </span>
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
+                <span className="text-[11px] text-[#8C8C8A]">Current file:</span>
+                <span className="flex-1 truncate text-[11px] text-[#ECECEA]">Syllabus uploaded</span>
+                <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">Replacing will re-embed</span>
               </div>
             )}
 
