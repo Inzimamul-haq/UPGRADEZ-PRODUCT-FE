@@ -10,7 +10,7 @@ import { AssignModal } from './AssignModal';
 import api from '@/lib/api';
 
 
-interface ChatContainerProps {  
+interface ChatContainerProps {
   initialShowOverlay?: boolean;
   initialSessionId?: string;
   initialPaperId?: string;
@@ -108,11 +108,18 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         setMessages(prev => [...prev, generatedMsg]);
 
       } else {
+        const { data } = await api.post('/api/generate/answer', {
+          subjectId: sessionData?.subjectId || '',
+          subjectName: sessionData?.subjectName || '',
+          examType: sessionData?.examType || '',
+          question: content,
+        });
+
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: 'Here\'s a detailed explanation based on your question.',
-          rag_used: true,
+          content: data.data as string,
+          rag_used: data.cached === true,
         }]);
       }
     } catch (error) {
@@ -120,7 +127,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error while communicating with the AI. Please try again.',
+        content: "Unable to process your request at the moment. Please try again in a few moments.",
       }]);
     } finally {
       setIsStreaming(false);
