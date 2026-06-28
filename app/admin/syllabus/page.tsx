@@ -60,6 +60,8 @@ export default function AdminSyllabusPage() {
 
   const [filterBranch, setFilterBranch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingExtra, setUploadingExtra] = useState(false);
+  const extraFileRef = React.useRef<HTMLInputElement>(null);
 
   // fetch subjects
   useEffect(() => {
@@ -102,8 +104,8 @@ export default function AdminSyllabusPage() {
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
-      if (values.file) {
-        formData.append("pdf", values.file);
+      if (values.files && values.files.length > 0) {
+        values.files.forEach(file => formData.append("pdfs", file));
       }
 
       const { data } = await api.post("/api/subjects", formData, {
@@ -158,8 +160,8 @@ export default function AdminSyllabusPage() {
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
-      if (values.file) {
-        formData.append("pdf", values.file);
+      if (values.files && values.files.length > 0) {
+        values.files.forEach(file => formData.append("pdfs", file));
       }
 
       const { data } = await api.put(
@@ -204,8 +206,8 @@ export default function AdminSyllabusPage() {
       setShowEditModal(false);
       setEditingSubject(null);
 
-      const pdfMsg = values.file
-        ? " Old embeddings removed and new PDF queued."
+      const pdfMsg = (values.files && values.files.length > 0)
+        ? " Old embeddings removed and new PDF(s) queued."
         : "";
       toast.success(`"${values.name.trim()}" updated.${pdfMsg}`);
     } catch (err: any) {
@@ -215,6 +217,26 @@ export default function AdminSyllabusPage() {
       throw err;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /** Upload extra PDFs into an existing subject without touching metadata */
+  const handleUploadExtra = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !editingSubject) return;
+    setUploadingExtra(true);
+    try {
+      const formData = new FormData();
+      Array.from(files).forEach((f) => formData.append("pdfs", f));
+      await api.post(`/api/subjects/${editingSubject.id}/pdf`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success(`${files.length} file(s) uploaded and queued for embedding.`);
+      if (extraFileRef.current) extraFileRef.current.value = "";
+    } catch (err: any) {
+      const msg = err.response?.data?.error ?? err.message ?? "Upload failed";
+      toast.error(msg);
+    } finally {
+      setUploadingExtra(false);
     }
   };
 
@@ -333,6 +355,34 @@ export default function AdminSyllabusPage() {
         }}
         onSubmit={handleUpdateSubject}
       />
+
+      {/* Upload More PDFs — shown when edit modal is open */}
+      {showEditModal && editingSubject && (
+        <div className="fixed inset-0 z-30 flex items-end justify-end p-6 pointer-events-none">
+          <div className="pointer-events-auto w-72 rounded-lg border border-[#3A3A38] bg-[#1A1A19] p-4 shadow-xl">
+            <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">Upload More PDFs</p>
+            <p className="mb-3 text-[11px] text-[#5A5A58]">
+              Adds to <span className="text-[#ECECEA]">{editingSubject.name}</span> without replacing existing files.
+            </p>
+            <label
+              className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] ${
+                uploadingExtra ? "cursor-not-allowed opacity-50" : ""
+              }`}
+            >
+              {uploadingExtra ? "Uploading…" : "+ Select PDF / DOCX"}
+              <input
+                ref={extraFileRef}
+                type="file"
+                multiple
+                className="hidden"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                disabled={uploadingExtra}
+                onChange={(e) => handleUploadExtra(e.target.files)}
+              />
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ export type SubjectFormValues = {
   departmentBranch: string;
   year: string;
   regulation: string;
-  file: File | null;
+  files: File[];
   pdfUrl?: string | null;
 };
 
@@ -53,7 +53,7 @@ export default function SubjectFormModal({
   const [departmentBranch, setDepartmentBranch] = useState("");
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState("");
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function SubjectFormModal({
     setDepartmentBranch(matchedDept);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
-    setFile(null);
+    setFiles([]);
     setLocalError("");
   }, [open, initialValues]);
 
@@ -95,8 +95,8 @@ export default function SubjectFormModal({
       return;
     }
 
-    if (mode === "add" && !file) {
-      setLocalError("A PDF or DOCX syllabus file is required");
+    if (mode === "add" && files.length === 0) {
+      setLocalError("At least one PDF or DOCX syllabus file is required");
       return;
     }
 
@@ -107,7 +107,7 @@ export default function SubjectFormModal({
         departmentBranch: departmentBranch.trim(),
         year,
         regulation,
-        file,
+        files,
       });
     } catch (err: any) {
       // Page-level handler throws on API error; show it inline here too
@@ -222,19 +222,41 @@ export default function SubjectFormModal({
             </div>
 
             {mode === "edit" && initialValues?.pdfUrl && (
-              <div className="mb-2 flex items-center gap-2 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
-                <span className="text-[11px] text-[#8C8C8A]">Current file:</span>
-                <span className="flex-1 truncate text-[11px] text-[#ECECEA]">Syllabus uploaded</span>
-                <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">Replacing will re-embed</span>
+              <div className="mb-2 flex flex-col gap-1 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
+                  <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">Replacing will re-embed</span>
+                </div>
+                <div className="flex flex-col gap-1 mt-1">
+                  {initialValues.pdfUrl.split(',').map((url, idx) => (
+                     <span key={idx} className="truncate text-[11px] text-[#ECECEA]">- {url.split('/').pop()}</span>
+                  ))}
+                </div>
               </div>
             )}
 
-            <input
-              type="file"
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full cursor-pointer rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#8C8C8A] file:mr-3 file:rounded file:border-0 file:bg-[#1F1F1E] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#333331] focus:border-[#4A4A48] focus:outline-none"
-            />
+            <div className="flex flex-col gap-2">
+              {files.map((f, idx) => (
+                <div key={idx} className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5">
+                  <span className="truncate text-[12px] text-[#ECECEA]">{f.name}</span>
+                  <button type="button" onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="text-[12px] text-red-400 hover:text-red-300">Remove</button>
+                </div>
+              ))}
+              <label className="cursor-pointer inline-flex items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#2C2C2A]">
+                {files.length === 0 ? "Select File" : "+ Add another file"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) {
+                      setFiles([...files, e.target.files[0]]);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </label>
+            </div>
           </div>
 
           {(localError || serverError) && (
