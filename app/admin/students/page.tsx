@@ -1,64 +1,99 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Search } from 'lucide-react';
 import { StudentTableRow } from '@/components/admin/StudentTableRow';
 import { EmptyState } from '@/components/ui/EmptyState';
+import api from '@/lib/api';
+import { useToast } from '@/context/ToastContext';
 
-const initialStudents = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', year: '3rd Year', branch: 'CSE', section: 'A', joined: '2023-08-12' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', year: '2nd Year', branch: 'ECE', section: 'B', joined: '2023-08-15' },
-  { id: '3', name: 'Alice Johnson', email: 'alice@example.com', year: '1st Year', branch: 'IT', section: '', joined: '2023-09-01' },
-];
+import { QUALIFICATION_OPTIONS } from '@/lib/constants';
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState(initialStudents);
+  const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [qualificationFilter, setQualificationFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [searchName, setSearchName] = useState('');
+  
   const [rowsPerPage, setRowsPerPage] = useState('10');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkYear, setBulkYear] = useState('1st Year');
-  const [bulkBranch, setBulkBranch] = useState('');
+  const [bulkYear, setBulkYear] = useState('1');
+  const [bulkQualification, setBulkQualification] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
 
-  const handleDelete = (id: string) => {
-    setStudents(students.filter((s) => s.id !== id));
-  };
+  const toast = useToast();
 
-  const handlePromoteRole = (id: string, role: string) => {
-    // Role promotion logic (mocked)
-    alert(`Promoted student ${id} to ${role}`);
-  };
-
-  const filteredStudents = students.filter((s) => {
-    const matchYear = yearFilter === 'All' || s.year === yearFilter;
-    const matchBranch = !branchFilter || s.branch.toLowerCase().includes(branchFilter.toLowerCase());
-    const matchSection = !sectionFilter || s.section?.toLowerCase().includes(sectionFilter.toLowerCase());
-    const matchName = !searchName || s.name.toLowerCase().includes(searchName.toLowerCase());
-    return matchYear && matchBranch && matchSection && matchName;
-  });
-
-  const availablePromoteYears = ['1st Year', '2nd Year', '3rd Year', '4th Year'].filter(y => {
-    return parseInt(y[0]) > parseInt(bulkYear[0]);
-  });
-
-  const handleBulkUpdate = () => {
-    if (!bulkBranch || !bulkPromoteTo) return;
-    
-    setStudents(prev => prev.map(s => {
-      if (s.year === bulkYear && s.branch.toLowerCase() === bulkBranch.toLowerCase()) {
-        return { ...s, year: bulkPromoteTo };
+  const fetchStudents = async () => {
+    try {
+      setIsLoading(true);
+      const params: any = {
+        search: searchName,
+        qualification: qualificationFilter,
+        section: sectionFilter,
+        page,
+        limit: rowsPerPage
+      };
+      if (yearFilter !== 'All') {
+        params.year = parseInt(yearFilter.replace(/\D/g, ''), 10);
       }
-      return s;
-    }));
-    setShowBulkModal(false);
+
+      const res = await api.get('/api/profiles/students', { params });
+      setStudents(res.data.students);
+      setTotal(res.data.pagination.total);
+    } catch (err: any) {
+      toast.error('Failed to load students');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchStudents();
+  }, [searchName, yearFilter, qualificationFilter, sectionFilter, page, rowsPerPage]);
+
+  const handleDelete = async (id: string) => {
+    // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
+    // Wait, let's just make a generic endpoint or reuse faculty. 
+    // But since it's requireAdmin it's fine. Actually let me use a generic one or I can just use /api/profiles/faculty/:id which deletes any profile.
+    try {
+      await api.delete(`/api/profiles/faculty/${id}`); // this deletes by ID regardless of role
+      toast.success('Student deleted successfully');
+      fetchStudents();
+    } catch (err: any) {
+      toast.error('Failed to delete student');
+    }
+  };
+
+
+  const availablePromoteYears = ['1', '2', '3', '4'].filter(y => {
+    return parseInt(y) > parseInt(bulkYear);
+  });
+
+  const handleBulkUpdate = async () => {
+    if (!bulkQualification || !bulkPromoteTo) return;
+    try {
+      await api.post('/api/profiles/students/bulk-promote', {
+        currentYear: bulkYear,
+        qualification: bulkQualification,
+        targetYear: bulkPromoteTo
+      });
+      toast.success('Students promoted successfully');
+      setShowBulkModal(false);
+      fetchStudents();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to promote students');
+    }
+  };
+
+  const totalPages = Math.ceil(total / parseInt(rowsPerPage, 10)) || 1;
 
   return (
-    <div className="px-6 py-6 w-full">
+    <div className="px-6 py-6 w-full relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Students</h1>
         <button 
@@ -75,35 +110,51 @@ export default function AdminStudentsPage() {
           <input 
             placeholder="Search name" 
             value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
+            onChange={(e) => {
+              setSearchName(e.target.value);
+              setPage(1);
+            }}
             className="pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
           />
         </div>
 
         <select 
           value={yearFilter} 
-          onChange={(e) => setYearFilter(e.target.value)}
+          onChange={(e) => {
+            setYearFilter(e.target.value);
+            setPage(1);
+          }}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           <option value="All">All Years</option>
-          <option value="1st Year">1st Year</option>
-          <option value="2nd Year">2nd Year</option>
-          <option value="3rd Year">3rd Year</option>
-          <option value="4th Year">4th Year</option>
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+          <option value="3">3rd Year</option>
+          <option value="4">4th Year</option>
+        </select>
+        
+        <select 
+          value={qualificationFilter}
+          onChange={(e) => {
+            setQualificationFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="">All Qualifications</option>
+          {QUALIFICATION_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
         </select>
         
         <input 
-          placeholder="Branch" 
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
-        />
-        
-        <input 
-          placeholder="Section" 
+          placeholder="Section (e.g. A)" 
           value={sectionFilter}
-          onChange={(e) => setSectionFilter(e.target.value)}
-          className="w-24 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
+          onChange={(e) => {
+            setSectionFilter(e.target.value);
+            setPage(1);
+          }}
+          className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
         />
       </div>
 
@@ -113,14 +164,16 @@ export default function AdminStudentsPage() {
             <div className="w-[20%]">Name</div>
             <div className="w-[25%]">Email</div>
             <div className="w-[10%]">Year</div>
-            <div className="w-[10%]">Branch</div>
+            <div className="w-[15%]">Qualification</div>
             <div className="w-[10%]">Section</div>
             <div className="w-[10%]">Joined</div>
-            <div className="w-[15%] text-right">Action</div>
+            <div className="w-[10%] text-right">Action</div>
           </div>
           
           <div className="flex flex-col">
-            {filteredStudents.length === 0 ? (
+            {isLoading ? (
+               <div className="py-8 text-center text-[#5A5A58] text-[13px]">Loading...</div>
+            ) : students.length === 0 ? (
               <div className="py-8">
                 <EmptyState 
                   icon={Users} 
@@ -129,12 +182,21 @@ export default function AdminStudentsPage() {
                 />
               </div>
             ) : (
-              filteredStudents.map((s) => (
+              students.map((s) => (
                 <StudentTableRow 
                   key={s.id} 
-                  student={s} 
-                  onDelete={handleDelete} 
-                  onPromote={handlePromoteRole}
+                  student={{
+                    id: s.id,
+                    name: s.name,
+                    email: s.email,
+                    year: s.year ? `${s.year} Year` : '-',
+                    qualification: s.qualification || '-',
+                    section: s.section || '-',
+                    joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
+                    role: s.role || 'student',
+                  }} 
+                  onDelete={handleDelete}
+                  onPromoteSuccess={fetchStudents}
                 />
               ))
             )}
@@ -144,12 +206,17 @@ export default function AdminStudentsPage() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#2E2E2C] bg-[#1F1F1E]">
           <div className="flex items-center gap-4">
-            <span className="text-[12px] text-[#8C8C8A]">Showing 1 to {Math.min(parseInt(rowsPerPage), filteredStudents.length)} of {filteredStudents.length} results</span>
+            <span className="text-[12px] text-[#8C8C8A]">
+              Showing {Math.min((page - 1) * parseInt(rowsPerPage) + 1, total)} to {Math.min(page * parseInt(rowsPerPage), total)} of {total} results
+            </span>
             <div className="flex items-center gap-2">
               <span className="text-[12px] text-[#8C8C8A]">Rows per page:</span>
               <select 
                 value={rowsPerPage} 
-                onChange={(e) => setRowsPerPage(e.target.value)}
+                onChange={(e) => {
+                  setRowsPerPage(e.target.value);
+                  setPage(1);
+                }}
                 className="bg-[#2C2C2A] border border-[#3A3A38] rounded text-[12px] text-[#ECECEA] px-1 py-0.5 focus:outline-none"
               >
                 <option value="10">10</option>
@@ -160,17 +227,31 @@ export default function AdminStudentsPage() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded cursor-not-allowed">Previous</button>
-            <button className="px-2 py-1 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded">1</button>
-            <button className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded cursor-not-allowed">Next</button>
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
+            >
+              Previous
+            </button>
+            <button className="px-2 py-1 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded">
+              {page}
+            </button>
+            <button 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
 
       {/* Bulk Update Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
-          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-6 max-w-sm w-full z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-6 max-w-sm w-full shadow-xl">
             <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Bulk Promote Students</h2>
             
             <div className="space-y-4">
@@ -184,20 +265,24 @@ export default function AdminStudentsPage() {
                   }}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Branch</label>
-                <input 
-                  value={bulkBranch}
-                  onChange={(e) => setBulkBranch(e.target.value)}
-                  placeholder="e.g. CSE"
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
-                />
+                <label className="block text-[12px] text-[#8C8C8A] mb-1">Qualification</label>
+                <select 
+                  value={bulkQualification} 
+                  onChange={(e) => setBulkQualification(e.target.value)}
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                >
+                  <option value="" disabled>Select Qualification</option>
+                  {QUALIFICATION_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -209,7 +294,7 @@ export default function AdminStudentsPage() {
                 >
                   <option value="" disabled>Select Year</option>
                   {availablePromoteYears.map(y => (
-                    <option key={y} value={y}>{y}</option>
+                    <option key={y} value={y}>{y} Year</option>
                   ))}
                 </select>
               </div>
@@ -224,10 +309,10 @@ export default function AdminStudentsPage() {
               </button>
               <button 
                 onClick={handleBulkUpdate}
-                disabled={!bulkBranch || !bulkPromoteTo}
+                disabled={!bulkQualification || !bulkPromoteTo}
                 className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Update
+                Promote
               </button>
             </div>
           </div>

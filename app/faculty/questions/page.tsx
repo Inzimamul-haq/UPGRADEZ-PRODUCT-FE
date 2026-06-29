@@ -5,12 +5,13 @@ import { BookOpen } from 'lucide-react';
 import { SubjectRow } from '@/components/questions/SubjectRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
+import { QUALIFICATION_OPTIONS } from '@/lib/constants';
 
 export default function FacultyGlobalQuestionsPage() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [yearFilter, setYearFilter] = useState('All');
-  const [departmentFilter, setDepartmentFilter] = useState('All');
+  const [qualificationFilter, setQualificationFilter] = useState('');
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -30,8 +31,8 @@ export default function FacultyGlobalQuestionsPage() {
     const sYearStr = s.year ? `${s.year}st Year`.replace('1st', '1st').replace('2st', '2nd').replace('3st', '3rd').replace('4st', '4th') : '';
     // A simplified year matching, as DB has numbers (1,2,3,4)
     const matchYear = yearFilter === 'All' || s.year?.toString() === yearFilter.replace(/\D/g, '');
-    const matchDepartment = departmentFilter === 'All' || (s.department && s.department.toLowerCase().includes(departmentFilter.toLowerCase()));
-    return matchYear && matchDepartment;
+    const matchQual = !qualificationFilter || (s.qualification && s.qualification === qualificationFilter);
+    return matchYear && matchQual;
   });
 
   return (
@@ -53,13 +54,16 @@ export default function FacultyGlobalQuestionsPage() {
           <option value="3rd Year">3rd Year</option>
           <option value="4th Year">4th Year</option>
         </select>
-        
-        <input 
-          placeholder="Filter by Department (e.g. COMPUTER SCIENCE)" 
-          value={departmentFilter === 'All' ? '' : departmentFilter}
-          onChange={(e) => setDepartmentFilter(e.target.value || 'All')}
-          className="w-64 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
-        />
+        <select 
+          value={qualificationFilter}
+          onChange={(e) => setQualificationFilter(e.target.value)}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="">All Qualifications</option>
+          {QUALIFICATION_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -77,7 +81,7 @@ export default function FacultyGlobalQuestionsPage() {
           </div>
         ) : (
           filteredSubjects.map((s) => (
-            <SubjectRow key={s.id} subject={s} href={`/faculty/questions/${s.id}`} />
+            <SubjectRow key={s.id} subject={s} />
           ))
         )}
       </div>

@@ -18,9 +18,9 @@ export const settingsNameSchema = z.object({
 export const subjectSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
   code: z.string().min(1, "Subject code is required"),
-  departmentBranch: z
+  qualification: z
     .string()
-    .min(1, "Department / Branch is required")
+    .min(1, "Qualification is required")
     .refine((val) => val.includes("/"), {
       message: "Must follow format: DEGREE/BRANCH",
     }),

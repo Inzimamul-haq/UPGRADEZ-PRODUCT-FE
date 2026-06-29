@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Paper } from '@/lib/types';
 import { ChevronRight } from 'lucide-react';
 
@@ -12,10 +12,11 @@ interface PaperRowProps {
 
 export function PaperRow({ paper, subjectId }: PaperRowProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <div 
-      onClick={() => router.push(`/student/questions/${subjectId}/${paper.id}`)}
+      onClick={() => router.push(`${pathname}/${paper.id}`)}
       className="flex items-center justify-between bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-3 mb-2 cursor-pointer hover:bg-[#333331] transition-colors duration-150"
     >
       <div>

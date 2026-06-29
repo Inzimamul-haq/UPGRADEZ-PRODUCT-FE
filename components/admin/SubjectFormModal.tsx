@@ -8,11 +8,12 @@ import { subjectSchema } from "@/Schema/validations";
 export type SubjectFormValues = {
   name: string;
   code: string;
-  departmentBranch: string;
+  qualification: string;
   year: string;
   regulation: string;
   files: File[];
   pdfUrl?: string | null;
+  uploadMode?: "replace" | "append";
 };
 
 type SubjectFormModalProps = {
@@ -27,15 +28,14 @@ type SubjectFormModalProps = {
 };
 
 const DEPARTMENT_OPTIONS = [
-  "BE/Computer Science Engineering",
-  "BE/Electronics and Communication Engineering",
-  "BE/Mechanical Engineering",
-  "BE/Civil Engineering",
-  "BE/Electrical and Electronics Engineering",
-  "BTech/Information Technology",
-  "BTech/Artificial Intelligence and Data Science",
+  "BE/CSE",
+  "BE/ECE",
+  "BE/MECH",
+  "BE/CIVIL",
+  "BE/EEE",
+  "BTECH/IT",
+  "BTECH/AI-DS",
 ];
-
 const REGULATION_OPTIONS = ["R2021", "R2017"];
 
 export default function SubjectFormModal({
@@ -50,10 +50,11 @@ export default function SubjectFormModal({
 }: SubjectFormModalProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [departmentBranch, setDepartmentBranch] = useState("");
+  const [qualification, setQualification] = useState("");
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
 
   useEffect(() => {
@@ -63,17 +64,18 @@ export default function SubjectFormModal({
     setCode(initialValues?.code ?? "");
 
     let matchedDept = "";
-    if (initialValues?.departmentBranch) {
+    if (initialValues?.qualification) {
       matchedDept =
         DEPARTMENT_OPTIONS.find(
           (opt) =>
-            opt.toUpperCase() === initialValues.departmentBranch!.toUpperCase()
-        ) ?? initialValues.departmentBranch;
+            opt.toUpperCase() === initialValues.qualification!.toUpperCase()
+        ) ?? initialValues.qualification;
     }
-    setDepartmentBranch(matchedDept);
+    setQualification(matchedDept);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
     setFiles([]);
+    setUploadMode("append");
     setLocalError("");
   }, [open, initialValues]);
 
@@ -85,7 +87,7 @@ export default function SubjectFormModal({
     const parsed = subjectSchema.safeParse({
       name,
       code,
-      departmentBranch,
+      qualification,
       year,
       regulation,
     });
@@ -104,10 +106,11 @@ export default function SubjectFormModal({
       await onSubmit({
         name: name.trim(),
         code: code.trim(),
-        departmentBranch: departmentBranch.trim(),
+        qualification: qualification.trim(),
         year,
         regulation,
         files,
+        uploadMode,
       });
     } catch (err: any) {
       // Page-level handler throws on API error; show it inline here too
@@ -160,8 +163,8 @@ export default function SubjectFormModal({
               Department / Branch
             </label>
             <select
-              value={departmentBranch}
-              onChange={(e) => setDepartmentBranch(e.target.value)}
+              value={qualification}
+              onChange={(e) => setQualification(e.target.value)}
               className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               <option value="" disabled>
@@ -222,11 +225,42 @@ export default function SubjectFormModal({
             </div>
 
             {mode === "edit" && initialValues?.pdfUrl && (
-              <div className="mb-2 flex flex-col gap-1 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
-                <div className="flex items-center gap-2">
+              <div className="mb-2 flex flex-col gap-2 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
+                <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
-                  <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">Replacing will re-embed</span>
+                  <div className="flex items-center gap-3 text-[11px] text-[#ECECEA]">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="uploadMode"
+                        checked={uploadMode === "append"} 
+                        onChange={() => setUploadMode("append")}
+                        className="accent-[#ECECEA]"
+                      /> 
+                      Add More
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="uploadMode"
+                        checked={uploadMode === "replace"} 
+                        onChange={() => setUploadMode("replace")}
+                        className="accent-amber-500"
+                      /> 
+                      Replace All
+                    </label>
+                  </div>
                 </div>
+                {uploadMode === "replace" && files.length > 0 && (
+                  <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400 w-fit">
+                    Warning: Old files and embeddings will be deleted
+                  </span>
+                )}
+                {uploadMode === "append" && files.length > 0 && (
+                  <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400 w-fit">
+                    New files will be embedded alongside existing ones
+                  </span>
+                )}
                 <div className="flex flex-col gap-1 mt-1">
                   {initialValues.pdfUrl.split(',').map((url, idx) => (
                      <span key={idx} className="truncate text-[11px] text-[#ECECEA]">- {url.split('/').pop()}</span>

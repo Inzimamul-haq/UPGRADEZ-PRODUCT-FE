@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Subject } from '@/lib/types';
 import { ChevronRight } from 'lucide-react';
 
@@ -12,7 +12,8 @@ interface SubjectRowProps {
 
 export function SubjectRow({ subject, href }: SubjectRowProps) {
   const router = useRouter();
-  const destination = href ?? `/student/questions/${subject.id}`;
+  const pathname = usePathname();
+  const destination = href ?? `${pathname}/${subject.id}`;
 
   return (
     <div 

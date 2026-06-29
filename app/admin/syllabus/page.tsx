@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
+import { QUALIFICATION_OPTIONS } from "@/lib/constants";
 import SubjectFormModal, {
   SubjectFormValues,
 } from "@/components/admin/SubjectFormModal";
@@ -15,7 +16,7 @@ type SubjectApiRow = {
   id: string;
   name: string;
   code: string;
-  department: string;
+  qualification: string;
   year?: number | string;
   regulation?: string;
   pdfUrl?: string | null;
@@ -37,7 +38,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  department: s.department,
+  department: s.qualification,
   year: s.year,
   regulation: s.regulation,
   pdfUrl: s.pdfUrl ?? s.pdf_url ?? null,
@@ -58,10 +59,9 @@ export default function AdminSyllabusPage() {
 
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
-  const [filterBranch, setFilterBranch] = useState("");
+  const [filterQualification, setFilterQualification] = useState("");
+  const [filterYear, setFilterYear] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingExtra, setUploadingExtra] = useState(false);
-  const extraFileRef = React.useRef<HTMLInputElement>(null);
 
   // fetch subjects
   useEffect(() => {
@@ -84,13 +84,13 @@ export default function AdminSyllabusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // filtered subjects
   const filteredSubjects = useMemo(() => {
-    if (!filterBranch.trim()) return subjects;
-
-    const q = filterBranch.toLowerCase();
-    return subjects.filter((s) => s.department.toLowerCase().includes(q));
-  }, [subjects, filterBranch]);
+    return subjects.filter((s) => {
+      const matchQ = !filterQualification || s.department === filterQualification;
+      const matchY = !filterYear || String(s.year) === filterYear;
+      return matchQ && matchY;
+    });
+  }, [subjects, filterQualification, filterYear]);
 
   // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
@@ -100,7 +100,7 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("department", values.departmentBranch.trim().toUpperCase());
+      formData.append("qualification", values.qualification.trim().toUpperCase());
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
@@ -156,12 +156,15 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("department", values.departmentBranch.trim().toUpperCase());
+      formData.append("qualification", values.qualification.trim().toUpperCase());
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
       if (values.files && values.files.length > 0) {
         values.files.forEach(file => formData.append("pdfs", file));
+      }
+      if (values.uploadMode) {
+        formData.append("uploadMode", values.uploadMode);
       }
 
       const { data } = await api.put(
@@ -194,7 +197,7 @@ export default function AdminSyllabusPage() {
                 ...s,
                 name: values.name,
                 code: values.code,
-                department: values.departmentBranch.trim().toUpperCase(),
+                department: values.qualification.trim().toUpperCase(),
                 year: values.year,
                 regulation: values.regulation,
               }
@@ -220,25 +223,7 @@ export default function AdminSyllabusPage() {
     }
   };
 
-  /** Upload extra PDFs into an existing subject without touching metadata */
-  const handleUploadExtra = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !editingSubject) return;
-    setUploadingExtra(true);
-    try {
-      const formData = new FormData();
-      Array.from(files).forEach((f) => formData.append("pdfs", f));
-      await api.post(`/api/subjects/${editingSubject.id}/pdf`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      toast.success(`${files.length} file(s) uploaded and queued for embedding.`);
-      if (extraFileRef.current) extraFileRef.current.value = "";
-    } catch (err: any) {
-      const msg = err.response?.data?.error ?? err.message ?? "Upload failed";
-      toast.error(msg);
-    } finally {
-      setUploadingExtra(false);
-    }
-  };
+
 
   // delete subject — now async for the modal loading state
   const handleDelete = async (id: string) => {
@@ -288,13 +273,31 @@ export default function AdminSyllabusPage() {
         </button>
       </div>
 
-      <div className="mb-6">
-        <input
-          placeholder="Filter by department / branch…"
-          value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value)}
-          className="w-72 rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
-        />
+      <div className="mb-6 flex flex-wrap gap-3">
+        {/* Qualification filter */}
+        <select
+          value={filterQualification}
+          onChange={(e) => setFilterQualification(e.target.value)}
+          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+        >
+          <option value="">All Qualifications</option>
+          {QUALIFICATION_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+
+        {/* Year filter */}
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+        >
+          <option value="">All Years</option>
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+          <option value="3">3rd Year</option>
+          <option value="4">4th Year</option>
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -341,7 +344,7 @@ export default function AdminSyllabusPage() {
             ? {
               name: editingSubject.name,
               code: editingSubject.code,
-              departmentBranch: editingSubject.department,
+              qualification: editingSubject.department,
               year: editingSubject.year?.toString() || "1",
               regulation: editingSubject.regulation || "R2021",
               pdfUrl: editingSubject.pdfUrl,
@@ -356,33 +359,7 @@ export default function AdminSyllabusPage() {
         onSubmit={handleUpdateSubject}
       />
 
-      {/* Upload More PDFs — shown when edit modal is open */}
-      {showEditModal && editingSubject && (
-        <div className="fixed inset-0 z-30 flex items-end justify-end p-6 pointer-events-none">
-          <div className="pointer-events-auto w-72 rounded-lg border border-[#3A3A38] bg-[#1A1A19] p-4 shadow-xl">
-            <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">Upload More PDFs</p>
-            <p className="mb-3 text-[11px] text-[#5A5A58]">
-              Adds to <span className="text-[#ECECEA]">{editingSubject.name}</span> without replacing existing files.
-            </p>
-            <label
-              className={`flex cursor-pointer items-center justify-center gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] ${
-                uploadingExtra ? "cursor-not-allowed opacity-50" : ""
-              }`}
-            >
-              {uploadingExtra ? "Uploading…" : "+ Select PDF / DOCX"}
-              <input
-                ref={extraFileRef}
-                type="file"
-                multiple
-                className="hidden"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                disabled={uploadingExtra}
-                onChange={(e) => handleUploadExtra(e.target.files)}
-              />
-            </label>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
