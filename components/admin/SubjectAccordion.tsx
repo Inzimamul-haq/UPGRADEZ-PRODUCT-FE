@@ -25,7 +25,15 @@ export interface Subject {
   uploadDate?: string | null;
   isPublished?: boolean;
   stoppedAcademicYear?: string | null;
+  embeddingStatus?: 'pending' | 'processing' | 'done' | 'failed';
 }
+
+const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  pending: { label: 'Embedding queued', className: 'border-yellow-400/50 text-yellow-400' },
+  processing: { label: 'Embedding…', className: 'border-blue-400/50 text-blue-400' },
+  done: { label: 'Embedded', className: 'border-green-400/50 text-green-400' },
+  failed: { label: 'Embedding failed', className: 'border-red-400/50 text-red-400' },
+};
 
 interface SubjectAccordionProps {
   subject: Subject;
@@ -80,6 +88,14 @@ export function SubjectAccordion({
             {!subject.isPublished && subject.stoppedAcademicYear && (
               <span className="ml-3 rounded border border-red-400/50 px-1.5 py-0.5 text-[10px] text-red-400">
                 Stopped for {subject.stoppedAcademicYear}
+              </span>
+            )}
+
+            {subject.embeddingStatus && subject.embeddingStatus !== 'done' && (
+              <span
+                className={`ml-3 rounded border px-1.5 py-0.5 text-[10px] ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
+              >
+                {EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.label ?? subject.embeddingStatus}
               </span>
             )}
           </div>

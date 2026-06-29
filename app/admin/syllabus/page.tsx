@@ -28,6 +28,9 @@ type SubjectApiRow = {
   createdAt?: string;
   isPublished?: boolean;
   stoppedAcademicYear?: string | null;
+  isActive?: boolean;
+  embeddingStatus?: 'pending' | 'processing' | 'done' | 'failed';
+  embedding_status?: string;
 };
 
 type SubjectsResponse = {
@@ -44,8 +47,11 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   pdfUrl: s.pdfUrl ?? s.pdf_url ?? null,
   pdfName: s.pdfName ?? s.pdf_name ?? null,
   uploadDate: s.uploadDate ?? s.upload_date ?? null,
-  isPublished: s.isPublished ?? true,
+  isPublished: s.isActive ?? s.isPublished ?? true,
   stoppedAcademicYear: s.stoppedAcademicYear ?? null,
+  embeddingStatus: (s.embeddingStatus ??
+    s.embedding_status ??
+    (s.pdfUrl || s.pdf_url ? 'pending' : 'done')) as Subject['embeddingStatus'],
 });
 
 export default function AdminSyllabusPage() {
@@ -83,6 +89,26 @@ export default function AdminSyllabusPage() {
     fetchSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Poll embedding status while any subject is pending or processing
+  useEffect(() => {
+    const needsPoll = subjects.some(
+      (s) => s.embeddingStatus === 'pending' || s.embeddingStatus === 'processing'
+    );
+    if (!needsPoll) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await api.get<SubjectsResponse>('/api/subjects');
+        const rows = Array.isArray(data?.subjects) ? data.subjects : [];
+        setSubjects(rows.map(normalizeSubject));
+      } catch {
+        // silent poll failure
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [subjects]);
 
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
@@ -240,21 +266,33 @@ export default function AdminSyllabusPage() {
     }
   };
 
-  // publish toggle placeholder
+  // publish toggle — persists isActive on backend
   const handleTogglePublish = async (id: string, academicYear?: string) => {
-    console.log("toggle publish", { id, academicYear });
+    const isActive = !academicYear;
+    try {
+      const { data } = await api.patch(`/api/subjects/${id}/active`, { isActive });
+      const updated = data?.subject ? normalizeSubject(data.subject) : null;
 
-    setSubjects((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-            ...s,
-            isPublished: academicYear ? false : true,
-            stoppedAcademicYear: academicYear ?? null,
-          }
-          : s
-      )
-    );
+      setSubjects((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? updated ?? {
+                ...s,
+                isPublished: isActive,
+                stoppedAcademicYear: academicYear ?? null,
+              }
+            : s
+        )
+      );
+
+      toast.success(
+        isActive ? 'Subject republished.' : `Publishing stopped for ${academicYear}.`
+      );
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.error ?? err.message ?? 'Failed to update publish status';
+      toast.error(msg);
+    }
   };
 
   return (

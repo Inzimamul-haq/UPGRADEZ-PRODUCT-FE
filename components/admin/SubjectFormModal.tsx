@@ -98,7 +98,7 @@ export default function SubjectFormModal({
     }
 
     if (mode === "add" && files.length === 0) {
-      setLocalError("At least one PDF or DOCX syllabus file is required");
+      setLocalError("At least one PDF syllabus file is required");
       return;
     }
 
@@ -219,8 +219,8 @@ export default function SubjectFormModal({
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-[12px] text-[#8C8C8A]">
                 {mode === "add"
-                  ? "Upload PDF / DOCX"
-                  : "Update PDF / DOCX (Optional)"}
+                  ? "Upload PDF"
+                  : "Update PDF (Optional)"}
               </label>
             </div>
 
@@ -281,7 +281,7 @@ export default function SubjectFormModal({
                 <input
                   type="file"
                   className="hidden"
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept=".pdf,application/pdf"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
                       setFiles([...files, e.target.files[0]]);
