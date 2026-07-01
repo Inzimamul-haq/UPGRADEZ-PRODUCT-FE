@@ -9,11 +9,14 @@ import {
   FileText,
   Download,
   Ban,
+  RefreshCw,
 } from "lucide-react";
 import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/context/ToastContext";
+import api from "@/lib/api";
 
-export interface Subject {
+export type Subject = {
   id: string;
   name: string;
   code: string;
@@ -24,15 +27,15 @@ export interface Subject {
   pdfName?: string | null;
   uploadDate?: string | null;
   isPublished?: boolean;
+  embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   stoppedAcademicYear?: string | null;
-  embeddingStatus?: 'pending' | 'processing' | 'done' | 'failed';
-}
+};
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Embedding queued', className: 'border-yellow-400/50 text-yellow-400' },
-  processing: { label: 'Embedding…', className: 'border-blue-400/50 text-blue-400' },
-  done: { label: 'Embedded', className: 'border-green-400/50 text-green-400' },
-  failed: { label: 'Embedding failed', className: 'border-red-400/50 text-red-400' },
+  queued: { label: 'Embedding queued', className: 'border-yellow-400/50 text-yellow-400' },
+  processing: { label: 'Processing', className: 'border-blue-400/50 text-blue-400' },
+  completed: { label: 'Completed', className: 'border-green-400/50 text-green-400' },
+  failed: { label: 'Failed', className: 'border-red-400/50 text-red-400' },
 };
 
 interface SubjectAccordionProps {
@@ -40,6 +43,7 @@ interface SubjectAccordionProps {
   onDelete: (id: string) => Promise<void> | void;
   onEdit: (subject: Subject) => void;
   onTogglePublish: (id: string, academicYear?: string) => void;
+  onRefresh?: () => void;
 }
 
 export function SubjectAccordion({
@@ -47,13 +51,40 @@ export function SubjectAccordion({
   onDelete,
   onEdit,
   onTogglePublish,
+  onRefresh,
 }: SubjectAccordionProps) {
+  const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showStopPublishModal, setShowStopPublishModal] = useState(false);
   const [stopAcademicYear, setStopAcademicYear] = useState("2023-2027");
+  const [isRetrying, setIsRetrying] = useState(false);
 
+ const handleRetry = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+
+  if (isRetrying) return;
+
+  setIsRetrying(true);
+
+  try {
+    await api.post(`/api/subjects/${subject.id}/retry`);
+
+    // Immediately refresh from backend
+    await onRefresh?.();
+
+    toast.success("Retry queued successfully");
+  } catch (err: any) {
+    toast.error(
+      err.response?.data?.error ??
+      err.message ??
+      "Failed to retry subject"
+    );
+  } finally {
+    setIsRetrying(false);
+  }
+};
   const handleStopPublish = () => {
     onTogglePublish(subject.id, stopAcademicYear);
     setShowStopPublishModal(false);
@@ -91,7 +122,7 @@ export function SubjectAccordion({
               </span>
             )}
 
-            {subject.embeddingStatus && subject.embeddingStatus !== 'done' && (
+            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (
               <span
                 className={`ml-3 rounded border px-1.5 py-0.5 text-[10px] ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
               >
@@ -121,20 +152,36 @@ export function SubjectAccordion({
               </button>
             )}
 
+            {subject.embeddingStatus === 'failed' && (
+              <RefreshCw
+                size={14}
+                className={`cursor-pointer ${isRetrying ? 'animate-spin text-[#ECECEA]' : 'text-[#5A5A58] hover:text-[#ECECEA]'}`}
+                onClick={handleRetry}
+                data-tooltip="Retry processing" />
+            )}
+
             <Pencil
               size={14}
               className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
               onClick={(e) => {
                 e.stopPropagation();
+                if (subject.embeddingStatus === 'processing') {
+                  toast.error("Subject is currently processing. Please try again after a few minutes.");
+                  return;
+                }
                 onEdit(subject);
               }}
             />
 
             <Trash2
               size={14}
-              className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+              className={`cursor-pointer text-[#5A5A58] ${subject.embeddingStatus === 'processing' ? 'hover:text-[#ECECEA]' : 'hover:text-red-400'}`}
               onClick={(e) => {
                 e.stopPropagation();
+                if (subject.embeddingStatus === 'processing') {
+                  toast.error("Subject is currently processing. Please try again after a few minutes.");
+                  return;
+                }
                 setShowDeleteModal(true);
               }}
             />
@@ -149,6 +196,12 @@ export function SubjectAccordion({
 
         {isOpen && (
           <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
+            {subject.embeddingStatus === 'failed' && (
+              <div className="mb-4 rounded border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-400">
+                Processing failed, potentially due to a low-quality or unsupported PDF format. Try editing the subject to replace the PDF with a clearer format, or use the retry button.
+              </div>
+            )}
+
             {subject.pdfUrl ? (
               <div className="flex items-center justify-between">
                 <div>

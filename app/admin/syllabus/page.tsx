@@ -29,7 +29,7 @@ type SubjectApiRow = {
   isPublished?: boolean;
   stoppedAcademicYear?: string | null;
   isActive?: boolean;
-  embeddingStatus?: 'pending' | 'processing' | 'done' | 'failed';
+  embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   embedding_status?: string;
 };
 
@@ -51,7 +51,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   stoppedAcademicYear: s.stoppedAcademicYear ?? null,
   embeddingStatus: (s.embeddingStatus ??
     s.embedding_status ??
-    (s.pdfUrl || s.pdf_url ? 'pending' : 'done')) as Subject['embeddingStatus'],
+    (s.pdfUrl || s.pdf_url ? 'completed' : 'queued')) as Subject['embeddingStatus'],
 });
 
 export default function AdminSyllabusPage() {
@@ -69,43 +69,45 @@ export default function AdminSyllabusPage() {
   const [filterYear, setFilterYear] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const fetchSubjects = async (showError = false) => {
+    try {
+      setIsLoading(true);
+      const { data } = await api.get<SubjectsResponse>("/api/subjects");
+
+      const rows = Array.isArray(data?.subjects) ? data.subjects : [];
+      setSubjects(rows.map(normalizeSubject));
+    } catch (err) {
+      console.error("Failed to fetch subjects", err);
+      toast.error("Failed to load subjects. Please refresh.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // fetch subjects
   useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await api.get<SubjectsResponse>("/api/subjects");
+    const load = async () => {
+      setIsLoading(true);
 
-        const rows = Array.isArray(data?.subjects) ? data.subjects : [];
-        setSubjects(rows.map(normalizeSubject));
-      } catch (err) {
-        console.error("Failed to fetch subjects", err);
-        toast.error("Failed to load subjects. Please refresh.");
-      } finally {
-        setIsLoading(false);
-      }
+      await fetchSubjects(true);
+
+      setIsLoading(false);
     };
 
-    fetchSubjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    load();
   }, []);
-
-  // Poll embedding status while any subject is pending or processing
+  // Poll embedding status while any subject is queued or processing
   useEffect(() => {
-    const needsPoll = subjects.some(
-      (s) => s.embeddingStatus === 'pending' || s.embeddingStatus === 'processing'
+    const hasActiveEmbeddings = subjects.some(
+      (s) =>
+        s.embeddingStatus === "queued" ||
+        s.embeddingStatus === "processing"
     );
-    if (!needsPoll) return;
 
-    const interval = setInterval(async () => {
-      try {
-        const { data } = await api.get<SubjectsResponse>('/api/subjects');
-        const rows = Array.isArray(data?.subjects) ? data.subjects : [];
-        setSubjects(rows.map(normalizeSubject));
-      } catch {
-        // silent poll failure
-      }
-    }, 15000);
+    if (!hasActiveEmbeddings) return;
+
+    const interval = setInterval(() => {
+      fetchSubjects();
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [subjects]);
@@ -147,7 +149,7 @@ export default function AdminSyllabusPage() {
         : null;
 
       if (rawSubject) {
-        setSubjects((prev) => [normalizeSubject(rawSubject), ...prev]);
+        await fetchSubjects();
       } else {
         const refreshed = await api.get<SubjectsResponse>("/api/subjects");
         setSubjects((refreshed.data.subjects || []).map(normalizeSubject));
@@ -277,10 +279,10 @@ export default function AdminSyllabusPage() {
         prev.map((s) =>
           s.id === id
             ? updated ?? {
-                ...s,
-                isPublished: isActive,
-                stoppedAcademicYear: academicYear ?? null,
-              }
+              ...s,
+              isPublished: isActive,
+              stoppedAcademicYear: academicYear ?? null,
+            }
             : s
         )
       );
@@ -353,6 +355,7 @@ export default function AdminSyllabusPage() {
               onDelete={handleDelete}
               onEdit={handleOpenEdit}
               onTogglePublish={handleTogglePublish}
+              onRefresh={fetchSubjects}
             />
           ))
         )}
