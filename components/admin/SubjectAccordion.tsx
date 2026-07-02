@@ -30,7 +30,7 @@ export type Subject = {
   isPublished?: boolean;
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   stoppedAcademicYear?: string | null;
-  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string }[];
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number }[];
 };
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -126,13 +126,21 @@ export function SubjectAccordion({
               </span>
             )}
 
-            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (
-              <span
-                className={`ml-3 rounded border px-1.5 py-0.5 text-[10px] ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
-              >
-                {EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.label ?? subject.embeddingStatus}
-              </span>
-            )}
+            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
+              const totalFiles = subject.files?.length || 0;
+              const completedFiles = subject.files?.filter(f => f.status === 'done').length || 0;
+              const totalProgress = subject.files?.reduce((acc, f) => acc + (f.progress ?? (f.status === 'done' ? 100 : 0)), 0) || 0;
+              const progressPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
+              const label = EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.label ?? subject.embeddingStatus;
+              
+              return (
+                <span
+                  className={`ml-3 rounded border px-1.5 py-0.5 text-[10px] ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
+                >
+                  {label} {totalFiles > 0 ? `(${progressPercentage}%)` : ''}
+                </span>
+              );
+            })()}
           </div>
 
           <div className="flex items-center gap-3">
@@ -200,11 +208,48 @@ export function SubjectAccordion({
 
         {isOpen && (
           <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
-            {subject.embeddingStatus === 'failed' && (
-              <div className="mb-4 rounded border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-400">
-                Processing failed, potentially due to a low-quality or unsupported PDF format. Try editing the subject to replace the PDF with a clearer format, or use the retry button.
-              </div>
-            )}
+            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
+              const totalFiles = subject.files?.length || 0;
+              const completedFiles = subject.files?.filter(f => f.status === 'done').length || 0;
+              const totalProgress = subject.files?.reduce((acc, f) => acc + (f.progress ?? (f.status === 'done' ? 100 : 0)), 0) || 0;
+              const progressPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
+
+              return (
+                <div className="mb-4 rounded border border-[#3A3A38] bg-[#2C2C2A] p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[13px] font-medium text-[#ECECEA]">
+                      {subject.embeddingStatus === 'failed' ? 'Processing Failed' : 'Processing Syllabus Files'}
+                    </span>
+                    <span className="text-[12px] text-[#8C8C8A]">
+                      {completedFiles} of {totalFiles} jobs completed ({progressPercentage}%)
+                    </span>
+                  </div>
+                  
+                  <div className="w-full bg-[#1F1F1E] rounded-full h-2 mb-1 overflow-hidden border border-[#3A3A38]">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-500 ${subject.embeddingStatus === 'failed' ? 'bg-red-400' : 'bg-blue-400'}`} 
+                      style={{ width: `${progressPercentage}%` }}
+                    ></div>
+                  </div>
+
+                  {subject.embeddingStatus === 'failed' && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#3A3A38]">
+                      <span className="text-[12px] text-[#8C8C8A]">
+                        Process halted. You can resume processing from the failed area.
+                      </span>
+                      <button
+                        onClick={handleRetry}
+                        disabled={isRetrying}
+                        className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#1F1F1E] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] disabled:opacity-50"
+                      >
+                        <RefreshCw size={14} className={isRetrying ? "animate-spin" : ""} />
+                        {isRetrying ? "Resuming..." : "Resume Processing"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {subject.files && subject.files.length > 0 ? (
               <div className="flex flex-col gap-3">

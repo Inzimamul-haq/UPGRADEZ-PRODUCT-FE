@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/api";
 import { BRANCH_OPTIONS } from "@/lib/constants";
 import SubjectFormModal, {
@@ -32,7 +32,7 @@ type SubjectApiRow = {
   embedding_status?: string;
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
-  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string }[];
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number }[];
 };
 
 type DepartmentOption = {
@@ -121,22 +121,112 @@ export default function AdminSyllabusPage() {
     };
     loadDepartments();
   }, []);
-  // Poll embedding status while any subject is queued or processing
-  useEffect(() => {
-    const hasActiveEmbeddings = subjects.some(
+  // Open one SSE stream per subject that is queued or processing.
+  // Each stream patches only that subject's local state — no full refetch.
+  const activeSubjectIds = subjects
+    .filter(
       (s) =>
-        s.embeddingStatus === "queued" ||
-        s.embeddingStatus === "processing"
-    );
+        s.embeddingStatus === "queued" || s.embeddingStatus === "processing"
+    )
+    .map((s) => s.id);
 
-    if (!hasActiveEmbeddings) return;
+  // Track open EventSource instances by subjectId so we can clean up
+  const eventSourcesRef = useRef<Record<string, EventSource>>({});
 
-    const interval = setInterval(() => {
-      fetchSubjects();
-    }, 10000);
+  useEffect(() => {
+    const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
 
-    return () => clearInterval(interval);
-  }, [subjects]);
+    // Open a stream for any active subject that doesn't already have one
+    for (const subjectId of activeSubjectIds) {
+      if (eventSourcesRef.current[subjectId]) continue;
+
+      const es = new EventSource(`${BACKEND}/api/subjects/${subjectId}/progress-stream`);
+      eventSourcesRef.current[subjectId] = es;
+
+      es.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data) as {
+            done?: boolean;
+            fileId?: string;
+            status?: string;
+            progress?: number;
+          };
+
+          if (payload.done) {
+            // Server says all files settled — do one authoritative full refresh
+            es.close();
+            delete eventSourcesRef.current[subjectId];
+            fetchSubjects();
+            return;
+          }
+
+          if (!payload.fileId) return;
+
+          // Patch only the affected file in local state
+          setSubjects((prev) =>
+            prev.map((s) => {
+              if (s.id !== subjectId) return s;
+              const updatedFiles = s.files?.map((f) => {
+                if (f.id !== payload.fileId) return f;
+                return {
+                  ...f,
+                  status: payload.status ?? f.status,
+                  progress: payload.progress ?? f.progress ?? 0,
+                };
+              });
+
+              // Recompute subject-level embeddingStatus from file statuses
+              const allDone = updatedFiles?.every((f) => f.status === "done");
+              const anyFailed = updatedFiles?.some((f) => f.status === "failed");
+              const anyProcessing = updatedFiles?.some(
+                (f) => f.status === "processing"
+              );
+              const anyQueued = updatedFiles?.some((f) => f.status === "pending" || f.status === "queued");
+              const newStatus: Subject["embeddingStatus"] = allDone
+                ? "completed"
+                : anyFailed && !anyProcessing && !anyQueued
+                  ? "failed"
+                  : anyProcessing
+                    ? "processing"
+                    : "queued";
+
+              return { ...s, files: updatedFiles, embeddingStatus: newStatus };
+            })
+          );
+        } catch {
+          // ignore malformed events
+        }
+      };
+
+      es.onerror = () => {
+        es.close();
+        delete eventSourcesRef.current[subjectId];
+      };
+    }
+
+    // Close streams for subjects that are no longer active
+    for (const [id, es] of Object.entries(eventSourcesRef.current)) {
+      if (!activeSubjectIds.includes(id)) {
+        es.close();
+        delete eventSourcesRef.current[id];
+      }
+    }
+
+    return () => {
+      // Cleanup is intentionally NOT done here — streams should outlive
+      // individual renders. Full cleanup is handled in the component unmount.
+    };
+  }, [activeSubjectIds.join(",")]);
+
+  // Close ALL streams on unmount
+  useEffect(() => {
+    return () => {
+      for (const es of Object.values(eventSourcesRef.current)) {
+        es.close();
+      }
+      eventSourcesRef.current = {};
+    };
+  }, []);
 
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
