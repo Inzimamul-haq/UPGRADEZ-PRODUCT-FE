@@ -20,7 +20,6 @@ export type Subject = {
   id: string;
   name: string;
   code: string;
-  branch: string;
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
   year?: number | string;
@@ -31,6 +30,7 @@ export type Subject = {
   isPublished?: boolean;
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   stoppedAcademicYear?: string | null;
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string }[];
 };
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -115,9 +115,8 @@ export function SubjectAccordion({
             </span>
             <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
             <span className="ml-2 text-[12px] text-[#5A5A58]">
-              · {subject.branch}
               {subject.departments && subject.departments.length > 0 && (
-                <> · {subject.departments.map((d) => d.branch ? `${d.branch} · ${d.name}` : d.name).join(", ")}</>
+                <>{subject.departments.map((d) => d.branch ? `${d.branch} · ${d.name}` : d.name).join(", ")}</>
               )}
             </span>
 
@@ -207,7 +206,31 @@ export function SubjectAccordion({
               </div>
             )}
 
-            {subject.pdfUrl ? (
+            {subject.files && subject.files.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {subject.files.map((file, index) => (
+                  <div key={file.id} className="flex items-center justify-between border-b border-[#3A3A38]/50 pb-3 last:border-0 last:pb-0">
+                    <div>
+                      <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
+                        {subject.pdfName ? `${subject.pdfName.replace(/\.[^/.]+$/, "")}${index > 0 ? `_${index + 1}` : ""}.pdf` : `Syllabus Part ${index + 1}`}
+                      </p>
+                      <p className="text-[12px] text-[#8C8C8A]">
+                        {file.createdAt ? `Uploaded ${new Date(file.createdAt).toLocaleDateString()}` : ""}
+                      </p>
+                    </div>
+
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download?fileId=${file.id}`}
+                      download
+                      className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+                    >
+                      <Download size={14} />
+                      Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : subject.pdfUrl ? (
               <div className="flex items-center justify-between">
                 <div>
                   <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">

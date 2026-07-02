@@ -31,7 +31,7 @@ export default function FacultyGlobalQuestionsPage() {
     const sYearStr = s.year ? `${s.year}st Year`.replace('1st', '1st').replace('2st', '2nd').replace('3st', '3rd').replace('4st', '4th') : '';
     // A simplified year matching, as DB has numbers (1,2,3,4)
     const matchYear = yearFilter === 'All' || s.year?.toString() === yearFilter.replace(/\D/g, '');
-    const matchBranch = !branchFilter || (s.branch && s.branch === branchFilter);
+    const matchBranch = !branchFilter || (s.departments && s.departments.some((d: any) => d.branch === branchFilter));
     return matchYear && matchBranch;
   });
 

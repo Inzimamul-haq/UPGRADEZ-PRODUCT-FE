@@ -18,7 +18,6 @@ export const settingsNameSchema = z.object({
 export const subjectSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
   code: z.string().min(1, "Subject code is required"),
-  branch: z.string().min(1, "Branch is required"),
   year: z.string().min(1, "Year is required"),
   regulation: z.string().min(1, "Regulation is required"),
   departmentIds: z

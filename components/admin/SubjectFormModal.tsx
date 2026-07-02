@@ -14,7 +14,6 @@ export type DepartmentOption = {
 export type SubjectFormValues = {
   name: string;
   code: string;
-  branch: string;
   departmentIds: string[];
   year: string;
   regulation: string;
@@ -48,7 +47,6 @@ export default function SubjectFormModal({
 }: SubjectFormModalProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [branch, setBranch] = useState("");
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
@@ -63,7 +61,6 @@ export default function SubjectFormModal({
 
     setName(initialValues?.name ?? "");
     setCode(initialValues?.code ?? "");
-    setBranch(initialValues?.branch ?? "");
     setDepartmentIds(initialValues?.departmentIds ?? []);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
@@ -92,22 +89,7 @@ export default function SubjectFormModal({
     loadDepartments();
   }, [open]);
 
-  const filteredDepartments = useMemo(() => {
-    if (!branch) return departments;
-    return departments.filter(
-      (d) => d.branch.toUpperCase() === branch.toUpperCase()
-    );
-  }, [departments, branch]);
-
-  useEffect(() => {
-    if (!branch) return;
-    setDepartmentIds((prev) =>
-      prev.filter((id) => {
-        const dept = departments.find((d) => d.id === id);
-        return dept && dept.branch.toUpperCase() === branch.toUpperCase();
-      })
-    );
-  }, [branch, departments]);
+  const filteredDepartments = departments;
 
   if (!open) return null;
 
@@ -123,7 +105,6 @@ export default function SubjectFormModal({
     const parsed = subjectSchema.safeParse({
       name,
       code,
-      branch,
       departmentIds,
       year,
       regulation,
@@ -143,7 +124,6 @@ export default function SubjectFormModal({
       await onSubmit({
         name: name.trim(),
         code: code.trim(),
-        branch: branch.trim(),
         departmentIds,
         year,
         regulation,
@@ -193,40 +173,15 @@ export default function SubjectFormModal({
               />
             </div>
           </div>
-
-          <div>
-            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
-              Branch
-            </label>
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-            >
-              <option value="" disabled>
-                Select branch
-              </option>
-              {BRANCH_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div>
             <label className="mb-2 block text-[12px] text-[#8C8C8A]">
               Departments (select all that share this subject)
             </label>
             {loadingDepartments ? (
               <p className="text-[12px] text-[#5A5A58]">Loading departments...</p>
-            ) : !branch ? (
-              <p className="text-[12px] text-amber-400">
-                Select a branch first to see matching departments.
-              </p>
             ) : filteredDepartments.length === 0 ? (
               <p className="text-[12px] text-amber-400">
-                No departments found for {branch}. Add departments first from the Departments page.
+                No departments found. Add departments first from the Departments page.
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] p-3">

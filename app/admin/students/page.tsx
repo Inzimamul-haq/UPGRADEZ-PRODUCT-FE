@@ -13,8 +13,10 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [searchName, setSearchName] = useState('');
+  const [departments, setDepartments] = useState<any[]>([]);
   
   const [rowsPerPage, setRowsPerPage] = useState('10');
   const [page, setPage] = useState(1);
@@ -24,6 +26,7 @@ export default function AdminStudentsPage() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkYear, setBulkYear] = useState('1');
   const [bulkBranch, setBulkBranch] = useState('');
+  const [bulkDepartment, setBulkDepartment] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
 
   const toast = useToast();
@@ -34,6 +37,7 @@ export default function AdminStudentsPage() {
       const params: any = {
         search: searchName,
         branch: branchFilter,
+        departmentId: departmentFilter,
         section: sectionFilter,
         page,
         limit: rowsPerPage
@@ -53,8 +57,17 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/api/departments');
+        setDepartments(data.departments || []);
+      } catch (err) {}
+    })();
+  }, []);
+
+  useEffect(() => {
     fetchStudents();
-  }, [searchName, yearFilter, branchFilter, sectionFilter, page, rowsPerPage]);
+  }, [searchName, yearFilter, branchFilter, departmentFilter, sectionFilter, page, rowsPerPage]);
 
   const handleDelete = async (id: string) => {
     // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
@@ -80,6 +93,7 @@ export default function AdminStudentsPage() {
       await api.post('/api/profiles/students/bulk-promote', {
         currentYear: bulkYear,
         branch: bulkBranch,
+        departmentId: bulkDepartment,
         targetYear: bulkPromoteTo
       });
       toast.success('Students promoted successfully');
@@ -144,6 +158,22 @@ export default function AdminStudentsPage() {
           <option value="">All Branches</option>
           {BRANCH_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+
+        <select 
+          value={departmentFilter}
+          onChange={(e) => {
+            setDepartmentFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="">All Departments</option>
+          {departments
+            .filter(d => !branchFilter || d.branch === branchFilter)
+            .map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
           ))}
         </select>
         
@@ -284,6 +314,22 @@ export default function AdminStudentsPage() {
                   <option value="" disabled>Select Branch</option>
                   {BRANCH_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[12px] text-[#8C8C8A] mb-1">Department</label>
+                <select 
+                  value={bulkDepartment} 
+                  onChange={(e) => setBulkDepartment(e.target.value)}
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                >
+                  <option value="">All Departments (Optional)</option>
+                  {departments
+                    .filter(d => !bulkBranch || d.branch === bulkBranch)
+                    .map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
                   ))}
                 </select>
               </div>

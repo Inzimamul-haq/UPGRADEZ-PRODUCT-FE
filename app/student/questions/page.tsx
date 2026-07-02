@@ -4,10 +4,10 @@ import { Subject } from '@/lib/types';
 
 export default async function StudentQuestionsPage() {
   const subjects: Subject[] = [
-    { id: '1', name: 'Data Structures', code: 'CS201', department: 'Computer Science', branch: 'CS', year: '2nd' },
-    { id: '2', name: 'Operating Systems', code: 'CS301', department: 'Computer Science', branch: 'CS', year: '2nd' },
-    { id: '3', name: 'Computer Networks', code: 'CS302', department: 'Computer Science', branch: 'CS', year: '3rd' },
-    { id: '4', name: 'Database Management', code: 'CS401', department: 'Computer Science', branch: 'CS', year: '3rd' },
+    { id: '1', name: 'Data Structures', code: 'CS201', department: 'Computer Science', year: '2nd' },
+    { id: '2', name: 'Operating Systems', code: 'CS301', department: 'Computer Science', year: '2nd' },
+    { id: '3', name: 'Computer Networks', code: 'CS302', department: 'Computer Science', year: '3rd' },
+    { id: '4', name: 'Database Management', code: 'CS401', department: 'Computer Science', year: '3rd' },
   ];
 
   return (

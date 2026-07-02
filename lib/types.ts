@@ -10,7 +10,6 @@ export interface Subject {
   name: string;
   code: string;
   department: string;
-  branch: string;
   year: string;
 }
 

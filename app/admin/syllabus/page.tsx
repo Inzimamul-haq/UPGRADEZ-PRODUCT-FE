@@ -16,7 +16,6 @@ type SubjectApiRow = {
   id: string;
   name: string;
   code: string;
-  branch: string;
   year?: number | string;
   regulation?: string;
   pdfUrl?: string | null;
@@ -33,6 +32,7 @@ type SubjectApiRow = {
   embedding_status?: string;
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string }[];
 };
 
 type DepartmentOption = {
@@ -49,7 +49,6 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  branch: s.branch ?? "",
   departments: s.departments ?? [],
   departmentIds: s.departmentIds ?? s.departments?.map((d) => d.id) ?? [],
   year: s.year,
@@ -62,6 +61,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   embeddingStatus: (s.embeddingStatus ??
     s.embedding_status ??
     (s.pdfUrl || s.pdf_url ? 'completed' : 'queued')) as Subject['embeddingStatus'],
+  files: s.files,
 });
 
 export default function AdminSyllabusPage() {
@@ -142,7 +142,7 @@ export default function AdminSyllabusPage() {
     return subjects.filter((s) => {
       const matchBranch =
         !filterBranch ||
-        s.branch?.toUpperCase() === filterBranch.toUpperCase();
+        s.departments?.some((d) => d.branch?.toUpperCase() === filterBranch.toUpperCase());
       const matchDept =
         !filterDepartmentId ||
         s.departmentIds?.includes(filterDepartmentId) ||
@@ -167,7 +167,6 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("branch", values.branch.trim());
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
@@ -224,7 +223,6 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("branch", values.branch.trim());
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
@@ -266,7 +264,6 @@ export default function AdminSyllabusPage() {
                 ...s,
                 name: values.name,
                 code: values.code,
-                branch: values.branch.trim(),
                 departmentIds: values.departmentIds,
                 departments: departmentOptions.filter((d) =>
                   values.departmentIds.includes(d.id)
@@ -444,7 +441,6 @@ export default function AdminSyllabusPage() {
             ? {
               name: editingSubject.name,
               code: editingSubject.code,
-              branch: editingSubject.branch,
               departmentIds: editingSubject.departmentIds ?? [],
               year: editingSubject.year?.toString() || "1",
               regulation: editingSubject.regulation || "R2021",
