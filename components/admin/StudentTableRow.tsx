@@ -1,16 +1,24 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
 import api from '@/lib/api';
-import { QUALIFICATION_OPTIONS } from '@/lib/constants';
+import { BRANCH_OPTIONS } from '@/lib/constants';
+
+type DepartmentOption = {
+  id: string;
+  name: string;
+  branch: string;
+};
 
 interface Student {
   id: string;
   name: string;
   email: string;
   year: string;
-  qualification: string;
+  branch: string;
+  department: string;
+  departmentId?: string;
   section?: string;
   joined: string;
   role?: string;
@@ -29,21 +37,48 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
 
-  // Parse year number back from display string e.g. "2 Year" -> "2"
   const rawYear = student.year ? student.year.replace(/\D/g, '') : '';
 
   const [form, setForm] = useState({
     name: student.name,
     email: student.email,
     year: rawYear,
-    qualification: student.qualification === '-' ? '' : student.qualification,
+    branch: student.branch === '-' ? '' : student.branch,
+    departmentId: student.departmentId ?? '',
     section: student.section === '-' ? '' : (student.section || ''),
     role: student.role || 'student',
   });
 
+  useEffect(() => {
+    if (!showEditModal) return;
+    const loadDepartments = async () => {
+      try {
+        const { data } = await api.get<{ departments: DepartmentOption[] }>('/api/departments');
+        setDepartments(data.departments ?? []);
+      } catch {
+        setEditError('Failed to load departments');
+      }
+    };
+    loadDepartments();
+  }, [showEditModal]);
+
+  const filteredDepartments = useMemo(() => {
+    if (!form.branch) return departments;
+    return departments.filter(
+      (d) => d.branch.toUpperCase() === form.branch.toUpperCase()
+    );
+  }, [departments, form.branch]);
+
   const handleChange = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'branch') {
+        next.departmentId = '';
+      }
+      return next;
+    });
   };
 
   const handleSave = async () => {
@@ -54,12 +89,13 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         name: form.name.trim(),
         email: form.email.trim(),
         year: form.year,
-        qualification: form.qualification,
+        branch: form.branch,
+        departmentId: form.departmentId || null,
         section: form.section.trim() || undefined,
         role: form.role,
       });
       setShowEditModal(false);
-      onPromoteSuccess(); // reuse refresh callback
+      onPromoteSuccess();
     } catch (err: any) {
       setEditError(err.response?.data?.error || 'Failed to save changes');
     } finally {
@@ -69,14 +105,15 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[800px]">
-        <div className="w-[20%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
-        <div className="w-[25%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.year}</div>
-        <div className="w-[15%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.qualification}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
+      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[900px]">
+        <div className="w-[16%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
+        <div className="w-[22%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
+        <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.year}</div>
+        <div className="w-[10%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
+        <div className="w-[14%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
+        <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
         <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.joined}</div>
-        <div className="w-[10%] flex justify-end items-center gap-2">
+        <div className="w-[12%] flex justify-end items-center gap-2">
           <button
             onClick={() => { setShowEditModal(true); setEditError(''); }}
             title="Edit student"
@@ -94,7 +131,6 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         </div>
       </div>
 
-      {/* ── Delete Modal ── */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
@@ -120,11 +156,9 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         </div>
       )}
 
-      {/* ── Edit Modal ── */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-lg border border-[#3A3A38] bg-[#1F1F1E] shadow-xl">
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#2E2E2C]">
               <h2 className="text-[14px] font-medium text-[#ECECEA]">Edit Student</h2>
               <button
@@ -135,9 +169,7 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
               </button>
             </div>
 
-            {/* Body */}
             <div className="px-6 py-5 space-y-4">
-              {/* Name */}
               <div>
                 <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Name</label>
                 <input
@@ -148,7 +180,6 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Email</label>
                 <input
@@ -160,7 +191,6 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
                 />
               </div>
 
-              {/* Year + Section row */}
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Year</label>
@@ -188,22 +218,35 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
                 </div>
               </div>
 
-              {/* Qualification */}
               <div>
-                <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Qualification</label>
+                <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Branch</label>
                 <select
-                  value={form.qualification}
-                  onChange={e => handleChange('qualification', e.target.value)}
+                  value={form.branch}
+                  onChange={e => handleChange('branch', e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
-                  <option value="">— Select Qualification —</option>
-                  {QUALIFICATION_OPTIONS.map(opt => (
+                  <option value="">— Select Branch —</option>
+                  {BRANCH_OPTIONS.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Role */}
+              <div>
+                <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Department</label>
+                <select
+                  value={form.departmentId}
+                  onChange={e => handleChange('departmentId', e.target.value)}
+                  disabled={!form.branch}
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] disabled:opacity-50"
+                >
+                  <option value="">— Select Department —</option>
+                  {filteredDepartments.map(dept => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Role</label>
                 <select
@@ -222,7 +265,6 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#2E2E2C]">
               <button
                 onClick={() => setShowEditModal(false)}

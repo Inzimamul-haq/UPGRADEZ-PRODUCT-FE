@@ -1,11 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { FacultyTableRow } from '@/components/admin/FacultyTableRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { BRANCH_OPTIONS } from '@/lib/constants';
+
+type DepartmentOption = {
+  id: string;
+  name: string;
+  branch: string;
+};
 
 export default function AdminFacultyPage() {
   const [faculty, setFaculty] = useState<any[]>([]);
@@ -15,13 +22,14 @@ export default function AdminFacultyPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Edit Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<any>(null);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [editQualification, setEditQualification] = useState('');
+  const [editBranch, setEditBranch] = useState('');
+  const [editDepartmentId, setEditDepartmentId] = useState('');
   const [editRole, setEditRole] = useState('');
 
   const toast = useToast();
@@ -45,13 +53,34 @@ export default function AdminFacultyPage() {
     fetchFaculty();
   }, [searchName, page, rowsPerPage]);
 
+  useEffect(() => {
+    if (!editModalOpen) return;
+    const loadDepartments = async () => {
+      try {
+        const { data } = await api.get<{ departments: DepartmentOption[] }>('/api/departments');
+        setDepartments(data.departments ?? []);
+      } catch {
+        toast.error('Failed to load departments');
+      }
+    };
+    loadDepartments();
+  }, [editModalOpen]);
+
+  const filteredDepartments = useMemo(() => {
+    if (!editBranch) return departments;
+    return departments.filter(
+      (d) => d.branch.toUpperCase() === editBranch.toUpperCase()
+    );
+  }, [departments, editBranch]);
+
   const handleEdit = (id: string) => {
     const fac = faculty.find(f => f.id === id);
     if (!fac) return;
     setEditingFaculty(fac);
     setEditName(fac.name);
     setEditEmail(fac.email);
-    setEditQualification(fac.qualification || fac.department || '');
+    setEditBranch(fac.branch || '');
+    setEditDepartmentId(fac.departmentId || fac.department?.id || '');
     setEditRole(fac.role);
     setEditModalOpen(true);
   };
@@ -62,7 +91,8 @@ export default function AdminFacultyPage() {
       await api.put(`/api/profiles/faculty/${editingFaculty.id}`, {
         name: editName,
         email: editEmail,
-        qualification: editQualification,
+        branch: editBranch,
+        departmentId: editDepartmentId || null,
         role: editRole
       });
       toast.success('Faculty updated successfully');
@@ -104,13 +134,14 @@ export default function AdminFacultyPage() {
       </div>
 
       <div className="border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[800px]">
+        <div className="min-w-[900px]">
           <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[25%]">Name</div>
-            <div className="w-[30%]">Email</div>
-            <div className="w-[20%]">Qualification</div>
+            <div className="w-[20%]">Name</div>
+            <div className="w-[26%]">Email</div>
+            <div className="w-[10%]">Branch</div>
+            <div className="w-[14%]">Department</div>
             <div className="w-[10%]">Joined</div>
-            <div className="w-[15%] text-right">Action</div>
+            <div className="w-[20%] text-right">Action</div>
           </div>
 
           <div className="flex flex-col">
@@ -131,7 +162,8 @@ export default function AdminFacultyPage() {
                     id: f.id,
                     name: f.name,
                     email: f.email,
-                    qualification: f.qualification || f.department || '-',
+                    branch: f.branch || '-',
+                    department: f.department?.name || '-',
                     joined: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '-'
                   }}
                   onEdit={handleEdit}
@@ -142,7 +174,6 @@ export default function AdminFacultyPage() {
           </div>
         </div>
 
-        {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-[#2E2E2C] bg-[#1F1F1E]">
           <div className="flex items-center gap-4">
             <span className="text-[12px] text-[#8C8C8A]">
@@ -187,7 +218,6 @@ export default function AdminFacultyPage() {
         </div>
       </div>
 
-      {/* Edit Modal */}
       {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
@@ -210,12 +240,34 @@ export default function AdminFacultyPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[12px] text-[#8C8C8A]">Qualification</label>
-                <input
-                  value={editQualification}
-                  onChange={(e) => setEditQualification(e.target.value)}
+                <label className="mb-1 block text-[12px] text-[#8C8C8A]">Branch</label>
+                <select
+                  value={editBranch}
+                  onChange={(e) => {
+                    setEditBranch(e.target.value);
+                    setEditDepartmentId('');
+                  }}
                   className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-                />
+                >
+                  <option value="">— Select Branch —</option>
+                  {BRANCH_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[12px] text-[#8C8C8A]">Department</label>
+                <select
+                  value={editDepartmentId}
+                  onChange={(e) => setEditDepartmentId(e.target.value)}
+                  disabled={!editBranch}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none disabled:opacity-50"
+                >
+                  <option value="">— Select Department —</option>
+                  {filteredDepartments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-1 block text-[12px] text-[#8C8C8A]">Role</label>

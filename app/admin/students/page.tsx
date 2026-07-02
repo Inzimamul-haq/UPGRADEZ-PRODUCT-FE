@@ -7,12 +7,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
-import { QUALIFICATION_OPTIONS } from '@/lib/constants';
+import { BRANCH_OPTIONS } from '@/lib/constants';
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
-  const [qualificationFilter, setQualificationFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [searchName, setSearchName] = useState('');
   
@@ -23,7 +23,7 @@ export default function AdminStudentsPage() {
 
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkYear, setBulkYear] = useState('1');
-  const [bulkQualification, setBulkQualification] = useState('');
+  const [bulkBranch, setBulkBranch] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
 
   const toast = useToast();
@@ -33,7 +33,7 @@ export default function AdminStudentsPage() {
       setIsLoading(true);
       const params: any = {
         search: searchName,
-        qualification: qualificationFilter,
+        branch: branchFilter,
         section: sectionFilter,
         page,
         limit: rowsPerPage
@@ -54,7 +54,7 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-  }, [searchName, yearFilter, qualificationFilter, sectionFilter, page, rowsPerPage]);
+  }, [searchName, yearFilter, branchFilter, sectionFilter, page, rowsPerPage]);
 
   const handleDelete = async (id: string) => {
     // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
@@ -75,11 +75,11 @@ export default function AdminStudentsPage() {
   });
 
   const handleBulkUpdate = async () => {
-    if (!bulkQualification || !bulkPromoteTo) return;
+    if (!bulkBranch || !bulkPromoteTo) return;
     try {
       await api.post('/api/profiles/students/bulk-promote', {
         currentYear: bulkYear,
-        qualification: bulkQualification,
+        branch: bulkBranch,
         targetYear: bulkPromoteTo
       });
       toast.success('Students promoted successfully');
@@ -134,15 +134,15 @@ export default function AdminStudentsPage() {
         </select>
         
         <select 
-          value={qualificationFilter}
+          value={branchFilter}
           onChange={(e) => {
-            setQualificationFilter(e.target.value);
+            setBranchFilter(e.target.value);
             setPage(1);
           }}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
-          <option value="">All Qualifications</option>
-          {QUALIFICATION_OPTIONS.map((opt) => (
+          <option value="">All Branches</option>
+          {BRANCH_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
@@ -159,15 +159,16 @@ export default function AdminStudentsPage() {
       </div>
 
       <div className="mt-4 border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[800px]">
+        <div className="min-w-[900px]">
           <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[20%]">Name</div>
-            <div className="w-[25%]">Email</div>
-            <div className="w-[10%]">Year</div>
-            <div className="w-[15%]">Qualification</div>
-            <div className="w-[10%]">Section</div>
+            <div className="w-[16%]">Name</div>
+            <div className="w-[22%]">Email</div>
+            <div className="w-[8%]">Year</div>
+            <div className="w-[10%]">Branch</div>
+            <div className="w-[14%]">Department</div>
+            <div className="w-[8%]">Section</div>
             <div className="w-[10%]">Joined</div>
-            <div className="w-[10%] text-right">Action</div>
+            <div className="w-[12%] text-right">Action</div>
           </div>
           
           <div className="flex flex-col">
@@ -190,7 +191,9 @@ export default function AdminStudentsPage() {
                     name: s.name,
                     email: s.email,
                     year: s.year ? `${s.year} Year` : '-',
-                    qualification: s.qualification || '-',
+                    branch: s.branch || '-',
+                    department: s.department?.name || '-',
+                    departmentId: s.departmentId || s.department?.id,
                     section: s.section || '-',
                     joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
                     role: s.role || 'student',
@@ -272,14 +275,14 @@ export default function AdminStudentsPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Qualification</label>
+                <label className="block text-[12px] text-[#8C8C8A] mb-1">Branch</label>
                 <select 
-                  value={bulkQualification} 
-                  onChange={(e) => setBulkQualification(e.target.value)}
+                  value={bulkBranch} 
+                  onChange={(e) => setBulkBranch(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
-                  <option value="" disabled>Select Qualification</option>
-                  {QUALIFICATION_OPTIONS.map((opt) => (
+                  <option value="" disabled>Select Branch</option>
+                  {BRANCH_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
@@ -309,7 +312,7 @@ export default function AdminStudentsPage() {
               </button>
               <button 
                 onClick={handleBulkUpdate}
-                disabled={!bulkQualification || !bulkPromoteTo}
+                disabled={!bulkBranch || !bulkPromoteTo}
                 className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Promote

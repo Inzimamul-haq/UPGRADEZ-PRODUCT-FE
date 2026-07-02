@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { subjectSchema } from "@/Schema/validations";
-import { QUALIFICATION_OPTIONS } from "@/lib/constants";
+import { BRANCH_OPTIONS } from "@/lib/constants";
 import api from "@/lib/api";
 
 export type DepartmentOption = {
   id: string;
   name: string;
+  branch: string;
 };
 
 export type SubjectFormValues = {
   name: string;
   code: string;
-  qualification: string;
+  branch: string;
   departmentIds: string[];
   year: string;
   regulation: string;
@@ -47,7 +48,7 @@ export default function SubjectFormModal({
 }: SubjectFormModalProps) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [qualification, setQualification] = useState("");
+  const [branch, setBranch] = useState("");
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
@@ -62,7 +63,7 @@ export default function SubjectFormModal({
 
     setName(initialValues?.name ?? "");
     setCode(initialValues?.code ?? "");
-    setQualification(initialValues?.qualification ?? "");
+    setBranch(initialValues?.branch ?? "");
     setDepartmentIds(initialValues?.departmentIds ?? []);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
@@ -91,6 +92,23 @@ export default function SubjectFormModal({
     loadDepartments();
   }, [open]);
 
+  const filteredDepartments = useMemo(() => {
+    if (!branch) return departments;
+    return departments.filter(
+      (d) => d.branch.toUpperCase() === branch.toUpperCase()
+    );
+  }, [departments, branch]);
+
+  useEffect(() => {
+    if (!branch) return;
+    setDepartmentIds((prev) =>
+      prev.filter((id) => {
+        const dept = departments.find((d) => d.id === id);
+        return dept && dept.branch.toUpperCase() === branch.toUpperCase();
+      })
+    );
+  }, [branch, departments]);
+
   if (!open) return null;
 
   const toggleDepartment = (id: string) => {
@@ -105,7 +123,7 @@ export default function SubjectFormModal({
     const parsed = subjectSchema.safeParse({
       name,
       code,
-      qualification,
+      branch,
       departmentIds,
       year,
       regulation,
@@ -125,7 +143,7 @@ export default function SubjectFormModal({
       await onSubmit({
         name: name.trim(),
         code: code.trim(),
-        qualification: qualification.trim(),
+        branch: branch.trim(),
         departmentIds,
         year,
         regulation,
@@ -178,17 +196,17 @@ export default function SubjectFormModal({
 
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">
-              Qualification
+              Branch
             </label>
             <select
-              value={qualification}
-              onChange={(e) => setQualification(e.target.value)}
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
               className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               <option value="" disabled>
-                Select qualification
+                Select branch
               </option>
-              {QUALIFICATION_OPTIONS.map((option) => (
+              {BRANCH_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -202,13 +220,17 @@ export default function SubjectFormModal({
             </label>
             {loadingDepartments ? (
               <p className="text-[12px] text-[#5A5A58]">Loading departments...</p>
-            ) : departments.length === 0 ? (
+            ) : !branch ? (
               <p className="text-[12px] text-amber-400">
-                No departments found. Add departments first from the Departments page.
+                Select a branch first to see matching departments.
+              </p>
+            ) : filteredDepartments.length === 0 ? (
+              <p className="text-[12px] text-amber-400">
+                No departments found for {branch}. Add departments first from the Departments page.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] p-3">
-                {departments.map((dept) => (
+              <div className="grid grid-cols-1 gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] p-3">
+                {filteredDepartments.map((dept) => (
                   <label
                     key={dept.id}
                     className="flex cursor-pointer items-center gap-2 text-[12px] text-[#ECECEA]"
@@ -219,7 +241,7 @@ export default function SubjectFormModal({
                       onChange={() => toggleDepartment(dept.id)}
                       className="accent-[#ECECEA]"
                     />
-                    {dept.name}
+                    {dept.branch} · {dept.name}
                   </label>
                 ))}
               </div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
-type Subject = { id: string; name: string; code: string; qualification?: string; _count: { questionPapers: number } };
+type Subject = { id: string; name: string; code: string; branch?: string; _count: { questionPapers: number } };
 type Paper = { id: string; examType: string; academicYear: string; createdAt: string; _count: { questions: number } };
 type Question = { id: string; questionText: string; createdAt: string };
 type PaperDetail = {
@@ -128,8 +128,8 @@ export default function PapersPage() {
                 <div>
                   <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
                   <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
-                  {subject.qualification && (
-                    <p className="text-[11px] text-[#5A5A58] mt-0.5">{subject.qualification}</p>
+                  {subject.branch && (
+                    <p className="text-[11px] text-[#5A5A58] mt-0.5">{subject.branch}</p>
                   )}
                   <p className="text-[12px] text-[#5A5A58] mt-1">{subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}</p>
                 </div>

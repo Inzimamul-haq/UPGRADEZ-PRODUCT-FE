@@ -20,8 +20,8 @@ export type Subject = {
   id: string;
   name: string;
   code: string;
-  qualification: string;
-  departments?: { id: string; name: string }[];
+  branch: string;
+  departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
   year?: number | string;
   regulation?: string;
@@ -115,9 +115,9 @@ export function SubjectAccordion({
             </span>
             <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
             <span className="ml-2 text-[12px] text-[#5A5A58]">
-              · {subject.qualification}
+              · {subject.branch}
               {subject.departments && subject.departments.length > 0 && (
-                <> · {subject.departments.map((d) => d.name).join(", ")}</>
+                <> · {subject.departments.map((d) => d.branch ? `${d.branch} · ${d.name}` : d.name).join(", ")}</>
               )}
             </span>
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import { QUALIFICATION_OPTIONS } from "@/lib/constants";
+import { BRANCH_OPTIONS } from "@/lib/constants";
 import SubjectFormModal, {
   SubjectFormValues,
 } from "@/components/admin/SubjectFormModal";
@@ -16,7 +16,7 @@ type SubjectApiRow = {
   id: string;
   name: string;
   code: string;
-  qualification: string;
+  branch: string;
   year?: number | string;
   regulation?: string;
   pdfUrl?: string | null;
@@ -31,13 +31,14 @@ type SubjectApiRow = {
   isActive?: boolean;
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   embedding_status?: string;
-  departments?: { id: string; name: string }[];
+  departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
 };
 
 type DepartmentOption = {
   id: string;
   name: string;
+  branch: string;
 };
 
 type SubjectsResponse = {
@@ -48,7 +49,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  qualification: s.qualification,
+  branch: s.branch ?? "",
   departments: s.departments ?? [],
   departmentIds: s.departmentIds ?? s.departments?.map((d) => d.id) ?? [],
   year: s.year,
@@ -74,7 +75,7 @@ export default function AdminSyllabusPage() {
 
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
-  const [filterQualification, setFilterQualification] = useState("");
+  const [filterBranch, setFilterBranch] = useState("");
   const [filterDepartmentId, setFilterDepartmentId] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
@@ -139,17 +140,24 @@ export default function AdminSyllabusPage() {
 
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
-      const matchQ =
-        !filterQualification ||
-        s.qualification?.toUpperCase() === filterQualification.toUpperCase();
+      const matchBranch =
+        !filterBranch ||
+        s.branch?.toUpperCase() === filterBranch.toUpperCase();
       const matchDept =
         !filterDepartmentId ||
         s.departmentIds?.includes(filterDepartmentId) ||
         s.departments?.some((d) => d.id === filterDepartmentId);
       const matchY = !filterYear || String(s.year) === filterYear;
-      return matchQ && matchDept && matchY;
+      return matchBranch && matchDept && matchY;
     });
-  }, [subjects, filterQualification, filterDepartmentId, filterYear]);
+  }, [subjects, filterBranch, filterDepartmentId, filterYear]);
+
+  const visibleDepartmentOptions = useMemo(() => {
+    if (!filterBranch) return departmentOptions;
+    return departmentOptions.filter(
+      (d) => d.branch.toUpperCase() === filterBranch.toUpperCase()
+    );
+  }, [departmentOptions, filterBranch]);
 
   // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
@@ -159,7 +167,7 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("qualification", values.qualification.trim().toUpperCase());
+      formData.append("branch", values.branch.trim());
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
@@ -216,7 +224,7 @@ export default function AdminSyllabusPage() {
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
-      formData.append("qualification", values.qualification.trim().toUpperCase());
+      formData.append("branch", values.branch.trim());
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
@@ -258,7 +266,7 @@ export default function AdminSyllabusPage() {
                 ...s,
                 name: values.name,
                 code: values.code,
-                qualification: values.qualification.trim().toUpperCase(),
+                branch: values.branch.trim(),
                 departmentIds: values.departmentIds,
                 departments: departmentOptions.filter((d) =>
                   values.departmentIds.includes(d.id)
@@ -351,14 +359,17 @@ export default function AdminSyllabusPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
-        {/* Qualification filter */}
+        {/* Branch filter */}
         <select
-          value={filterQualification}
-          onChange={(e) => setFilterQualification(e.target.value)}
+          value={filterBranch}
+          onChange={(e) => {
+            setFilterBranch(e.target.value);
+            setFilterDepartmentId("");
+          }}
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
-          <option value="">All Qualifications</option>
-          {QUALIFICATION_OPTIONS.map((opt) => (
+          <option value="">All Branches</option>
+          {BRANCH_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
@@ -369,8 +380,8 @@ export default function AdminSyllabusPage() {
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
           <option value="">All Departments</option>
-          {departmentOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.name}</option>
+          {visibleDepartmentOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
           ))}
         </select>
 
@@ -433,7 +444,7 @@ export default function AdminSyllabusPage() {
             ? {
               name: editingSubject.name,
               code: editingSubject.code,
-              qualification: editingSubject.qualification,
+              branch: editingSubject.branch,
               departmentIds: editingSubject.departmentIds ?? [],
               year: editingSubject.year?.toString() || "1",
               regulation: editingSubject.regulation || "R2021",

@@ -6,7 +6,8 @@ interface Faculty {
   id: string;
   name: string;
   email: string;
-  qualification: string;
+  branch: string;
+  department: string;
   joined: string;
 }
 
@@ -35,24 +36,28 @@ export function FacultyTableRow({
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[800px]">
-        <div className="w-[25%] text-[13px] text-[#ECECEA] truncate pr-2">
+      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[900px]">
+        <div className="w-[20%] text-[13px] text-[#ECECEA] truncate pr-2">
           {faculty.name}
         </div>
 
-        <div className="w-[30%] text-[13px] text-[#8C8C8A] truncate pr-2">
+        <div className="w-[26%] text-[13px] text-[#8C8C8A] truncate pr-2">
           {faculty.email}
         </div>
 
-        <div className="w-[20%] text-[13px] text-[#8C8C8A]">
-          {faculty.qualification}
+        <div className="w-[10%] text-[13px] text-[#8C8C8A] truncate pr-2">
+          {faculty.branch}
+        </div>
+
+        <div className="w-[14%] text-[13px] text-[#8C8C8A] truncate pr-2">
+          {faculty.department}
         </div>
 
         <div className="w-[10%] text-[13px] text-[#8C8C8A]">
           {faculty.joined}
         </div>
 
-        <div className="w-[15%] flex justify-end gap-2">
+        <div className="w-[20%] flex justify-end gap-2">
           <button
             onClick={() => onEdit(faculty.id)}
             className="px-3 py-1 rounded border border-[#3A3A38] bg-[#1F1F1E] text-[11px] text-[#ECECEA] hover:bg-[#2C2C2A]"

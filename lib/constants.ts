@@ -1,13 +1,13 @@
-export const QUALIFICATION_OPTIONS = [
+export const BRANCH_OPTIONS = [
   "BE",
-  "BTech",
-  "BTECH",
-  "MCA",
+  "B.Tech",
   "ME",
-  "MTech",
+  "M.Tech",
+  "MCA",
+  "MBA",
 ];
 
-/** @deprecated Legacy combined degree/branch labels — prefer QUALIFICATION_OPTIONS + departments API */
+/** @deprecated Use BRANCH_OPTIONS */
 export const LEGACY_QUALIFICATION_OPTIONS = [
   "BE/CSE",
   "BE/ECE",
