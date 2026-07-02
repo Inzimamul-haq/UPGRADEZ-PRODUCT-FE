@@ -1,14 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-
-
 import { subjectSchema } from "@/Schema/validations";
+import { QUALIFICATION_OPTIONS } from "@/lib/constants";
+import api from "@/lib/api";
+
+export type DepartmentOption = {
+  id: string;
+  name: string;
+};
 
 export type SubjectFormValues = {
   name: string;
   code: string;
   qualification: string;
+  departmentIds: string[];
   year: string;
   regulation: string;
   files: File[];
@@ -27,15 +33,6 @@ type SubjectFormModalProps = {
   onSubmit: (values: SubjectFormValues) => Promise<void> | void;
 };
 
-const DEPARTMENT_OPTIONS = [
-  "BE/CSE",
-  "BE/ECE",
-  "BE/MECH",
-  "BE/CIVIL",
-  "BE/EEE",
-  "BTECH/IT",
-  "BTECH/AI-DS",
-];
 const REGULATION_OPTIONS = ["R2021", "R2017"];
 
 export default function SubjectFormModal({
@@ -51,6 +48,9 @@ export default function SubjectFormModal({
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [qualification, setQualification] = useState("");
+  const [departmentIds, setDepartmentIds] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
   const [files, setFiles] = useState<File[]>([]);
@@ -62,16 +62,8 @@ export default function SubjectFormModal({
 
     setName(initialValues?.name ?? "");
     setCode(initialValues?.code ?? "");
-
-    let matchedDept = "";
-    if (initialValues?.qualification) {
-      matchedDept =
-        DEPARTMENT_OPTIONS.find(
-          (opt) =>
-            opt.toUpperCase() === initialValues.qualification!.toUpperCase()
-        ) ?? initialValues.qualification;
-    }
-    setQualification(matchedDept);
+    setQualification(initialValues?.qualification ?? "");
+    setDepartmentIds(initialValues?.departmentIds ?? []);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
     setFiles([]);
@@ -79,7 +71,33 @@ export default function SubjectFormModal({
     setLocalError("");
   }, [open, initialValues]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const loadDepartments = async () => {
+      try {
+        setLoadingDepartments(true);
+        const { data } = await api.get<{ departments: DepartmentOption[] }>(
+          "/api/departments"
+        );
+        setDepartments(data.departments ?? []);
+      } catch {
+        setLocalError("Failed to load departments");
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+
+    loadDepartments();
+  }, [open]);
+
   if (!open) return null;
+
+  const toggleDepartment = (id: string) => {
+    setDepartmentIds((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  };
 
   const handleSubmit = async () => {
     setLocalError("");
@@ -88,6 +106,7 @@ export default function SubjectFormModal({
       name,
       code,
       qualification,
+      departmentIds,
       year,
       regulation,
     });
@@ -107,14 +126,15 @@ export default function SubjectFormModal({
         name: name.trim(),
         code: code.trim(),
         qualification: qualification.trim(),
+        departmentIds,
         year,
         regulation,
         files,
         uploadMode,
       });
     } catch (err: any) {
-      // Page-level handler throws on API error; show it inline here too
-      const msg = err?.response?.data?.error ?? err?.message ?? 'Something went wrong';
+      const msg =
+        err?.response?.data?.error ?? err?.message ?? "Something went wrong";
       setLocalError(msg);
     }
   };
@@ -126,11 +146,10 @@ export default function SubjectFormModal({
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
         <h2 className="mb-5 text-[14px] font-medium text-[#ECECEA]">{title}</h2>
 
         <div className="space-y-4">
-          {/* Name + Code */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
@@ -157,10 +176,9 @@ export default function SubjectFormModal({
             </div>
           </div>
 
-          {/* Department / Branch */}
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">
-              Department / Branch
+              Qualification
             </label>
             <select
               value={qualification}
@@ -168,9 +186,9 @@ export default function SubjectFormModal({
               className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               <option value="" disabled>
-                Select Department/Branch
+                Select qualification
               </option>
-              {DEPARTMENT_OPTIONS.map((option) => (
+              {QUALIFICATION_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -178,7 +196,36 @@ export default function SubjectFormModal({
             </select>
           </div>
 
-          {/* Year + Regulation */}
+          <div>
+            <label className="mb-2 block text-[12px] text-[#8C8C8A]">
+              Departments (select all that share this subject)
+            </label>
+            {loadingDepartments ? (
+              <p className="text-[12px] text-[#5A5A58]">Loading departments...</p>
+            ) : departments.length === 0 ? (
+              <p className="text-[12px] text-amber-400">
+                No departments found. Add departments first from the Departments page.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 rounded-md border border-[#3A3A38] bg-[#2C2C2A] p-3">
+                {departments.map((dept) => (
+                  <label
+                    key={dept.id}
+                    className="flex cursor-pointer items-center gap-2 text-[12px] text-[#ECECEA]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={departmentIds.includes(dept.id)}
+                      onChange={() => toggleDepartment(dept.id)}
+                      className="accent-[#ECECEA]"
+                    />
+                    {dept.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
@@ -214,13 +261,10 @@ export default function SubjectFormModal({
             </div>
           </div>
 
-          {/* File */}
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-[12px] text-[#8C8C8A]">
-                {mode === "add"
-                  ? "Upload PDF"
-                  : "Update PDF (Optional)"}
+                {mode === "add" ? "Upload PDF" : "Update PDF (Optional)"}
               </label>
             </div>
 
@@ -229,41 +273,43 @@ export default function SubjectFormModal({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
                   <div className="flex items-center gap-3 text-[11px] text-[#ECECEA]">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input 
-                        type="radio" 
+                    <label className="flex cursor-pointer items-center gap-1">
+                      <input
+                        type="radio"
                         name="uploadMode"
-                        checked={uploadMode === "append"} 
+                        checked={uploadMode === "append"}
                         onChange={() => setUploadMode("append")}
                         className="accent-[#ECECEA]"
-                      /> 
+                      />
                       Add More
                     </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input 
-                        type="radio" 
+                    <label className="flex cursor-pointer items-center gap-1">
+                      <input
+                        type="radio"
                         name="uploadMode"
-                        checked={uploadMode === "replace"} 
+                        checked={uploadMode === "replace"}
                         onChange={() => setUploadMode("replace")}
                         className="accent-amber-500"
-                      /> 
+                      />
                       Replace All
                     </label>
                   </div>
                 </div>
                 {uploadMode === "replace" && files.length > 0 && (
-                  <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400 w-fit">
+                  <span className="w-fit rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">
                     Warning: Old files and embeddings will be deleted
                   </span>
                 )}
                 {uploadMode === "append" && files.length > 0 && (
-                  <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400 w-fit">
+                  <span className="w-fit rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
                     New files will be embedded alongside existing ones
                   </span>
                 )}
-                <div className="flex flex-col gap-1 mt-1">
-                  {initialValues.pdfUrl.split(',').map((url, idx) => (
-                     <span key={idx} className="truncate text-[11px] text-[#ECECEA]">- {url.split('/').pop()}</span>
+                <div className="mt-1 flex flex-col gap-1">
+                  {initialValues.pdfUrl.split(",").map((url, idx) => (
+                    <span key={idx} className="truncate text-[11px] text-[#ECECEA]">
+                      - {url.split("/").pop()}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -271,12 +317,21 @@ export default function SubjectFormModal({
 
             <div className="flex flex-col gap-2">
               {files.map((f, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5"
+                >
                   <span className="truncate text-[12px] text-[#ECECEA]">{f.name}</span>
-                  <button type="button" onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="text-[12px] text-red-400 hover:text-red-300">Remove</button>
+                  <button
+                    type="button"
+                    onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                    className="text-[12px] text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
-              <label className="cursor-pointer inline-flex items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#2C2C2A]">
+              <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#2C2C2A]">
                 {files.length === 0 ? "Select File" : "+ Add another file"}
                 <input
                   type="file"
@@ -285,7 +340,7 @@ export default function SubjectFormModal({
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
                       setFiles([...files, e.target.files[0]]);
-                      e.target.value = '';
+                      e.target.value = "";
                     }
                   }}
                 />
@@ -297,7 +352,6 @@ export default function SubjectFormModal({
             <p className="text-[12px] text-red-400">{localError || serverError}</p>
           )}
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <button
               onClick={onClose}

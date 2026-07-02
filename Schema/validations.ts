@@ -18,12 +18,17 @@ export const settingsNameSchema = z.object({
 export const subjectSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
   code: z.string().min(1, "Subject code is required"),
-  qualification: z
-    .string()
-    .min(1, "Qualification is required")
-    .refine((val) => val.includes("/"), {
-      message: "Must follow format: DEGREE/BRANCH",
-    }),
+  qualification: z.string().min(1, "Qualification is required"),
   year: z.string().min(1, "Year is required"),
   regulation: z.string().min(1, "Regulation is required"),
+  departmentIds: z
+    .array(z.string().uuid())
+    .min(1, "Select at least one department"),
+});
+
+export const departmentSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Department name is required")
+    .max(50, "Department name cannot exceed 50 characters"),
 });

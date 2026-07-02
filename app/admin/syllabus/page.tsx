@@ -31,6 +31,13 @@ type SubjectApiRow = {
   isActive?: boolean;
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   embedding_status?: string;
+  departments?: { id: string; name: string }[];
+  departmentIds?: string[];
+};
+
+type DepartmentOption = {
+  id: string;
+  name: string;
 };
 
 type SubjectsResponse = {
@@ -41,7 +48,9 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   id: s.id,
   name: s.name,
   code: s.code,
-  department: s.qualification,
+  qualification: s.qualification,
+  departments: s.departments ?? [],
+  departmentIds: s.departmentIds ?? s.departments?.map((d) => d.id) ?? [],
   year: s.year,
   regulation: s.regulation,
   pdfUrl: s.pdfUrl ?? s.pdf_url ?? null,
@@ -66,7 +75,9 @@ export default function AdminSyllabusPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
   const [filterQualification, setFilterQualification] = useState("");
+  const [filterDepartmentId, setFilterDepartmentId] = useState("");
   const [filterYear, setFilterYear] = useState("");
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchSubjects = async (showError = false) => {
@@ -95,6 +106,20 @@ export default function AdminSyllabusPage() {
 
     load();
   }, []);
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const { data } = await api.get<{ departments: DepartmentOption[] }>(
+          "/api/departments"
+        );
+        setDepartmentOptions(data.departments ?? []);
+      } catch {
+        // filter dropdown stays empty
+      }
+    };
+    loadDepartments();
+  }, []);
   // Poll embedding status while any subject is queued or processing
   useEffect(() => {
     const hasActiveEmbeddings = subjects.some(
@@ -114,11 +139,17 @@ export default function AdminSyllabusPage() {
 
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
-      const matchQ = !filterQualification || s.department === filterQualification;
+      const matchQ =
+        !filterQualification ||
+        s.qualification?.toUpperCase() === filterQualification.toUpperCase();
+      const matchDept =
+        !filterDepartmentId ||
+        s.departmentIds?.includes(filterDepartmentId) ||
+        s.departments?.some((d) => d.id === filterDepartmentId);
       const matchY = !filterYear || String(s.year) === filterYear;
-      return matchQ && matchY;
+      return matchQ && matchDept && matchY;
     });
-  }, [subjects, filterQualification, filterYear]);
+  }, [subjects, filterQualification, filterDepartmentId, filterYear]);
 
   // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
@@ -129,6 +160,7 @@ export default function AdminSyllabusPage() {
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
       formData.append("qualification", values.qualification.trim().toUpperCase());
+      formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
@@ -185,6 +217,7 @@ export default function AdminSyllabusPage() {
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
       formData.append("qualification", values.qualification.trim().toUpperCase());
+      formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
@@ -225,7 +258,11 @@ export default function AdminSyllabusPage() {
                 ...s,
                 name: values.name,
                 code: values.code,
-                department: values.qualification.trim().toUpperCase(),
+                qualification: values.qualification.trim().toUpperCase(),
+                departmentIds: values.departmentIds,
+                departments: departmentOptions.filter((d) =>
+                  values.departmentIds.includes(d.id)
+                ),
                 year: values.year,
                 regulation: values.regulation,
               }
@@ -326,6 +363,17 @@ export default function AdminSyllabusPage() {
           ))}
         </select>
 
+        <select
+          value={filterDepartmentId}
+          onChange={(e) => setFilterDepartmentId(e.target.value)}
+          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+        >
+          <option value="">All Departments</option>
+          {departmentOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.name}</option>
+          ))}
+        </select>
+
         {/* Year filter */}
         <select
           value={filterYear}
@@ -385,7 +433,8 @@ export default function AdminSyllabusPage() {
             ? {
               name: editingSubject.name,
               code: editingSubject.code,
-              qualification: editingSubject.department,
+              qualification: editingSubject.qualification,
+              departmentIds: editingSubject.departmentIds ?? [],
               year: editingSubject.year?.toString() || "1",
               regulation: editingSubject.regulation || "R2021",
               pdfUrl: editingSubject.pdfUrl,
