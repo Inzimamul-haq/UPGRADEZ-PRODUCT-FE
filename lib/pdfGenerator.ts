@@ -5,9 +5,11 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(paper.examType.toUpperCase().replace(/\s+/g, ''));
 
-  const partA = questions.slice(0, 5);
-  const partB = isCAT ? questions.slice(5, 8) : questions.slice(5, 10);
-  const partC = isCAT ? questions.slice(8, 9) : questions.slice(10, 11);
+  const hasParts = questions.some((q: any) => q.part);
+  
+  const partA = hasParts ? questions.filter((q: any) => q.part === 'A') : questions.slice(0, 5);
+  const partB = hasParts ? questions.filter((q: any) => q.part === 'B') : (isCAT ? questions.slice(5, 8) : questions.slice(5, 10));
+  const partC = hasParts ? questions.filter((q: any) => q.part === 'C') : (isCAT ? questions.slice(8, 9) : questions.slice(10, 11));
 
   const totalMarks = isCAT ? 50 : 100;
   const duration = isCAT ? '1.5 Hours' : '3 Hours';

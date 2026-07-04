@@ -1,3 +1,5 @@
+export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
+
 export interface User {
   id: string;
   email: string;
