@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { QuestionRow } from '@/components/questions/QuestionRow';
+import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 
 export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string, paperId: string }) {
@@ -11,6 +12,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
   const [questions, setQuestions] = useState<any[]>([]);
   const [paper, setPaper] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { role } = useAuth();
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -55,14 +57,16 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
         )}
       </div>
 
-      <div className="mt-12 flex justify-center pb-8">
-        <button 
-          onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}` : ''}`)}
-          className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
-        >
-          Study this paper in chat &rarr;
-        </button>
-      </div>
+      {role === 'student' && (
+        <div className="mt-12 flex justify-center pb-8">
+          <button 
+            onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}` : ''}`)}
+            className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
+          >
+            Study this paper in chat &rarr;
+          </button>
+        </div>
+      )}
     </div>
   );
 }

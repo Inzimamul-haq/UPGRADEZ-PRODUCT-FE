@@ -40,7 +40,7 @@ type PaperDetail = {
   questions: Question[];
 };
 
-const EXAM_TABS = ['All', 'CAT1', 'CAT2', 'CAT3', 'MODEL', 'UNIVERSITY'];
+const EXAM_TABS = ['CAT1', 'CAT2', 'MODEL', 'UNIVERSITY'];
 
 const examTypeColors: Record<string, string> = {
   CAT1: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
@@ -59,7 +59,7 @@ export default function PapersPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [papers, setPapers] = useState<Paper[]>([]);
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState('CAT1');
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingPapers, setLoadingPapers] = useState(false);
 
@@ -134,7 +134,7 @@ export default function PapersPage() {
     setPapers(prev => prev.map(p => p.id === paperId ? { ...p, examDate: newDate } : p));
   };
 
-  const filtered = activeTab === 'All' ? papers : papers.filter(p => p.examType === activeTab);
+  const filtered = papers.filter(p => p.examType === activeTab);
 
   // ─── Subject list ──────────────────────────────────────────────────────────
   if (!selectedSubject) {
@@ -166,7 +166,7 @@ export default function PapersPage() {
             subjects.map(subject => (
               <button
                 key={subject.id}
-                onClick={() => { setSelectedSubject(subject); setActiveTab('All'); setPapers([]); }}
+                onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
                 className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
               >
                 <div>
@@ -215,7 +215,7 @@ export default function PapersPage() {
                 : 'text-[#8C8C8A] hover:bg-[#333331] hover:text-[#ECECEA]'
             }`}
           >
-            {tab === 'All' ? 'All' : examLabel[tab]}
+            {examLabel[tab] || tab}
           </button>
         ))}
       </div>
