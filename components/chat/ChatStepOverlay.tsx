@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Subject } from '@/lib/types';
+import { Subject, Department } from '@/lib/types';
 import { SubjectCard } from '@/components/dashboard/SubjectCard';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 interface ChatStepOverlayProps {
   role?: string;
-  onComplete: (data: { year?: string; branch?: string; subject: Subject; examType: string }) => void;
+  onComplete: (data: { year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string }) => void;
 }
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
-const BRANCHES = ['CSE', 'IT', 'ECE', 'EEE', 'MECH' , `CIVIL`];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
+const SECTIONS = ['A', 'B', 'C', 'D', 'All Sections'];
 
 const mapYearToNumber = (y: string) => {
   if (y.startsWith('1')) return 1;
@@ -22,18 +22,6 @@ const mapYearToNumber = (y: string) => {
   return undefined;
 };
 
-const BRANCH_TO_DEPARTMENT: Record<string, string> = {
-  CSE: 'BE/COMPUTER SCIENCE ENGINEERING',
-  IT: 'BTECH/INFORMATION TECHNOLOGY',
-  ECE: 'BE/ELECTRONICS AND COMMUNICATION ENGINEERING',
-  EEE: 'BE/ELECTRICAL AND ELECTRONICS ENGINEERING',
-  MECH: 'BE/MECHANICAL ENGINEERING',
-};
-
-export const mapBranchToDepartment = (branch: string) => {
-  return BRANCH_TO_DEPARTMENT[branch.trim().toUpperCase()];
-};
-
 export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverlayProps) {
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const initialStep = isFaculty ? 1 : 3;
@@ -41,10 +29,26 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const [step, setStep] = useState(initialStep);
   const [year, setYear] = useState('');
   const [branch, setBranch] = useState('');
+  const [department, setDepartment] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [examType, setExamType] = useState('');
+  const [section, setSection] = useState('');
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
+
+  const [departmentsList, setDepartmentsList] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
+
+  useEffect(() => {
+    if (step === 2 && isFaculty) {
+      setLoadingDepartments(true);
+      api.get('/api/departments')
+        .then(res => setDepartmentsList(res.data.departments || []))
+        .catch(err => console.error('Failed to fetch departments', err))
+        .finally(() => setLoadingDepartments(false));
+    }
+  }, [step, isFaculty]);
 
   useEffect(() => {
     if (step === 3) {
@@ -56,17 +60,14 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
             const y = mapYearToNumber(year);
             if (y) params.append('year', y.toString());
           }
-          if (isFaculty && branch) {
-            const d = mapBranchToDepartment(branch);
-            if (d) params.append('department', d);
+          if (isFaculty && department) {
+            params.append('department', department);
           }
 
           const { data } = await api.get('/api/subjects', {
             params: {
               ...(isFaculty && year ? { year: mapYearToNumber(year) } : {}),
-              ...(isFaculty && branch
-                ? { department: mapBranchToDepartment(branch) }
-                : {}),
+              ...(isFaculty && department ? { department } : {}),
             },
           });
 
@@ -80,18 +81,24 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       };
       fetchSubjects();
     }
-  }, [step, year, branch, isFaculty]);
+  }, [step, year, department, isFaculty]);
 
   const goBack = () => {
     if (step > initialStep) setStep(step - 1);
   };
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };
-  const handleSelectBranch = (b: string) => { setBranch(b); setStep(3); };
+  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setStep(3); };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
-  const handleSelectExamType = (type: string) => {
+  const handleSelectExamType = (type: string) => { 
+    setExamType(type); 
+    if (isFaculty) setStep(5);
+    else if (selectedSubject) onComplete({ year, branch, department, subject: selectedSubject, examType: type });
+  };
+  const handleSelectSection = (s: string) => {
+    setSection(s);
     if (selectedSubject) {
-      onComplete({ year, branch, subject: selectedSubject, examType: type });
+      onComplete({ year, branch, department, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType });
     }
   };
 
@@ -119,15 +126,22 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
 
       {step === 2 && isFaculty && (
         <div className="w-full max-w-md text-center">
-          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Branch</h2>
+          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Department</h2>
           <p className="text-[13px] text-[#8C8C8A] mb-8">Select department / branch</p>
-          <div className="grid grid-cols-2 gap-3">
-            {BRANCHES.map(b => (
-              <button key={b} onClick={() => handleSelectBranch(b)} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all">
-                {b}
-              </button>
-            ))}
-          </div>
+          {loadingDepartments ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="animate-spin text-[#8C8C8A]" size={24} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {departmentsList.map(d => (
+                <button key={d.id} onClick={() => handleSelectBranch(d)} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-4 hover:bg-[#333331] hover:border-[#4A4A48] transition-all flex flex-col items-center justify-center gap-1 text-center">
+                  <span className="text-[15px] font-medium text-[#ECECEA]">{d.branch}</span>
+                  <span className="text-[11px] text-[#8C8C8A] leading-tight line-clamp-2">{d.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -173,6 +187,24 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
                 className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-6 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] cursor-pointer transition-all text-center"
               >
                 {type}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 5 && isFaculty && (
+        <div className="w-full max-w-md text-center">
+          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Section</h2>
+          <p className="text-[13px] text-[#8C8C8A] mb-8">Select the section for the exam paper</p>
+          <div className="grid grid-cols-2 gap-3">
+            {SECTIONS.map(s => (
+              <button
+                key={s}
+                onClick={() => handleSelectSection(s)}
+                className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+              >
+                {s}
               </button>
             ))}
           </div>

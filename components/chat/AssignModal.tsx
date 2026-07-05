@@ -30,8 +30,12 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
     ? sessionData.linkedIQAssignment.assignedToYear.toString()
     : sessionData.year || '';
 
+  const defaultSection = isFlow2B && sessionData.linkedIQAssignment?.assignedToSection
+    ? sessionData.linkedIQAssignment.assignedToSection
+    : sessionData.section || '';
+
   const [branch, setBranch] = useState(defaultBranch);
-  const [section, setSection] = useState('');
+  const [section, setSection] = useState(defaultSection);
   const [loading, setLoading] = useState(false);
   const [gateState, setGateState] = useState<GateState>(isFlow2B ? 'loading' : 'ready');
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
@@ -284,17 +288,16 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Department</label>
                   <input
                     readOnly
-                    value={sessionData.subject?.department || ''}
+                    value={sessionData.department || sessionData.subject?.department || ''}
                     className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
                   />
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Branch</label>
                   <input
-                    readOnly={isFlow2B}
+                    readOnly
                     value={branch}
-                    onChange={e => !isFlow2B && setBranch(e.target.value)}
-                    className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] ${isFlow2B ? 'text-[#8C8C8A]' : 'text-white'}`}
+                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
                   />
                 </div>
                 <div className="flex items-center gap-3">
@@ -308,10 +311,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
                   <input
-                    placeholder={isFlow2B ? "Required (e.g. A)" : "Optional (e.g. A)"}
-                    value={section}
-                    onChange={e => setSection(e.target.value)}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-white"
+                    readOnly
+                    value={section || 'All Sections'}
+                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
                   />
                 </div>
                 {needsDirectDate && (

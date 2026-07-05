@@ -7,6 +7,12 @@ export interface User {
   role: 'student' | 'faculty' | 'admin' | 'super_admin';
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  branch: string;
+}
+
 export interface Subject {
   id: string;
   name: string;

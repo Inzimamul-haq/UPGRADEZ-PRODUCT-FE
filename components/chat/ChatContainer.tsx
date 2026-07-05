@@ -14,6 +14,8 @@ type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 export interface SessionData {
   year?: string;
   branch?: string;
+  department?: string;
+  section?: string;
   subjectId: string;
   examType: string;
   subjectName?: string;
@@ -56,7 +58,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
   // ── Overlay complete ─────────────────────────────────────────────────────
   const handleCompleteOverlay = async (data: {
-    year?: string; branch?: string; subject: Subject; examType: string;
+    year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string;
   }) => {
     setShowOverlay(false);
 
@@ -85,8 +87,18 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     let linkedIQAssignment: any = undefined;
 
     try {
+      const currentYear = new Date().getFullYear();
+      const acYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+      
       const { data: iqRes } = await api.get('/api/question-papers/check-iq', {
-        params: { subjectId: data.subject.id, examType: data.examType },
+        params: { 
+          subjectId: data.subject.id, 
+          examType: data.examType,
+          academicYear: acYear,
+          year: data.year ? data.year.charAt(0) : undefined, // pass just the number e.g. "2" from "2nd Year"
+          branch: data.branch,
+          section: data.section
+        },
       });
       if (iqRes.exists) {
         hasLinkedIQ = true;
