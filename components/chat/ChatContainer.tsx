@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Subject, Message } from '@/lib/types';
 import { ChatStepOverlay } from './ChatStepOverlay';
 import { ChatHeader } from './ChatHeader';
@@ -15,6 +16,7 @@ export interface SessionData {
   year?: string;
   branch?: string;
   department?: string;
+  departmentId?: string;
   section?: string;
   subjectId: string;
   examType: string;
@@ -39,6 +41,7 @@ interface ChatContainerProps {
 }
 
 export function ChatContainer({ initialShowOverlay = false, initialPaperId, role }: ChatContainerProps) {
+  const router = useRouter();
   const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -46,8 +49,10 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [paperRawText, setPaperRawText] = useState('');
+  const [sessionLocked, setSessionLocked] = useState(false);
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
+  const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
 
   const pushMsg = (content: string, actions?: Message['actions']): Message => ({
     id: crypto.randomUUID(),
@@ -58,9 +63,10 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
   // ── Overlay complete ─────────────────────────────────────────────────────
   const handleCompleteOverlay = async (data: {
-    year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string;
+    year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string;
   }) => {
     setShowOverlay(false);
+    setSessionLocked(false);
 
     const base: SessionData = {
       ...data,
@@ -85,6 +91,8 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     let linkedIQExamDate: string | null | undefined;
     let hasLinkedExamPaper = false;
     let linkedIQAssignment: any = undefined;
+    let iqCreatorName: string | null = null;
+    let examCreatorName: string | null = null;
 
     try {
       const currentYear = new Date().getFullYear();
@@ -106,6 +114,8 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         linkedIQExamDate = iqRes.paper.examDate;
         hasLinkedExamPaper = iqRes.paper.hasLinkedExamPaper;
         linkedIQAssignment = iqRes.paper.assignment;
+        iqCreatorName = iqRes.paper.creatorName ?? null;
+        examCreatorName = iqRes.paper.linkedExamCreatorName ?? null;
       }
     } catch { /* non-fatal */ }
 
@@ -118,16 +128,30 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     };
     setSessionData(session);
 
+    const cohortLabel = [
+      data.year, data.branch, data.section ? `Section ${data.section}` : null,
+    ].filter(Boolean).join(' · ');
+
     if (hasLinkedIQ && hasLinkedExamPaper) {
-      // Both already exist
+      // Both already exist — nothing left to generate for this combination
       setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+      setSessionLocked(true);
+
+      const creditLines = [
+        iqCreatorName ? `**Important Questions** — published by **${iqCreatorName}**` : null,
+        examCreatorName ? `**Exam Paper** — published by **${examCreatorName}**` : null,
+      ].filter(Boolean).join('\n');
+
       setMessages([pushMsg(
-        `Both important questions and the exam paper are already assigned for **${data.subject.name}** (${data.examType}).\n\nWould you like to regenerate or review?`
+        `Both the important questions and the exam paper are already assigned for **${data.subject.name}** (${data.examType}${cohortLabel ? ' · ' + cohortLabel : ''}).\n\n${creditLines ? creditLines + '\n\n' : ''}There's nothing new to generate for this combination until the next academic cycle. If you have any concerns about the existing content, please reach out to them directly before making changes.`,
+        [
+          { id: 'start_new_session', label: 'Start a new session' },
+        ]
       )]);
     } else if (hasLinkedIQ) {
       // IQ exists, no exam paper yet — prompt for exam paper
       setMessages([pushMsg(
-        `I can see important questions are already assigned for **${data.subject.name}** (${data.examType}).\n\nWould you like to generate the actual **Exam Paper** now?`,
+        `I can see important questions are already assigned for **${data.subject.name}** (${data.examType})${iqCreatorName ? ` — published by **${iqCreatorName}**` : ''}.\n\nWould you like to generate the actual **Exam Paper** now? If you have any concerns about the existing questions, please reach out to them first.`,
         [
           { id: 'pick_exam_paper', label: '(b) Yes, generate the Exam Paper' },
           { id: 'pick_iq', label: '(a) Re-assign Important Questions' },
@@ -180,6 +204,15 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         setPaperRawText(msg.content);
         setAssignModalOpen(true);
       }
+      return;
+    }
+
+    if (actionId === 'start_new_session') {
+      setSessionLocked(false);
+      setSessionData(null);
+      setMessages([]);
+      setShowOverlay(true);
+      return;
     }
   };
 
@@ -287,7 +320,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
 
       <ChatInput
         onSend={handleSend}
-        disabled={showOverlay || isStreaming}
+        disabled={showOverlay || isStreaming || sessionLocked}
         questionsToday={!isFaculty ? questionsToday : 0}
       />
     </div>

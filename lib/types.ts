@@ -5,6 +5,10 @@ export interface User {
   email: string;
   name: string;
   role: 'student' | 'faculty' | 'admin' | 'super_admin';
+  year?: number | null;
+  branch?: string | null;
+  section?: string | null;
+  department?: { id: string; name: string; branch: string } | null;
 }
 
 export interface Department {

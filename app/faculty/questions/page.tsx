@@ -4,36 +4,62 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen } from 'lucide-react';
 import { SubjectRow } from '@/components/questions/SubjectRow';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { BRANCH_OPTIONS } from '@/lib/constants';
 
 export default function FacultyGlobalQuestionsPage() {
+  const { user, role } = useAuth();
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [yearFilter, setYearFilter] = useState('All');
-  const [branchFilter, setBranchFilter] = useState('');
+
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('1');
+  const [defaultsApplied, setDefaultsApplied] = useState(false);
+
+  const basePath = role === 'admin' || role === 'super_admin' ? '/admin' : '/faculty';
 
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchAll = async () => {
       try {
-        const { data } = await api.get('/api/subjects');
-        setSubjects(data.subjects || []);
+        const [subjectsRes, deptsRes] = await Promise.all([
+          api.get('/api/subjects'),
+          api.get('/api/departments'),
+        ]);
+        setSubjects(subjectsRes.data.subjects || []);
+        setDepartments(deptsRes.data.departments || []);
       } catch (err) {
-        console.error('Failed to fetch subjects', err);
+        console.error('Failed to fetch', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchSubjects();
+    fetchAll();
   }, []);
 
+  useEffect(() => {
+    if (defaultsApplied || departments.length === 0) return;
+
+    const facultyDept = (user as any)?.department;
+    const initialDept =
+      facultyDept?.id && departments.some((d) => d.id === facultyDept.id)
+        ? facultyDept.id
+        : departments[0].id;
+
+    setDepartmentFilter(initialDept);
+    setYearFilter('1');
+    setDefaultsApplied(true);
+  }, [user, departments, defaultsApplied]);
+
   const filteredSubjects = subjects.filter((s) => {
-    const sYearStr = s.year ? `${s.year}st Year`.replace('1st', '1st').replace('2st', '2nd').replace('3st', '3rd').replace('4st', '4th') : '';
-    // A simplified year matching, as DB has numbers (1,2,3,4)
-    const matchYear = yearFilter === 'All' || s.year?.toString() === yearFilter.replace(/\D/g, '');
-    const matchBranch = !branchFilter || (s.departments && s.departments.some((d: any) => d.branch === branchFilter));
-    return matchYear && matchBranch;
+    const matchYear = s.year?.toString() === yearFilter;
+    const matchDept = s.departments?.some((d: any) => d.id === departmentFilter);
+    return matchYear && matchDept;
   });
+
+  const handleDepartmentChange = (deptId: string) => {
+    setDepartmentFilter(deptId);
+  };
 
   return (
     <div className="px-6 py-6 w-full max-w-4xl mx-auto">
@@ -43,26 +69,25 @@ export default function FacultyGlobalQuestionsPage() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3 mb-6">
-        <select 
-          value={yearFilter} 
+        <select
+          value={departmentFilter}
+          onChange={(e) => handleDepartmentChange(e.target.value)}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>{d.branch}/{d.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={yearFilter}
           onChange={(e) => setYearFilter(e.target.value)}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
-          <option value="All">All Years</option>
-          <option value="1st Year">1st Year</option>
-          <option value="2nd Year">2nd Year</option>
-          <option value="3rd Year">3rd Year</option>
-          <option value="4th Year">4th Year</option>
-        </select>
-        <select 
-          value={branchFilter}
-          onChange={(e) => setBranchFilter(e.target.value)}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-        >
-          <option value="">All Branches</option>
-          {BRANCH_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
+          <option value="1">1st Year</option>
+          <option value="2">2nd Year</option>
+          <option value="3">3rd Year</option>
+          <option value="4">4th Year</option>
         </select>
       </div>
 
@@ -73,15 +98,19 @@ export default function FacultyGlobalQuestionsPage() {
           </div>
         ) : filteredSubjects.length === 0 ? (
           <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
-            <EmptyState 
-              icon={BookOpen} 
-              heading="No subjects found" 
-              subtext="Try adjusting your filters to find subjects." 
+            <EmptyState
+              icon={BookOpen}
+              heading="No subjects found"
+              subtext="Try adjusting your filters to find subjects."
             />
           </div>
         ) : (
           filteredSubjects.map((s) => (
-            <SubjectRow key={s.id} subject={s} />
+            <SubjectRow
+              key={s.id}
+              subject={s}
+              href={`${basePath}/questions/${s.id}?department=${departmentFilter}`}
+            />
           ))
         )}
       </div>

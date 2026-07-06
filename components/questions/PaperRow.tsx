@@ -14,6 +14,8 @@ export function PaperRow({ paper, subjectId }: PaperRowProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const section = (paper as any).paperAssignments?.[0]?.assignedToSection;
+
   return (
     <div 
       onClick={() => router.push(`${pathname}/${paper.id}`)}
@@ -23,9 +25,21 @@ export function PaperRow({ paper, subjectId }: PaperRowProps) {
         <p className="text-[14px] font-medium text-[#ECECEA]">
           {paper.academic_year}
         </p>
-        <span className="inline-block mt-1 text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
-          {paper.source === 'historical' ? 'Previous year' : 'This year'}
-        </span>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
+            {paper.source === 'historical' ? 'Previous year' : 'This year'}
+          </span>
+          {section && (
+            <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
+              Section {section}
+            </span>
+          )}
+          {(paper as any).creator?.name && (
+            <span className="text-[11px] text-[#8C8C8A]">
+              By {(paper as any).creator.name}
+            </span>
+          )}
+        </div>
       </div>
       <ChevronRight size={16} className="text-[#5A5A58]" />
     </div>

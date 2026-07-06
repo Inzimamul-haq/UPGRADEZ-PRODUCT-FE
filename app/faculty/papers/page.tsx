@@ -93,7 +93,9 @@ export default function PapersPage() {
     (async () => {
       try {
         setLoadingPapers(true);
-        const res = await api.get(`/api/question-papers/${selectedSubject.id}/papers`);
+        const res = await api.get(
+          `/api/question-papers/my/${selectedSubject.id}/papers`
+        );
         setPapers(res.data.papers || []);
       } catch {
         toast.error('Failed to load papers');
@@ -209,11 +211,10 @@ export default function PapersPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors ${
-              activeTab === tab
+            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors ${activeTab === tab
                 ? 'bg-[#ECECEA] text-[#1C1C1B]'
                 : 'text-[#8C8C8A] hover:bg-[#333331] hover:text-[#ECECEA]'
-            }`}
+              }`}
           >
             {examLabel[tab] || tab}
           </button>
@@ -240,11 +241,10 @@ export default function PapersPage() {
                       {examLabel[paper.examType] || paper.examType}
                     </span>
                     {/* Kind badge */}
-                    <span className={`text-[10px] font-medium rounded px-2 py-0.5 ${
-                      paper.kind === 'IMPORTANT_QUESTIONS'
+                    <span className={`text-[10px] font-medium rounded px-2 py-0.5 ${paper.kind === 'IMPORTANT_QUESTIONS'
                         ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
                         : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
-                    }`}>
+                      }`}>
                       {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : 'Exam'}
                     </span>
                     <span className="text-[11px] text-[#5A5A58] flex items-center gap-1">

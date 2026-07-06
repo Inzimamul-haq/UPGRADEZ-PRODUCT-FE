@@ -43,7 +43,13 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
         <h1 className="text-[16px] font-medium text-[#ECECEA]">
           {paper?.subject?.name || 'Subject'} — {paper?.examType} {paper?.academicYear}
         </h1>
+        {paper?.creator?.name && (
+          <p className="text-[12px] text-[#8C8C8A] mt-0.5">
+            Assigned by {paper.creator.name}
+          </p>
+        )}
       </div>
+
 
       <div className="mt-4 flex flex-col">
         {loading ? (
@@ -52,14 +58,16 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
           <p className="text-[13px] text-[#8C8C8A] mt-4">No questions found.</p>
         ) : (
           questions.map((q: any, i: number) => (
-            <QuestionRow key={q.id} question={{...q, question_text: q.questionText}} index={i + 1} />
+            <QuestionRow key={q.id} question={{ ...q, question_text: q.questionText }} index={i + 1} />
           ))
         )}
       </div>
 
+
+
       {role === 'student' && (
         <div className="mt-12 flex justify-center pb-8">
-          <button 
+          <button
             onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}` : ''}`)}
             className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
           >

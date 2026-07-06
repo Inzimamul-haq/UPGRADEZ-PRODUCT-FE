@@ -45,8 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isPublicRoute) {
           router.push(`/${data.user.role}/dashboard`);
         } else if (
-          (data.user?.role === 'student' && !data.user?.year && !pathname?.startsWith('/onboarding') && !localStorage.getItem('onboardingSkipped')) ||
-          (data.user?.role === 'faculty' && !data.user?.departmentId && !pathname?.startsWith('/onboarding') && !localStorage.getItem('onboardingSkipped'))
+          // Faculty without department: always redirect to onboarding (no skip)
+          (data.user?.role === 'faculty' && !data.user?.department?.id && !pathname?.startsWith('/onboarding')) ||
+          // Student without year: redirect unless skipped
+          (data.user?.role === 'student' && !data.user?.year && !pathname?.startsWith('/onboarding') && !localStorage.getItem('onboardingSkipped'))
         ) {
           router.push('/onboarding');
         } else {

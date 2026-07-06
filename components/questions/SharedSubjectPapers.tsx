@@ -7,28 +7,33 @@ import { ExamTypeTabs } from '@/components/questions/ExamTypeTabs';
 import { PaperRow } from '@/components/questions/PaperRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
-
+import { useSearchParams } from 'next/navigation';
 export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('CAT 1');
   const [papers, setPapers] = useState<any[]>([]);
   const [subject, setSubject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+  const searchParams = useSearchParams();
+  const departmentId = searchParams.get('department');
   useEffect(() => {
     const fetchPapers = async () => {
       try {
         setLoading(true);
         // Fetch papers
-        const { data } = await api.get(`/api/question-papers/${subjectId}/papers`);
-        setPapers(data.papers || []);
-        
-        // Let's also fetch subject info. If there's an API for it, else just fallback
+        const { data } = await api.get(`/api/question-papers/${subjectId}/papers`, {
+          params: departmentId ? { departmentId } : {},
+        });
+        // Only show EXAM_PAPER kind — not important questions
+        const examPapers = (data.papers || []).filter((p: any) => p.kind === 'EXAM_PAPER');
+        setPapers(examPapers);
+
+        // Fetch subject info
         try {
           const subRes = await api.get(`/api/subjects`);
           const found = subRes.data.subjects?.find((s: any) => s.id === subjectId);
           if (found) setSubject(found);
-        } catch (e) {}
+        } catch (e) { }
 
       } catch (err) {
         console.error(err);
@@ -39,7 +44,7 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
     fetchPapers();
   }, [subjectId]);
 
-  // Exam type is stored as CAT1, CAT2, MODEL, UNIVERSITY in DB according to prisma schema
+  // Exam type is stored as CAT1, CAT2, MODEL, UNIVERSITY in DB
   const formattedTab = activeTab.replace(/\s+/g, '').toUpperCase();
   const filtered = papers.filter((p: any) => p.examType === formattedTab);
 
@@ -67,14 +72,14 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
             <span className="text-[13px] text-[#5A5A58]">Loading papers...</span>
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState 
+          <EmptyState
             icon={FileText}
-            heading="No papers yet"
-            subtext="No question papers for this exam type" 
+            heading="No exam papers yet"
+            subtext="No question papers found for this exam type"
           />
         ) : (
           filtered.map((p: any) => (
-            <PaperRow key={p.id} paper={{...p, academic_year: p.academicYear, exam_type: p.examType}} subjectId={subjectId} />
+            <PaperRow key={p.id} paper={{ ...p, academic_year: p.academicYear, exam_type: p.examType }} subjectId={subjectId} />
           ))
         )}
       </div>
