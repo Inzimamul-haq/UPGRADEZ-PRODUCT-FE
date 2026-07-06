@@ -68,7 +68,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
       {role === 'student' && (
         <div className="mt-12 flex justify-center pb-8">
           <button
-            onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}` : ''}`)}
+            onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}&subjectId=${subjectId}` : `?subjectId=${subjectId}`}`)}
             className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
           >
             Study this paper in chat &rarr;

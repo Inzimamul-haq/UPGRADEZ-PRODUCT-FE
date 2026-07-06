@@ -7,10 +7,13 @@ import { ChevronRight } from 'lucide-react';
 
 interface PaperRowProps {
   paper: Paper;
+  kind?: 'important_questions' | 'exam_paper';
   subjectId: string;
 }
 
-export function PaperRow({ paper, subjectId }: PaperRowProps) {
+
+
+export function PaperRow({ paper, kind, subjectId }: PaperRowProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -26,6 +29,9 @@ export function PaperRow({ paper, subjectId }: PaperRowProps) {
           {paper.academic_year}
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
+            {paper.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper'}
+          </span>
           <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
             {paper.source === 'historical' ? 'Previous year' : 'This year'}
           </span>

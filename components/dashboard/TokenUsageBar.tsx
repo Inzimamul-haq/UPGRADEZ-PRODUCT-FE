@@ -1,10 +1,5 @@
+import { TokenUsageBarProps } from '@/lib/types';
 import React from 'react';
-
-interface TokenUsageBarProps {
-  used: number;
-  limit: number;
-  showLabel?: boolean;
-}
 
 export function TokenUsageBar({ used, limit, showLabel }: TokenUsageBarProps) {
   const pct = Math.min((used / limit) * 100, 100);

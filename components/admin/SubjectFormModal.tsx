@@ -4,34 +4,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { subjectSchema } from "@/Schema/validations";
 import { BRANCH_OPTIONS } from "@/lib/constants";
 import api from "@/lib/api";
+import { DepartmentOption, SubjectFormModalProps } from "@/lib/types";
 
-export type DepartmentOption = {
-  id: string;
-  name: string;
-  branch: string;
-};
-
-export type SubjectFormValues = {
-  name: string;
-  code: string;
-  departmentIds: string[];
-  year: string;
-  regulation: string;
-  files: File[];
-  pdfUrl?: string | null;
-  uploadMode?: "replace" | "append";
-};
-
-type SubjectFormModalProps = {
-  open: boolean;
-  mode: "add" | "edit";
-  title: string;
-  initialValues?: Partial<SubjectFormValues>;
-  isSubmitting?: boolean;
-  serverError?: string;
-  onClose: () => void;
-  onSubmit: (values: SubjectFormValues) => Promise<void> | void;
-};
 
 const REGULATION_OPTIONS = ["R2021", "R2017"];
 

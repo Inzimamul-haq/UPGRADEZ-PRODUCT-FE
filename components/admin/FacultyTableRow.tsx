@@ -1,27 +1,14 @@
 "use client";
 
+import { FacultyTableRowProps } from "@/lib/types";
 import { useState } from "react";
-
-interface Faculty {
-  id: string;
-  name: string;
-  email: string;
-  branch: string;
-  department: string;
-  joined: string;
-}
-
-interface FacultyTableRowProps {
-  faculty: Faculty;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
-}
 
 export function FacultyTableRow({
   faculty,
   onEdit,
   onDelete,
-}: FacultyTableRowProps) {
+}: FacultyTableRowProps
+) {
   const [confirmAction, setConfirmAction] = useState<
     "delete" | null
   >(null);

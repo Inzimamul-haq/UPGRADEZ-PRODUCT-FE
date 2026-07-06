@@ -6,18 +6,9 @@ import { LucideIcon, PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
+import { NavItem, AppShellProps } from '@/lib/types';
 
-export interface NavItem {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-}
 
-interface AppShellProps {
-  children: React.ReactNode;
-  role: string;
-  navItems: NavItem[];
-}
 
 function SearchModal() {
   const { isSearchOpen, closeSearch, sessions } = useSidebar();

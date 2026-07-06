@@ -1,13 +1,7 @@
 "use client";
 
+import { InlineConfirmProps } from '@/lib/types';
 import React, { useEffect } from 'react';
-
-interface InlineConfirmProps {
-  message: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
 
 export function InlineConfirm({ message, confirmLabel, onConfirm, onCancel }: InlineConfirmProps) {
   useEffect(() => {

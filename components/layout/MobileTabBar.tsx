@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { NavItem } from './AppShell';
+import { NavItem } from '@/lib/types';
 
 interface MobileTabBarProps {
   navItems: NavItem[];

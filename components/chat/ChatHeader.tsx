@@ -1,10 +1,5 @@
 import React from 'react';
-
-interface ChatHeaderProps {
-  subjectName: string;
-  examType: string;
-  questionsToday: number;
-}
+import { ChatHeaderProps } from '@/lib/types';
 
 export function ChatHeader({ subjectName, examType, questionsToday }: ChatHeaderProps) {
   return (

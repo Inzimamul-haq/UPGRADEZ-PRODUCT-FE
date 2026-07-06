@@ -15,6 +15,10 @@ export const settingsNameSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
 });
 
+export const settingsPasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export const subjectSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
   code: z.string().min(1, "Subject code is required"),

@@ -1,3 +1,4 @@
+
 export function relativeTime(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
@@ -11,4 +12,10 @@ export function relativeTime(dateString: string) {
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 30) return `${diffInDays}d ago`;
   return date.toLocaleDateString();
+}
+
+export interface ParsedQuestion {
+  text: string;
+  part?: string;
+  marks?: number;
 }

@@ -1,20 +1,13 @@
 "use client";
 
 import React from 'react';
-import { NavItem } from './AppShell';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SidebarRecentChats } from './SidebarRecentChats';
 import { SidebarUserFooter } from './SidebarUserFooter';
 import { useSidebar } from '@/context/SidebarContext';
 import { Plus, Search, PanelLeft } from 'lucide-react';
 import Link from 'next/link';
-
-interface SidebarProps {
-  role: string;
-  navItems: NavItem[];
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-}
+import {SidebarProps } from '@/lib/types';
 
 export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   const { openSearch } = useSidebar();

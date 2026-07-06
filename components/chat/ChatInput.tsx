@@ -2,12 +2,7 @@
 
 import React, { useState } from 'react';
 import { ArrowUp, Mic } from 'lucide-react';
-
-interface ChatInputProps {
-  onSend: (content: string) => void;
-  disabled: boolean;
-  questionsToday: number;
-}
+import { ChatInputProps } from '@/lib/types';
 
 export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) {
   const [input, setInput] = useState('');

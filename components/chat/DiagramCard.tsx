@@ -1,11 +1,6 @@
 import React from 'react';
 import { FileText, ExternalLink } from 'lucide-react';
-
-interface DiagramCardProps {
-  diagramName: string;
-  pageNumber: number;
-  url: string;
-}
+import { DiagramCardProps } from '@/lib/types';
 
 export function DiagramCard({ diagramName, pageNumber, url }: DiagramCardProps) {
   return (

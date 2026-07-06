@@ -5,18 +5,7 @@ import api from '@/lib/api';
 import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
-import type { SessionData } from './ChatContainer';
-
-type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
-
-interface AssignModalProps {
-  sessionData: SessionData;
-  rawText: string;
-  onClose: () => void;
-  onSuccess: (msg: string, kind: PaperKind, paperId: string) => void;
-}
-
-type GateState = 'loading' | 'need_exam_date' | 'locked' | 'ready';
+import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
 
 export function AssignModal({ sessionData, rawText, onClose, onSuccess }: AssignModalProps) {
   // Flow 2B gate state
@@ -96,7 +85,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
     for (const line of lines) {
       const trimmed = line.trim();
       
-      const partMatch = trimmed.match(/^\s*\**Part\s+([A-Z])\**/i);
+      const partMatch = trimmed.match(/\*\*Part\s+([A-Z])\*\*/i);
       if (partMatch) {
         currentPart = partMatch[1].toUpperCase();
         continue;

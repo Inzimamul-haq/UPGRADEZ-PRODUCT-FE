@@ -4,15 +4,7 @@ import React, { useState } from 'react';
 import { X, Calendar } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
-
-interface EditExamDateModalProps {
-  paperId: string;
-  currentDate: string | null;
-  subjectName: string;
-  examType: string;
-  onClose: () => void;
-  onSaved: (newDate: string) => void;
-}
+import { EditExamDateModalProps } from '@/lib/types';
 
 export function EditExamDateModal({
   paperId,

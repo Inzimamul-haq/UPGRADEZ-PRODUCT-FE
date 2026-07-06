@@ -1,15 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import { Message } from '@/lib/types';
 import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
-
-interface ChatMessagesProps {
-  messages: Message[];
-  isStreaming: boolean;
-  onAction?: (messageId: string, actionId: string) => void;
-}
+import { ChatMessagesProps } from '@/lib/types';
 
 export function ChatMessages({ messages, isStreaming, onAction }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);

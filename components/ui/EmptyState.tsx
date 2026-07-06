@@ -1,12 +1,7 @@
 import React, { ReactNode } from 'react';
 import { LucideIcon } from 'lucide-react';
 
-interface EmptyStateProps {
-  icon: LucideIcon;
-  heading: string;
-  subtext?: string;
-  action?: ReactNode;
-}
+import { EmptyStateProps } from '@/lib/types';
 
 export function EmptyState({ icon: Icon, heading, subtext, action }: EmptyStateProps) {
   return (

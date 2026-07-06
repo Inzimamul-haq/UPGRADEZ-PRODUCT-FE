@@ -36,7 +36,6 @@ export default function AdminStudentsPage() {
       setIsLoading(true);
       const params: any = {
         search: searchName,
-        branch: branchFilter,
         departmentId: departmentFilter,
         section: sectionFilter,
         page,
@@ -88,11 +87,10 @@ export default function AdminStudentsPage() {
   });
 
   const handleBulkUpdate = async () => {
-    if (!bulkBranch || !bulkPromoteTo) return;
+    if (!bulkDepartment || !bulkPromoteTo) return;
     try {
       await api.post('/api/profiles/students/bulk-promote', {
         currentYear: bulkYear,
-        branch: bulkBranch,
         departmentId: bulkDepartment,
         targetYear: bulkPromoteTo
       });
@@ -221,7 +219,7 @@ export default function AdminStudentsPage() {
                     name: s.name,
                     email: s.email,
                     year: s.year ? `${s.year} Year` : '-',
-                    branch: s.branch || '-',
+                    branch: s.department?.branch || '-',
                     department: s.department?.name || '-',
                     departmentId: s.departmentId || s.department?.id,
                     section: s.section || '-',
@@ -325,11 +323,11 @@ export default function AdminStudentsPage() {
                   onChange={(e) => setBulkDepartment(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
-                  <option value="">All Departments (Optional)</option>
+                  <option value="">— Select Department —</option>
                   {departments
                     .filter(d => !bulkBranch || d.branch === bulkBranch)
                     .map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
                   ))}
                 </select>
               </div>
@@ -358,7 +356,7 @@ export default function AdminStudentsPage() {
               </button>
               <button 
                 onClick={handleBulkUpdate}
-                disabled={!bulkBranch || !bulkPromoteTo}
+                disabled={!bulkDepartment || !bulkPromoteTo}
                 className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Promote

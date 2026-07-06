@@ -1,14 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Subject, Department } from '@/lib/types';
+import { Subject, Department, ChatStepOverlayProps } from '@/lib/types';
 import { SubjectCard } from '@/components/dashboard/SubjectCard';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
-interface ChatStepOverlayProps {
-  role?: string;
-  onComplete: (data: { year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string }) => void;
-}
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];

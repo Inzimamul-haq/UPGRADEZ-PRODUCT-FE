@@ -1,11 +1,6 @@
 import React from 'react';
+import { StatCardProps } from '@/lib/types';
 
-interface StatCardProps {
-  value: string | number;
-  label: string;
-  subtext?: string;
-  valueColor?: string;
-}
 
 export function StatCard({ value, label, subtext, valueColor }: StatCardProps) {
   return (

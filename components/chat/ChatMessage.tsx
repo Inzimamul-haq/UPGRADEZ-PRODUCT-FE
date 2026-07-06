@@ -1,12 +1,6 @@
 import React from 'react';
-import { Message } from '@/lib/types';
-import { DiagramCard } from './DiagramCard';
+import { ChatMessageProps } from '@/lib/types';
 import { FileDown, Users, CheckCircle, RefreshCcw } from 'lucide-react';
-
-interface ChatMessageProps {
-  message: Message;
-  onAction?: (messageId: string, actionId: string) => void;
-}
 
 export function ChatMessage({ message, onAction }: ChatMessageProps) {
   const isUser = message.role === 'user';

@@ -2,15 +2,7 @@
 
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-
-interface DeleteConfirmModalProps {
-  open: boolean;
-  title: string;
-  description?: string;
-  isDeleting?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
+import { DeleteConfirmModalProps } from "@/lib/types";
 
 /**
  * Clean modal dialog for destructive delete confirmations.

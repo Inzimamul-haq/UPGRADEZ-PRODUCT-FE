@@ -1,14 +1,9 @@
 "use client";
 
+import { SidebarNavItemProps } from '@/lib/types';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LucideIcon } from 'lucide-react';
 
-interface SidebarNavItemProps {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-}
 
 export function SidebarNavItem({ href, icon: Icon, label }: SidebarNavItemProps) {
   const pathname = usePathname();

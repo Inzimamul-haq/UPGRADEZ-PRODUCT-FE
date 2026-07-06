@@ -9,36 +9,8 @@ import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
 import api from '@/lib/api';
-
-type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
-
-export interface SessionData {
-  year?: string;
-  branch?: string;
-  department?: string;
-  departmentId?: string;
-  section?: string;
-  subjectId: string;
-  examType: string;
-  subjectName?: string;
-  subject?: Subject;
-  paperKind: PaperKind | null;
-  hasLinkedIQ: boolean;
-  linkedIQPaperId?: string;
-  linkedIQExamDate?: string | null;
-  linkedIQAssignment?: {
-    assignedToYear: number | null;
-    assignedToBranch: string | null;
-    assignedToSection: string | null;
-  };
-}
-
-interface ChatContainerProps {
-  initialShowOverlay?: boolean;
-  initialSessionId?: string;
-  initialPaperId?: string;
-  role?: string;
-}
+import { SessionData, ChatContainerProps , PaperKind } from "@/lib/types";
+import { CHAT_MESSAGES } from '@/lib/messages';
 
 export function ChatContainer({ initialShowOverlay = false, initialPaperId, role }: ChatContainerProps) {
   const router = useRouter();
@@ -80,7 +52,10 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     if (!isFaculty) {
       setSessionData({ ...base, paperKind: 'EXAM_PAPER' });
       setMessages([pushMsg(
-        `Here are the **${data.examType}** questions for **${data.subject.name}**.\n\nWhere would you like to start?`
+        CHAT_MESSAGES.studentWelcome(
+          data.subject.name,
+          data.examType
+        )
       )]);
       return;
     }

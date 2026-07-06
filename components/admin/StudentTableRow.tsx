@@ -4,31 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
-
-type DepartmentOption = {
-  id: string;
-  name: string;
-  branch: string;
-};
-
-interface Student {
-  id: string;
-  name: string;
-  email: string;
-  year: string;
-  branch: string;
-  department: string;
-  departmentId?: string;
-  section?: string;
-  joined: string;
-  role?: string;
-}
-
-interface StudentTableRowProps {
-  student: Student;
-  onDelete: (id: string) => void;
-  onPromoteSuccess: () => void;
-}
+import { DepartmentOption, StudentTableRowProps } from '@/lib/types';
 
 const ROLE_OPTIONS = ['student', 'faculty', 'admin'];
 
@@ -89,7 +65,6 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         name: form.name.trim(),
         email: form.email.trim(),
         year: form.year,
-        branch: form.branch,
         departmentId: form.departmentId || null,
         section: form.section.trim() || undefined,
         role: form.role,

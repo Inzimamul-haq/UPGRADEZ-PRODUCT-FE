@@ -24,9 +24,7 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
         const { data } = await api.get(`/api/question-papers/${subjectId}/papers`, {
           params: departmentId ? { departmentId } : {},
         });
-        // Only show EXAM_PAPER kind — not important questions
-        const examPapers = (data.papers || []).filter((p: any) => p.kind === 'EXAM_PAPER');
-        setPapers(examPapers);
+        setPapers(data.papers || []);
 
         // Fetch subject info
         try {

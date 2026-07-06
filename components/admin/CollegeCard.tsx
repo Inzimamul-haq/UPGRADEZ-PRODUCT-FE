@@ -1,26 +1,7 @@
 import React, { useState } from 'react';
 import { InlineConfirm } from '@/components/ui/InlineConfirm';
+import { CollegeCardProps } from '@/lib/types';
 
-interface College {
-  id: string;
-  name: string;
-  status: 'active' | 'suspended' | 'expired';
-  studentsCount: number;
-  tokenUsed: number;
-  tokenLimit: number;
-  expiresAt: string;
-  startDate: string;
-}
-
-interface CollegeCardProps {
-  college: College;
-  isExpandedVariant?: boolean;
-  onUpdateLimit?: (id: string, limit: number) => void;
-  onUpdateExpiry?: (id: string, date: string) => void;
-  onSuspend?: (id: string) => void;
-  onReactivate?: (id: string) => void;
-  onManage?: (id: string) => void;
-}
 
 export function CollegeCard({ 
   college, 
