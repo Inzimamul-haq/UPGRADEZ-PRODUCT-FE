@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup');
+      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register');
       try {
         const res = await api.get('/api/auth/me');
 

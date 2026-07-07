@@ -4,13 +4,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/api";
 import { BRANCH_OPTIONS } from "@/lib/constants";
 import SubjectFormModal, {
-  SubjectFormValues,
 } from "@/components/admin/SubjectFormModal";
 import {
   SubjectAccordion,
   Subject,
 } from "@/components/admin/SubjectAccordion";
 import { useToast } from "@/context/ToastContext";
+import { SubjectFormValues } from "@/lib/types";
 
 type SubjectApiRow = {
   id: string;
