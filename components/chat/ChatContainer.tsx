@@ -43,7 +43,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
           setMessages([{
             id: crypto.randomUUID(),
             role: 'assistant',
-            content: `Ready to study **${data.subject.name}** — ${data.examType}. Ask me anything about the paper, a topic, or previous year questions.`,
+            content: `Ready to study **${data.subject.name}** — ${data.examType}. you can ask me anything about the paper, a topic, or previous year questions.`,
           }]);
         } catch (error) {
           console.error('Failed to load study context', error);
