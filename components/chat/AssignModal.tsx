@@ -11,9 +11,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
   // Flow 2B gate state
   const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId;
 
-  const defaultBranch = isFlow2B && sessionData.linkedIQAssignment?.assignedToBranch
-    ? sessionData.linkedIQAssignment.assignedToBranch
-    : sessionData.branch || '';
+  const defaultBranch = sessionData.branch || '';
 
   const defaultYear = isFlow2B && sessionData.linkedIQAssignment?.assignedToYear
     ? sessionData.linkedIQAssignment.assignedToYear.toString()
@@ -129,7 +127,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
         examType: sessionData.examType,
         academicYear: acYear,
         assignedToYear: defaultYear ? parseInt(defaultYear) : 2,
-        assignedToBranch: branch,
+        assignedToDepartmentId: sessionData.departmentId || null,
         assignedToSection: section || null,
         rawQuestions: questions,
         kind: sessionData.paperKind || 'EXAM_PAPER',
@@ -144,7 +142,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
 
       // Download PDF for exam papers
       if (sessionData.paperKind === 'EXAM_PAPER') {
-        generateQuestionPaperPDF({ paper, assignment, questions: savedQ, subject: sessionData.subject });
+        generateQuestionPaperPDF({ paper, assignment: { ...assignment, assignedToBranch: branch }, questions: savedQ, subject: sessionData.subject });
       }
 
       const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';

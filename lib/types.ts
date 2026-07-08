@@ -66,7 +66,7 @@ export interface ChatHeaderProps {
   subjectName: string;
   examType: string;
   questionsToday: number;
-} 
+}
 
 export interface Question {
   id: string;
@@ -124,8 +124,8 @@ export interface SessionData {
 
   linkedIQAssignment?: {
     assignedToYear: number | null;
-    assignedToBranch: string | null;
-    assignedToSection: string |null;
+    assignedToDepartmentId: string | null;
+    assignedToSection: string | null;
   };
 }
 
@@ -148,7 +148,7 @@ export interface ChatMessagesProps {
 
 export interface ChatStepOverlayProps {
   role?: string;
-  onComplete: (data: { year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string }) => void;
+  onComplete: (data: { year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string }) => void;
 }
 
 export interface DiagramCardProps {
@@ -314,4 +314,6 @@ export interface EmptyStateProps {
   heading: string;
   subtext?: string;
   action?: ReactNode;
+  description?: string;
+
 }

@@ -26,6 +26,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const [year, setYear] = useState('');
   const [branch, setBranch] = useState('');
   const [department, setDepartment] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [examType, setExamType] = useState('');
   const [section, setSection] = useState('');
@@ -63,7 +64,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
           const { data } = await api.get('/api/subjects', {
             params: {
               ...(isFaculty && year ? { year: mapYearToNumber(year) } : {}),
-              ...(isFaculty && department ? { department } : {}),
+              ...(isFaculty && departmentId ? { departmentId } : {}),
             },
           });
 
@@ -84,17 +85,17 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   };
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };
-  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setStep(3); };
+  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setDepartmentId(d.id); setStep(3); };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => { 
     setExamType(type); 
     if (isFaculty) setStep(5);
-    else if (selectedSubject) onComplete({ year, branch, department, subject: selectedSubject, examType: type });
+    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: type });
   };
   const handleSelectSection = (s: string) => {
     setSection(s);
     if (selectedSubject) {
-      onComplete({ year, branch, department, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType });
+      onComplete({ year, branch, department, departmentId, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType });
     }
   };
 

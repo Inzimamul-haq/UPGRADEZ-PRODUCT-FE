@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Subject, Message } from '@/lib/types';
 import { ChatStepOverlay } from './ChatStepOverlay';
@@ -22,9 +22,36 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
+  const [chatId, setChatId] = useState<string | undefined>();
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
+
+  useEffect(() => {
+    if (initialPaperId && !isFaculty) {
+      const loadContext = async () => {
+        try {
+          const { data } = await api.get(`/api/question-papers/${initialPaperId}/study-context`);
+          setSessionData({
+            subjectId: data.subject.id,
+            subjectName: data.subject.name,
+            subject: data.subject,
+            examType: data.examType,
+            paperKind: 'EXAM_PAPER',
+            hasLinkedIQ: false,
+          });
+          setMessages([{
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `Ready to study **${data.subject.name}** — ${data.examType}. Ask me anything about the paper, a topic, or previous year questions.`,
+          }]);
+        } catch (error) {
+          console.error('Failed to load study context', error);
+        }
+      };
+      loadContext();
+    }
+  }, [initialPaperId, isFaculty]);
 
   const pushMsg = (content: string, actions?: Message['actions']): Message => ({
     id: crypto.randomUUID(),
@@ -234,7 +261,19 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
           id: crypto.randomUUID(), role: 'assistant', content: responseText,
           ...((isIQList || isExamPaper) && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
+      } else if (initialPaperId) {
+        // ── Study-paper mode: only question + IDs, scope derived server-side ───
+        const { data } = await api.post('/api/generate/study', {
+          question: content,
+          paperId: chatId ? undefined : initialPaperId,
+          chatId: chatId,
+        });
+        if (data.chatId && !chatId) setChatId(data.chatId);
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(), role: 'assistant', content: data.data,
+        }]);
       } else {
+        // ── Standard student Q&A ──────────────────────────────────────────
         const { data } = await api.post('/api/generate/answer', {
           subjectId: sessionData?.subjectId || '',
           subjectName: sessionData?.subjectName || '',

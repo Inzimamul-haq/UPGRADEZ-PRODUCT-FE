@@ -12,6 +12,7 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('CAT 1');
   const [papers, setPapers] = useState<any[]>([]);
+  const [studentPapers, setStudentPapers] = useState<{ currentYear: any[], previousYear: any[] } | null>(null);
   const [subject, setSubject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
@@ -24,7 +25,16 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
         const { data } = await api.get(`/api/question-papers/${subjectId}/papers`, {
           params: departmentId ? { departmentId } : {},
         });
-        setPapers(data.papers || []);
+        
+        if (data.papers) {
+          setPapers(data.papers);
+          setStudentPapers(null);
+        } else {
+          setStudentPapers({
+            currentYear: data.currentYear || [],
+            previousYear: data.previousYear || [],
+          });
+        }
 
         // Fetch subject info
         try {
@@ -68,6 +78,41 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
         {loading ? (
           <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E] flex justify-center">
             <span className="text-[13px] text-[#5A5A58]">Loading papers...</span>
+          </div>
+        ) : studentPapers ? (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-[14px] font-medium text-[#ECECEA] mb-3">Current Year</h2>
+              {studentPapers.currentYear.filter((p: any) => p.examType === formattedTab).length === 0 ? (
+                <div className="py-8 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
+                  <EmptyState icon={FileText} heading="No papers" subtext="No current year papers for this exam type" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {studentPapers.currentYear
+                    .filter((p: any) => p.examType === formattedTab)
+                    .map((p: any) => (
+                      <PaperRow key={p.id} paper={{ ...p, academic_year: p.academicYear, exam_type: p.examType }} subjectId={subjectId} />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <h2 className="text-[14px] font-medium text-[#ECECEA] mb-3">Previous Year</h2>
+              {studentPapers.previousYear.filter((p: any) => p.examType === formattedTab).length === 0 ? (
+                <div className="py-8 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
+                  <EmptyState icon={FileText} heading="No papers" subtext="No previous year papers for this exam type" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {studentPapers.previousYear
+                    .filter((p: any) => p.examType === formattedTab)
+                    .map((p: any) => (
+                      <PaperRow key={p.id} paper={{ ...p, academic_year: p.academicYear, exam_type: p.examType }} subjectId={subjectId} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState

@@ -116,7 +116,7 @@ export function SubjectAccordion({
             <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
             <span className="ml-2 text-[12px] text-[#5A5A58]">
               {subject.departments && subject.departments.length > 0 && (
-                <>{subject.departments.map((d) => d.branch ? `${d.branch} · ${d.name}` : d.name).join(", ")}</>
+                <>{subject.departments.map((d) => d.branch ? `${d.branch}/${d.name}` : d.name).join(" , ")}</>
               )}
             </span>
 
