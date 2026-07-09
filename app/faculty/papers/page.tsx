@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
 import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
+import { useAuth } from '@/context/AuthContext';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 
@@ -56,6 +57,8 @@ const examLabel: Record<string, string> = {
 
 export default function PapersPage() {
   const toast = useToast();
+  const { role } = useAuth();
+  const currentRole = role ?? 'faculty';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -72,7 +75,6 @@ export default function PapersPage() {
     paperId: string; currentDate: string | null; subjectName: string; examType: string;
   } | null>(null);
 
-  const currentRole = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'faculty';
 
   useEffect(() => {
     (async () => {

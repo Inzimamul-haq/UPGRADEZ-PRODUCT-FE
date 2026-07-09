@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { LucideIcon, PanelLeft } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
-import { NavItem, AppShellProps } from '@/lib/types';
+import { AppShellProps } from '@/lib/types';
 
 
 

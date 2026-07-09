@@ -11,9 +11,18 @@ import { AssignModal } from './AssignModal';
 import api from '@/lib/api';
 import { SessionData, ChatContainerProps , PaperKind } from "@/lib/types";
 import { CHAT_MESSAGES } from '@/lib/messages';
+import { useSidebar } from '@/context/SidebarContext';
+import { useAuth } from '@/context/AuthContext';
 
-export function ChatContainer({ initialShowOverlay = false, initialPaperId, role }: ChatContainerProps) {
+export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, role: roleProp }: ChatContainerProps) {
   const router = useRouter();
+  const { refreshSessions } = useSidebar();
+  const { role: authRole } = useAuth();
+
+  // role prop takes priority (from URL ?role=); fall back to auth context so
+  // faculty/admin get the right experience on /chat/[sessionId] where there's no ?role= param
+  const role = roleProp ?? authRole ?? undefined;
+
   const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -22,10 +31,50 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
-  const [chatId, setChatId] = useState<string | undefined>();
+  const [chatId, setChatId] = useState<string | undefined>(initialSessionId);
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
+
+  useEffect(() => {
+    if (initialSessionId) {
+      const loadExistingChat = async () => {
+        try {
+          const { data } = await api.get(`/api/chats/${initialSessionId}`);
+          const chat = data.data;
+          
+          // Infer paperKind from message history so faculty can continue naturally.
+          // If the conversation primarily mentions "important questions" and not "exam paper", stay in IQ mode.
+          let inferredPaperKind: 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' = 'EXAM_PAPER';
+          if (isFaculty && chat.messages && chat.messages.length > 0) {
+            const allText: string = chat.messages.map((m: any) => m.content).join(' ').toLowerCase();
+            if (allText.includes('important question') && !allText.includes('exam paper') && !allText.includes('part a') && !allText.includes('section a')) {
+              inferredPaperKind = 'IMPORTANT_QUESTIONS';
+            }
+          }
+
+          setSessionData({
+            subjectId: chat.subjectId,
+            subjectName: chat.subject?.name,
+            examType: chat.examType,
+            paperKind: isFaculty ? inferredPaperKind : null,
+            hasLinkedIQ: false,
+          });
+          
+          if (chat.messages && chat.messages.length > 0) {
+            setMessages(chat.messages.map((m: any) => ({
+              id: m.id,
+              role: m.role,
+              content: m.content
+            })));
+          }
+        } catch (error) {
+          console.error('Failed to load existing chat', error);
+        }
+      };
+      loadExistingChat();
+    }
+  }, [initialSessionId]);
 
   useEffect(() => {
     if (initialPaperId && !isFaculty) {
@@ -72,6 +121,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       subjectId: data.subject.id,
       subjectName: data.subject.name,
       subject: data.subject,
+      examType: data.examType.replace(/\s+/g, '').toUpperCase(),
       paperKind: null,
       hasLinkedIQ: false,
     };
@@ -103,9 +153,9 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       const { data: iqRes } = await api.get('/api/question-papers/check-iq', {
         params: { 
           subjectId: data.subject.id, 
-          examType: data.examType,
+          examType: data.examType.replace(/\s+/g, '').toUpperCase(),
           academicYear: acYear,
-          year: data.year ? data.year.charAt(0) : undefined, // pass just the number e.g. "2" from "2nd Year"
+          year: data.year ? data.year.charAt(0) : undefined,
           branch: data.branch,
           section: data.section
         },
@@ -223,8 +273,8 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
     if (!isFaculty && questionsToday >= 10) return;
     if (!isFaculty) setQuestionsToday(p => p + 1);
 
-    // Gate: branch question not answered yet
-    if (isFaculty && sessionData?.paperKind === null) {
+    // Gate: branch question not answered yet — only for NEW sessions before IQ/Exam is chosen
+    if (isFaculty && sessionData?.paperKind === null && !chatId) {
       setMessages(prev => [...prev,
         { id: crypto.randomUUID(), role: 'user', content },
         pushMsg('Please use the buttons above to choose between Important Questions or Exam Paper first. 👆'),
@@ -239,7 +289,7 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
       if (isFaculty) {
         const history = messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
         const { data } = await api.post('/api/generate/qp', {
-          subjectId: sessionData?.subjectId || '',
+          subjectId: sessionData?.subjectId || undefined,
           subjectName: sessionData?.subjectName || '',
           examType: sessionData?.examType || '',
           year: sessionData?.year || '',
@@ -247,8 +297,16 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
           instruction: content,
           paperKind: sessionData?.paperKind || 'EXAM_PAPER',
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
+          chatId: chatId,
           history,
         });
+
+        // Persist session: update URL + sidebar on first turn
+        if (data.chatId && !chatId) {
+          setChatId(data.chatId);
+          refreshSessions();
+          window.history.replaceState(null, '', `/chat/${data.chatId}?role=${role}`);
+        }
 
         const responseText = data.data as string;
         const isIQList = sessionData?.paperKind === 'IMPORTANT_QUESTIONS'
@@ -263,25 +321,52 @@ export function ChatContainer({ initialShowOverlay = false, initialPaperId, role
         }]);
       } else if (initialPaperId) {
         // ── Study-paper mode: only question + IDs, scope derived server-side ───
-        const { data } = await api.post('/api/generate/study', {
+        const { data } = await api.post('/api/chats/message', {
           question: content,
           paperId: chatId ? undefined : initialPaperId,
           chatId: chatId,
         });
-        if (data.chatId && !chatId) setChatId(data.chatId);
+        if (data.chatLocked) {
+          setSessionLocked(true);
+          setMessages(prev => [...prev, pushMsg(
+            `This study session has reached its natural limit to keep context focused. Here's a quick summary to help you pick up where we left off:\n\n> ${data.summary}`,
+            [{ id: 'start_new_session', label: 'Start a new session' }]
+          )]);
+          return;
+        }
+
+        if (data.chatId && !chatId) {
+          setChatId(data.chatId);
+          refreshSessions();
+          window.history.replaceState(null, '', `/chat/${data.chatId}`);
+        }
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(), role: 'assistant', content: data.data,
         }]);
       } else {
         // ── Standard student Q&A ──────────────────────────────────────────
-        const { data } = await api.post('/api/generate/answer', {
-          subjectId: sessionData?.subjectId || '',
-          subjectName: sessionData?.subjectName || '',
-          examType: sessionData?.examType || '',
+        const { data } = await api.post('/api/chats/message', {
+          subjectId: chatId ? undefined : sessionData?.subjectId || undefined,
+          examType: chatId ? undefined : (sessionData?.examType ? sessionData.examType.toUpperCase().replace(' ', '') : undefined),
+          chatId: chatId,
           question: content,
         });
+        if (data.chatLocked) {
+          setSessionLocked(true);
+          setMessages(prev => [...prev, pushMsg(
+            `This study session has reached its natural limit to keep context focused. Here's a quick summary to help you pick up where we left off:\n\n> ${data.summary}`,
+            [{ id: 'start_new_session', label: 'Start a new session' }]
+          )]);
+          return;
+        }
+
+        if (data.chatId && !chatId) {
+          setChatId(data.chatId);
+          refreshSessions();
+          window.history.replaceState(null, '', `/chat/${data.chatId}`);
+        }
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: data.data, rag_used: data.cached === true,
+          id: crypto.randomUUID(), role: 'assistant', content: data.data,
         }]);
       }
     } catch {

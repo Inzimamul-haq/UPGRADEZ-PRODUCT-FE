@@ -13,22 +13,45 @@ interface SidebarContextValue {
   cancelDelete: () => void;
   sessions: ChatSession[];
   removeSession: (id: string) => void;
+  refreshSessions: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
-const DUMMY_SESSIONS: ChatSession[] = [
-  { id: 'chat1', subject_id: '1', subject_name: 'Data Structures', exam_type: 'CAT 1', created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'chat2', subject_id: '2', subject_name: 'Operating Systems', exam_type: 'Model', created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'chat3', subject_id: '3', subject_name: 'Computer Networks', exam_type: 'University', created_at: new Date(Date.now() - 172800000).toISOString() },
-];
+import api from '@/lib/api';
+
+const DUMMY_SESSIONS: ChatSession[] = [];
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>(DUMMY_SESSIONS);
 
-  const removeSession = (id: string) => setSessions(prev => prev.filter(s => s.id !== id));
+  const fetchSessions = () => {
+    api.get('/api/chats').then(res => {
+      if (res.data.success) {
+        setSessions(res.data.data.map((c: any) => ({
+          id: c.id,
+          subject_name: c.subject?.name || c.title,
+          exam_type: c.examType,
+          created_at: c.createdAt
+        })));
+      }
+    }).catch(console.error);
+  };
+
+  React.useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const removeSession = async (id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+    try {
+      await api.delete(`/api/chats/${id}`);
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
   const confirmDelete = () => {
     if (pendingDelete) removeSession(pendingDelete.id);
@@ -46,6 +69,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       cancelDelete: () => setPendingDelete(null),
       sessions,
       removeSession,
+      refreshSessions: fetchSessions,
     }}>
       {children}
     </SidebarContext.Provider>
