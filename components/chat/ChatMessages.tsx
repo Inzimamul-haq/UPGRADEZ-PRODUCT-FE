@@ -8,7 +8,7 @@ import { ChatMessagesProps } from '@/lib/types';
 export function ChatMessages({ messages, isStreaming, onAction }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useEffect(() => { 
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isStreaming]);
 
