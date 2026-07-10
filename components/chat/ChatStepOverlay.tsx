@@ -52,23 +52,21 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       setLoadingSubjects(true);
       const fetchSubjects = async () => {
         try {
-          const params = new URLSearchParams();
-          if (isFaculty && year) {
-            const y = mapYearToNumber(year);
-            if (y) params.append('year', y.toString());
+          if (isFaculty) {
+            // Faculty: hit general /api/subjects with year + departmentId filters
+            const { data } = await api.get('/api/subjects', {
+              params: {
+                ...(year ? { year: mapYearToNumber(year) } : {}),
+                ...(departmentId ? { departmentId } : {}),
+              },
+            });
+            setSubjects(data.subjects ?? []);
+          } else {
+            // Student: use scoped endpoint — only returns subjects for the
+            // student's own year, department and regulation (current year only)
+            const { data } = await api.get('/api/subjects/for-student');
+            setSubjects(data.subjects ?? []);
           }
-          if (isFaculty && department) {
-            params.append('department', department);
-          }
-
-          const { data } = await api.get('/api/subjects', {
-            params: {
-              ...(isFaculty && year ? { year: mapYearToNumber(year) } : {}),
-              ...(isFaculty && departmentId ? { departmentId } : {}),
-            },
-          });
-
-          setSubjects(data.subjects ?? []);
         } catch (err) {
           console.error('Failed to fetch subjects', err);
           setSubjects([]);

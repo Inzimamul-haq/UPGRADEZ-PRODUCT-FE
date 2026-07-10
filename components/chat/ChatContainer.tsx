@@ -44,7 +44,6 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           const chat = data.data;
           
           // Infer paperKind from message history so faculty can continue naturally.
-          // If the conversation primarily mentions "important questions" and not "exam paper", stay in IQ mode.
           let inferredPaperKind: 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' = 'EXAM_PAPER';
           if (isFaculty && chat.messages && chat.messages.length > 0) {
             const allText: string = chat.messages.map((m: any) => m.content).join(' ').toLowerCase();
@@ -62,11 +61,35 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           });
           
           if (chat.messages && chat.messages.length > 0) {
-            setMessages(chat.messages.map((m: any) => ({
+            const mapped: Message[] = chat.messages.map((m: any) => ({
               id: m.id,
               role: m.role,
-              content: m.content
-            })));
+              content: m.content,
+            }));
+
+            // For faculty: if the last assistant message looks like a generated
+            // paper (long structured text), re-attach the Assign action button
+            // so they can assign without needing to regenerate.
+            if (isFaculty && mapped.length > 0) {
+              const lastIdx = mapped.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
+              if (lastIdx !== undefined) {
+                const lastMsg = mapped[lastIdx];
+                const text = lastMsg.content;
+                const isIQList = inferredPaperKind === 'IMPORTANT_QUESTIONS'
+                  && text.length > 200 && /^\s*\d+\./m.test(text);
+                const isExamPaper = inferredPaperKind === 'EXAM_PAPER'
+                  && text.length > 300
+                  && (text.includes('Part A') || text.includes('Section A') || text.includes('Marks'));
+                if (isIQList || isExamPaper) {
+                  mapped[lastIdx] = {
+                    ...lastMsg,
+                    actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
+                  };
+                }
+              }
+            }
+
+            setMessages(mapped);
           }
         } catch (error) {
           console.error('Failed to load existing chat', error);
@@ -377,19 +400,37 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── After assign success ─────────────────────────────────────────────────
-  const handleAssignSuccess = (message: string, assignedKind: PaperKind, assignedPaperId: string) => {
+  const handleAssignSuccess = async (message: string, assignedKind: PaperKind, assignedPaperId: string) => {
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: message }]);
+
+    // Persist the success message to the DB if we have a chatId
+    if (chatId) {
+      try {
+        await api.post(`/api/chats/${chatId}/message`, { role: 'assistant', content: message });
+      } catch (err) {
+        console.error('Failed to persist assign success message', err);
+      }
+    }
 
     if (assignedKind === 'IMPORTANT_QUESTIONS') {
       setSessionData(prev => prev
         ? { ...prev, hasLinkedIQ: true, linkedIQPaperId: assignedPaperId, paperKind: null }
         : prev
       );
-      setTimeout(() => {
+      const followUp = `Great! Important questions have been assigned. Ready to generate the actual **Exam Paper** now?`;
+      setTimeout(async () => {
         setMessages(prev => [...prev, pushMsg(
-          `Great! Important questions have been assigned. Ready to generate the actual **Exam Paper** now?`,
+          followUp,
           [{ id: 'proceed_to_exam_paper', label: 'Yes, generate the Exam Paper' }]
         )]);
+        // Persist the follow-up prompt too
+        if (chatId) {
+          try {
+            await api.post(`/api/chats/${chatId}/message`, { role: 'assistant', content: followUp });
+          } catch (err) {
+            console.error('Failed to persist follow-up message', err);
+          }
+        }
       }, 600);
     }
   };

@@ -19,6 +19,7 @@ interface SidebarContextValue {
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
 import api from '@/lib/api';
+import { useRouter, usePathname } from 'next/navigation';
 
 const DUMMY_SESSIONS: ChatSession[] = [];
 
@@ -26,6 +27,8 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>(DUMMY_SESSIONS);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const fetchSessions = () => {
     api.get('/api/chats').then(res => {
@@ -46,12 +49,17 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   const removeSession = async (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id));
+    // If the user is currently viewing the deleted chat, redirect to new chat
+    if (pathname === `/chat/${id}`) {
+      router.push('/chat/new');
+    }
     try {
       await api.delete(`/api/chats/${id}`);
     } catch(err) {
       console.error(err);
     }
   };
+
 
   const confirmDelete = () => {
     if (pendingDelete) removeSession(pendingDelete.id);
