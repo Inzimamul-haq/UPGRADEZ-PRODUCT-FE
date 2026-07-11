@@ -92,6 +92,8 @@ export interface Message {
     id: string;
     label: string;
     icon?: string;
+    subjectId?: string;
+    examType?: string;
   }[];
 }
 

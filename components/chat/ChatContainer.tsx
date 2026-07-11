@@ -14,6 +14,25 @@ import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 
+/** Parse the __CHAT_ACTION__ sentinel the backend returns for structured redirects. */
+function parseActionSentinel(raw: string): { content: string; actions?: Message['actions'] } {
+  if (!raw.startsWith('__CHAT_ACTION__:')) return { content: raw };
+  try {
+    const payload = JSON.parse(raw.slice('__CHAT_ACTION__:'.length));
+    return {
+      content: payload.text ?? raw,
+      actions: payload.action ? [{ 
+        id: payload.action.id, 
+        label: payload.action.label, 
+        ...(payload.action.subjectId && { subjectId: payload.action.subjectId }),
+        ...(payload.action.examType && { examType: payload.action.examType }),
+      }] : undefined,
+    };
+  } catch {
+    return { content: raw };
+  }
+}
+
 export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, role: roleProp }: ChatContainerProps) {
   const router = useRouter();
   const { refreshSessions } = useSidebar();
@@ -61,11 +80,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           });
           
           if (chat.messages && chat.messages.length > 0) {
-            const mapped: Message[] = chat.messages.map((m: any) => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-            }));
+            const mapped: Message[] = chat.messages.map((m: any) => {
+              if (m.role === 'assistant') {
+                const parsed = parseActionSentinel(m.content as string);
+                return { id: m.id, role: m.role, ...parsed };
+              }
+              return { id: m.id, role: m.role, content: m.content };
+            });
 
             // For faculty: if the last assistant message looks like a generated
             // paper (long structured text), re-attach the Assign action button
@@ -282,6 +303,27 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       return;
     }
 
+    if (actionId === 'navigate_to_questions') {
+      const action = messages.find(m => m.id === messageId)?.actions?.find(a => a.id === 'navigate_to_questions');
+      const subjectId = (action as any)?.subjectId ?? sessionData?.subjectId;
+      if (subjectId) {
+        router.push(`/student/questions/${subjectId}`);
+      }
+      return;
+    }
+
+    if (actionId === 'navigate_new_chat_exam') {
+      // Open a new tab/window with a fresh chat overlay for the target exam type
+      const action = messages.find(m => m.id === messageId)?.actions?.find(a => a.id === 'navigate_new_chat_exam');
+      const targetExamType = (action as any)?.examType;
+      const subjectId = sessionData?.subjectId;
+      const params = new URLSearchParams();
+      if (subjectId) params.set('subjectId', subjectId);
+      if (targetExamType) params.set('examType', targetExamType);
+      window.open(`/chat?${params.toString()}`, '_blank');
+      return;
+    }
+
     if (actionId === 'start_new_session') {
       setSessionLocked(false);
       setSessionData(null);
@@ -363,8 +405,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           refreshSessions();
           window.history.replaceState(null, '', `/chat/${data.chatId}`);
         }
+        const parsedStudyPaper = parseActionSentinel(data.data as string);
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: data.data,
+          id: crypto.randomUUID(), role: 'assistant', ...parsedStudyPaper,
         }]);
       } else {
         // ── Standard student Q&A ──────────────────────────────────────────
@@ -388,8 +431,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           refreshSessions();
           window.history.replaceState(null, '', `/chat/${data.chatId}`);
         }
+        const parsedGeneral = parseActionSentinel(data.data as string);
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: data.data,
+          id: crypto.randomUUID(), role: 'assistant', ...parsedGeneral,
         }]);
       }
     } catch {
