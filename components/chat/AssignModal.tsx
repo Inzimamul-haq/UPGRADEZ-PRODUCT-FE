@@ -98,7 +98,12 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
       if (/^\s*\**Section\s+[A-Z]\**/i.test(trimmed) ||
           /answer\s+(all|any|the\s+following)/i.test(trimmed) ||
           /^Note:/i.test(trimmed) ||
-          /^Marks:/i.test(trimmed)) {
+          /^Marks:/i.test(trimmed) ||
+          /^\*\*\*+/.test(trimmed)) {
+        if (currentQ) {
+          questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
+          currentQ = '';
+        }
         continue;
       }
       
