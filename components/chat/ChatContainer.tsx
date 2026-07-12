@@ -14,6 +14,11 @@ import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 
+interface ChatContainerExtendedProps extends ChatContainerProps {
+  initialSubjectId?: string;
+  initialExamType?: string;
+}
+
 /** Parse the __CHAT_ACTION__ sentinel the backend returns for structured redirects. */
 function parseActionSentinel(raw: string): { content: string; actions?: Message['actions'] } {
   if (!raw.startsWith('__CHAT_ACTION__:')) return { content: raw };
@@ -33,7 +38,7 @@ function parseActionSentinel(raw: string): { content: string; actions?: Message[
   }
 }
 
-export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, role: roleProp }: ChatContainerProps) {
+export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, initialSubjectId, initialExamType, role: roleProp }: ChatContainerExtendedProps) {
   const router = useRouter();
   const { refreshSessions } = useSidebar();
   const { role: authRole } = useAuth();
@@ -145,6 +150,32 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       loadContext();
     }
   }, [initialPaperId, isFaculty]);
+
+  useEffect(() => {
+    if (initialSubjectId && initialExamType && !initialSessionId && !initialPaperId) {
+      const loadContext = async () => {
+        try {
+          const { data } = await api.get(`/api/subjects/${initialSubjectId}`);
+          setSessionData({
+            subjectId: data.subject.id,
+            subjectName: data.subject.name,
+            subject: data.subject,
+            examType: initialExamType,
+            paperKind: isFaculty ? 'EXAM_PAPER' : null,
+            hasLinkedIQ: false,
+          });
+          setMessages([{
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `Hello! 👋 Continuing your study session for **${data.subject.name}** — ${initialExamType}. What would you like to ask?`,
+          }]);
+        } catch (error) {
+          console.error('Failed to load subject context', error);
+        }
+      };
+      loadContext();
+    }
+  }, [initialSubjectId, initialExamType, initialSessionId, initialPaperId, isFaculty]);
 
   const pushMsg = (content: string, actions?: Message['actions']): Message => ({
     id: crypto.randomUUID(),
@@ -313,14 +344,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
 
     if (actionId === 'navigate_new_chat_exam') {
-      // Open a new tab/window with a fresh chat overlay for the target exam type
+      // Navigate in the same tab to bypass overlay using the URL query params
       const action = messages.find(m => m.id === messageId)?.actions?.find(a => a.id === 'navigate_new_chat_exam');
-      const targetExamType = (action as any)?.examType;
-      const subjectId = sessionData?.subjectId;
+      const targetExamType = (action as any)?.examType || sessionData?.examType;
+      const subjectId = (action as any)?.subjectId || sessionData?.subjectId;
       const params = new URLSearchParams();
       if (subjectId) params.set('subjectId', subjectId);
       if (targetExamType) params.set('examType', targetExamType);
-      window.open(`/chat?${params.toString()}`, '_blank');
+      router.push(`/chat/new?${params.toString()}`);
       return;
     }
 
@@ -419,10 +450,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         });
         if (data.chatLocked) {
           setSessionLocked(true);
-          setMessages(prev => [...prev, pushMsg(
-            `This study session has reached its natural limit to keep context focused. Here's a quick summary to help you pick up where we left off:\n\n> ${data.summary}`,
-            [{ id: 'start_new_session', label: 'Start a new session' }]
-          )]);
+          const parsedLocked = parseActionSentinel(data.data as string);
+          setMessages(prev => [...prev, {
+            id: crypto.randomUUID(), role: 'assistant', ...parsedLocked
+          }]);
           return;
         }
 

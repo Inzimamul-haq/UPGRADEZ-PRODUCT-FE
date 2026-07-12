@@ -17,8 +17,10 @@ export default async function NewChatPage({ searchParams }: { searchParams: Prom
 
   return (
     <ChatContainer
-      initialShowOverlay={!params.paperId}
+      initialShowOverlay={!params.paperId && !(params.subjectId && params.examType)}
       initialPaperId={params.paperId}
+      initialSubjectId={params.subjectId}
+      initialExamType={params.examType}
       role={params.role}
     />
   );
