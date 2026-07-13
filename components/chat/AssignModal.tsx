@@ -7,7 +7,11 @@ import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
 
-export function AssignModal({ sessionData, rawText, onClose, onSuccess }: AssignModalProps) {
+export interface AssignModalExtendedProps extends AssignModalProps {
+  chatId?: string;
+}
+
+export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }: AssignModalExtendedProps) {
   // Flow 2B gate state
   const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId;
 
@@ -140,6 +144,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
           ? sessionData.linkedIQPaperId || null
           : null,
         examDate: needsDirectDate ? directExamDate : null,
+        chatId: chatId || undefined,
       };
 
       const res = await api.post('/api/question-papers/save-and-assign', payload);
@@ -164,8 +169,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
       } else if (code === 'EXAM_DATE_LOCKED') {
         setLockedUntil(err?.response?.data?.lockedUntil ?? null);
         setGateState('locked');
-      } else if (code === 'ALREADY_LINKED') {
-        toast.error(`An exam paper is already assigned for ${section || 'this cohort'}. Please verify before reassigning.`);
+      } else if (code === 'ALREADY_LINKED' || code === 'IQ_ALREADY_ASSIGNED') {
+        onClose();
+        setTimeout(() => toast.error(message), 100);
       } else {
         toast.error(message);
       }

@@ -9,10 +9,11 @@ import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
 import api from '@/lib/api';
-import { SessionData, ChatContainerProps , PaperKind } from "@/lib/types";
+import { SessionData, ChatContainerProps, PaperKind } from "@/lib/types";
 import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 interface ChatContainerExtendedProps extends ChatContainerProps {
   initialSubjectId?: string;
@@ -26,9 +27,9 @@ function parseActionSentinel(raw: string): { content: string; actions?: Message[
     const payload = JSON.parse(raw.slice('__CHAT_ACTION__:'.length));
     return {
       content: payload.text ?? raw,
-      actions: payload.action ? [{ 
-        id: payload.action.id, 
-        label: payload.action.label, 
+      actions: payload.action ? [{
+        id: payload.action.id,
+        label: payload.action.label,
         ...(payload.action.subjectId && { subjectId: payload.action.subjectId }),
         ...(payload.action.examType && { examType: payload.action.examType }),
       }] : undefined,
@@ -60,70 +61,102 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
 
-  useEffect(() => {
-    if (initialSessionId) {
-      const loadExistingChat = async () => {
-        try {
-          const { data } = await api.get(`/api/chats/${initialSessionId}`);
-          const chat = data.data;
-          
-          // Infer paperKind from message history so faculty can continue naturally.
-          let inferredPaperKind: 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' = 'EXAM_PAPER';
-          if (isFaculty && chat.messages && chat.messages.length > 0) {
-            const allText: string = chat.messages.map((m: any) => m.content).join(' ').toLowerCase();
-            if (allText.includes('important question') && !allText.includes('exam paper') && !allText.includes('part a') && !allText.includes('section a')) {
-              inferredPaperKind = 'IMPORTANT_QUESTIONS';
-            }
+useEffect(() => {
+  if (initialSessionId) {
+    const loadExistingChat = async () => {
+      try {
+        const { data } = await api.get(`/api/chats/${initialSessionId}`);
+        const chat = data.data;
+
+        // Infer paperKind from message history so faculty can continue naturally.
+        let inferredPaperKind: 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' = 'EXAM_PAPER';
+        if (isFaculty && chat.messages && chat.messages.length > 0) {
+          const allText: string = chat.messages.map((m: any) => m.content).join(' ').toLowerCase();
+          if (allText.includes('important question') && !allText.includes('exam paper') && !allText.includes('part a') && !allText.includes('section a')) {
+            inferredPaperKind = 'IMPORTANT_QUESTIONS';
           }
-
-          setSessionData({
-            subjectId: chat.subjectId,
-            subjectName: chat.subject?.name,
-            examType: chat.examType,
-            paperKind: isFaculty ? inferredPaperKind : null,
-            hasLinkedIQ: false,
-          });
-          
-          if (chat.messages && chat.messages.length > 0) {
-            const mapped: Message[] = chat.messages.map((m: any) => {
-              if (m.role === 'assistant') {
-                const parsed = parseActionSentinel(m.content as string);
-                return { id: m.id, role: m.role, ...parsed };
-              }
-              return { id: m.id, role: m.role, content: m.content };
-            });
-
-            // For faculty: if the last assistant message looks like a generated
-            // paper (long structured text), re-attach the Assign action button
-            // so they can assign without needing to regenerate.
-            if (isFaculty && mapped.length > 0) {
-              const lastIdx = mapped.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
-              if (lastIdx !== undefined) {
-                const lastMsg = mapped[lastIdx];
-                const text = lastMsg.content;
-                const isIQList = inferredPaperKind === 'IMPORTANT_QUESTIONS'
-                  && text.length > 200 && /^\s*\d+\./m.test(text);
-                const isExamPaper = inferredPaperKind === 'EXAM_PAPER'
-                  && text.length > 300
-                  && (text.includes('Part A') || text.includes('Section A') || text.includes('Marks'));
-                if (isIQList || isExamPaper) {
-                  mapped[lastIdx] = {
-                    ...lastMsg,
-                    actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
-                  };
-                }
-              }
-            }
-
-            setMessages(mapped);
-          }
-        } catch (error) {
-          console.error('Failed to load existing chat', error);
         }
-      };
-      loadExistingChat();
-    }
-  }, [initialSessionId]);
+
+        const hasPaperIQ = chat.paper?.kind === 'IMPORTANT_QUESTIONS';
+        const hasLinkedIQ = hasPaperIQ || !!chat.paper?.linkedPaperId;
+        const linkedIQPaperId = hasPaperIQ ? chat.paper.id : (chat.paper?.linkedPaperId || undefined);
+
+        // Does the IQ paper tied to THIS chat already have an exam paper
+        // linked to it — possibly assigned from a completely different chat?
+        const linkedExamPaper = hasPaperIQ ? chat.paper?.linkedFrom?.[0] : undefined;
+        const hasLinkedExamPaper = Boolean(linkedExamPaper);
+        const examCreatorName = linkedExamPaper?.creator?.name;
+
+        const assignment = chat.paper?.paperAssignments?.[0];
+        const departmentInfo = assignment?.department || chat.department;
+
+        setSessionData({
+          subjectId: chat.subjectId,
+          subjectName: chat.subject?.name,
+          subject: chat.subject,
+          examType: chat.examType,
+          paperKind: isFaculty ? inferredPaperKind : null,
+          hasLinkedIQ,
+          linkedIQPaperId,
+          hasLinkedExamPaper,
+          year: assignment?.assignedToYear?.toString() || chat.assignedToYear?.toString() || undefined,
+          departmentId: departmentInfo?.id || undefined,
+          department: departmentInfo?.name || undefined,
+          branch: departmentInfo?.branch || undefined,
+          section: assignment?.assignedToSection || chat.assignedToSection || undefined,
+        });
+
+        let mapped: Message[] = [];
+        if (chat.messages && chat.messages.length > 0) {
+          mapped = chat.messages.map((m: any) => {
+            if (m.role === 'assistant') {
+              const parsed = parseActionSentinel(m.content as string);
+              return { id: m.id, role: m.role, ...parsed };
+            }
+            return { id: m.id, role: m.role, content: m.content };
+          });
+
+          // For faculty: if the last assistant message looks like a generated
+          // paper (long structured text), re-attach the Assign action button
+          // so they can assign without needing to regenerate.
+          if (isFaculty && mapped.length > 0) {
+            const lastIdx = mapped.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
+            if (lastIdx !== undefined) {
+              const lastMsg = mapped[lastIdx];
+              const text = lastMsg.content;
+              const isIQList = inferredPaperKind === 'IMPORTANT_QUESTIONS'
+                && text.length > 200 && /^\s*\d+\./m.test(text);
+              const isExamPaper = inferredPaperKind === 'EXAM_PAPER'
+                && text.length > 300
+                && (text.includes('Part A') || text.includes('Section A') || text.includes('Marks'));
+              if (isIQList || isExamPaper) {
+                mapped[lastIdx] = {
+                  ...lastMsg,
+                  actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
+                };
+              }
+            }
+          }
+        }
+
+        // Proactively lock the chat if the exam paper already exists elsewhere —
+        // don't let faculty waste time regenerating something that will be rejected.
+        if (isFaculty && hasPaperIQ && hasLinkedExamPaper) {
+          setSessionLocked(true);
+          mapped.push(pushMsg(
+            `An **Exam Paper** for this Important Questions set has already been assigned${examCreatorName ? ` by **${examCreatorName}**` : ''}. No further action is needed here.`
+          ));
+          toast.info('Exam paper already assigned for this session.');
+        }
+
+        setMessages(mapped);
+      } catch (error) {
+        console.error('Failed to load existing chat', error);
+      }
+    };
+    loadExistingChat();
+  }
+}, [initialSessionId]);
 
   useEffect(() => {
     if (initialPaperId && !isFaculty) {
@@ -220,14 +253,16 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     let linkedIQAssignment: any = undefined;
     let iqCreatorName: string | null = null;
     let examCreatorName: string | null = null;
+    let hasStandaloneExamPaper = false;
+    let standaloneExamCreatorName: string | null = null;
 
     try {
       const currentYear = new Date().getFullYear();
       const acYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
-      
+
       const { data: iqRes } = await api.get('/api/question-papers/check-iq', {
-        params: { 
-          subjectId: data.subject.id, 
+        params: {
+          subjectId: data.subject.id,
           examType: data.examType.replace(/\s+/g, '').toUpperCase(),
           academicYear: acYear,
           year: data.year ? data.year.charAt(0) : undefined,
@@ -236,22 +271,28 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         },
       });
       if (iqRes.exists) {
-        hasLinkedIQ = true;
-        linkedIQPaperId = iqRes.paper.id;
-        linkedIQExamDate = iqRes.paper.examDate;
-        hasLinkedExamPaper = iqRes.paper.hasLinkedExamPaper;
-        linkedIQAssignment = iqRes.paper.assignment;
-        iqCreatorName = iqRes.paper.creatorName ?? null;
-        examCreatorName = iqRes.paper.linkedExamCreatorName ?? null;
+        if (iqRes.paper) {
+          hasLinkedIQ = true;
+          linkedIQPaperId = iqRes.paper.id;
+          linkedIQExamDate = iqRes.paper.examDate;
+          hasLinkedExamPaper = iqRes.paper.hasLinkedExamPaper;
+          linkedIQAssignment = iqRes.paper.assignment;
+          iqCreatorName = iqRes.paper.creatorName ?? null;
+          examCreatorName = iqRes.paper.linkedExamCreatorName ?? null;
+        }
+        if (iqRes.standaloneExamPaper) {
+          hasStandaloneExamPaper = true;
+          standaloneExamCreatorName = iqRes.standaloneExamPaper.creatorName ?? null;
+        }
       }
     } catch { /* non-fatal */ }
 
-    const session: SessionData = { 
-      ...base, 
-      hasLinkedIQ, 
-      linkedIQPaperId, 
+    const session: SessionData = {
+      ...base,
+      hasLinkedIQ,
+      linkedIQPaperId,
       linkedIQExamDate,
-      linkedIQAssignment 
+      linkedIQAssignment
     };
     setSessionData(session);
 
@@ -260,7 +301,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     ].filter(Boolean).join(' · ');
 
     if (hasLinkedIQ && hasLinkedExamPaper) {
-      // Both already exist — nothing left to generate for this combination
+      // 1. Both exist
       setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
       setSessionLocked(true);
 
@@ -275,17 +316,29 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           { id: 'start_new_session', label: 'Start a new session' },
         ]
       )]);
+    } else if (hasStandaloneExamPaper) {
+      // 2. Standalone exam only
+      setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+      setSessionLocked(true);
+
+      const creditLine = standaloneExamCreatorName ? `\n\n**Exam Paper** — published by **${standaloneExamCreatorName}**` : '';
+
+      setMessages([pushMsg(
+        `A direct exam paper is already assigned for **${data.subject.name}** (${data.examType}${cohortLabel ? ' · ' + cohortLabel : ''}).${creditLine}\n\nThere's nothing new to generate for this combination until the next academic cycle. If you have any concerns about the existing content, please reach out to them directly before making changes.`,
+        [
+          { id: 'start_new_session', label: 'Start a new session' },
+        ]
+      )]);
     } else if (hasLinkedIQ) {
-      // IQ exists, no exam paper yet — prompt for exam paper
+      // 3. IQ exists, no exam paper yet
       setMessages([pushMsg(
         `I can see important questions are already assigned for **${data.subject.name}** (${data.examType})${iqCreatorName ? ` — published by **${iqCreatorName}**` : ''}.\n\nWould you like to generate the actual **Exam Paper** now? If you have any concerns about the existing questions, please reach out to them first.`,
         [
-          { id: 'pick_exam_paper', label: '(b) Yes, generate the Exam Paper' },
-          { id: 'pick_iq', label: '(a) Re-assign Important Questions' },
+          { id: 'pick_exam_paper', label: 'Yes, generate the Exam Paper' }
         ]
       )]);
     } else {
-      // Standard branch question
+      // 4. Neither exist (Standard branch question)
       setMessages([pushMsg(
         `Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.\n\nWhat would you like to do?`,
         [
@@ -372,8 +425,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     // Gate: branch question not answered yet — only for NEW sessions before IQ/Exam is chosen
     if (isFaculty && sessionData?.paperKind === null && !chatId) {
       setMessages(prev => [...prev,
-        { id: crypto.randomUUID(), role: 'user', content },
-        pushMsg('Please use the buttons above to choose between Important Questions or Exam Paper first. 👆'),
+      { id: crypto.randomUUID(), role: 'user', content },
+      pushMsg('Please use the buttons above to choose between Important Questions or Exam Paper first. 👆'),
       ]);
       return;
     }
@@ -530,6 +583,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           rawText={paperRawText}
           onClose={() => setAssignModalOpen(false)}
           onSuccess={handleAssignSuccess}
+          chatId={chatId}
         />
       )}
 

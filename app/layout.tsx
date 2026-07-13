@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from 'sonner';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,7 +24,10 @@ export default function RootLayout({
     <html lang="en" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-[#1C1C1B]" suppressHydrationWarning>
         <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <Toaster theme="dark" richColors position="top-right" style={{ zIndex: 99999 }} />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

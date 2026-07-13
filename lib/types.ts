@@ -129,6 +129,8 @@ export interface SessionData {
     assignedToDepartmentId: string | null;
     assignedToSection: string | null;
   };
+
+  hasLinkedExamPaper?: boolean;
 }
 
 export interface ChatContainerProps {
