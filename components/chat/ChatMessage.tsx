@@ -20,6 +20,56 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
   const renderContent = (content: string) => {
     const parts = content.split('\n\n');
     return parts.map((part, i) => {
+      const lines = part.trim().split('\n');
+      const isTable = lines.length >= 2 && lines[0].includes('|') && /\|?\s*:?-+:?\s*\|/.test(lines[1]);
+
+      if (isTable) {
+        const parseRow = (line: string) => {
+          const cells = line.split('|');
+          if (cells.length > 0 && cells[0].trim() === '') cells.shift();
+          if (cells.length > 0 && cells[cells.length - 1].trim() === '') cells.pop();
+          return cells.map(c => c.trim());
+        };
+
+        const headers = parseRow(lines[0]);
+        const rows = lines.slice(2).filter(line => line.includes('|')).map(parseRow);
+
+        return (
+          <div key={i} className="my-4 overflow-x-auto rounded-lg border border-[#3A3A38]">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#2C2C2A] border-b border-[#3A3A38]">
+                  {headers.map((h, j) => (
+                    <th key={j} className="px-4 py-2 text-[13px] font-semibold text-[#ECECEA]">
+                      {h.replace(/\*\*/g, '')}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#3A3A38]">
+                {rows.map((row, rIdx) => (
+                  <tr key={rIdx} className="hover:bg-[#252523] transition-colors">
+                    {row.map((cell, cIdx) => {
+                      const boldFormatted = cell.split(/(\*\*.*?\*\*)/).map((segment, j) => {
+                        if (segment.startsWith('**') && segment.endsWith('**')) {
+                          return <strong key={j} className="font-semibold text-white">{segment.slice(2, -2)}</strong>;
+                        }
+                        return segment;
+                      });
+                      return (
+                        <td key={cIdx} className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed">
+                          {boldFormatted}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+
       // Basic bold formatting implementation `**text**` -> `<strong>text</strong>`
       const boldFormatted = part.split(/(\*\*.*?\*\*)/).map((segment, j) => {
         if (segment.startsWith('**') && segment.endsWith('**')) {
