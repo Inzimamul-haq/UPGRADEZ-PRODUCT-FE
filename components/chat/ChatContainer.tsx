@@ -20,23 +20,55 @@ interface ChatContainerExtendedProps extends ChatContainerProps {
   initialExamType?: string;
 }
 
-/** Parse the __CHAT_ACTION__ sentinel the backend returns for structured redirects. */
+/** Parse the __CHAT_ACTION__ sentinel the backend returns for structured redirects.
+ *  Handles two forms:
+ *  1. Full sentinel: the entire string is "__CHAT_ACTION__:{...}"
+ *  2. Appended sentinel: a real answer followed by "\n\n__CHAT_ACTION__:{...}" (mixed intent)
+ */
 function parseActionSentinel(raw: string): { content: string; actions?: Message['actions'] } {
-  if (!raw.startsWith('__CHAT_ACTION__:')) return { content: raw };
-  try {
-    const payload = JSON.parse(raw.slice('__CHAT_ACTION__:'.length));
-    return {
-      content: payload.text ?? raw,
-      actions: payload.action ? [{
-        id: payload.action.id,
-        label: payload.action.label,
-        ...(payload.action.subjectId && { subjectId: payload.action.subjectId }),
-        ...(payload.action.examType && { examType: payload.action.examType }),
-      }] : undefined,
-    };
-  } catch {
-    return { content: raw };
+  const SENTINEL = '__CHAT_ACTION__:';
+
+  // Form 1: entire string is a sentinel (most common)
+  if (raw.startsWith(SENTINEL)) {
+    try {
+      const payload = JSON.parse(raw.slice(SENTINEL.length));
+      return {
+        content: payload.text ?? '',
+        actions: payload.action ? [{
+          id: payload.action.id,
+          label: payload.action.label,
+          ...(payload.action.subjectId && { subjectId: payload.action.subjectId }),
+          ...(payload.action.examType && { examType: payload.action.examType }),
+        }] : undefined,
+      };
+    } catch {
+      return { content: raw };
+    }
   }
+
+  // Form 2: sentinel embedded/appended somewhere in the message (mixed intent)
+  const sentinelIdx = raw.indexOf(SENTINEL);
+  if (sentinelIdx !== -1) {
+    const mainContent = raw.slice(0, sentinelIdx).trimEnd();
+    const sentinelStr = raw.slice(sentinelIdx + SENTINEL.length);
+    try {
+      const payload = JSON.parse(sentinelStr);
+      return {
+        content: mainContent,
+        actions: payload.action ? [{
+          id: payload.action.id,
+          label: payload.action.label,
+          ...(payload.action.subjectId && { subjectId: payload.action.subjectId }),
+          ...(payload.action.examType && { examType: payload.action.examType }),
+        }] : undefined,
+      };
+    } catch {
+      // Sentinel malformed — return clean content without the broken suffix
+      return { content: mainContent };
+    }
+  }
+
+  return { content: raw };
 }
 
 export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, initialSubjectId, initialExamType, role: roleProp }: ChatContainerExtendedProps) {
