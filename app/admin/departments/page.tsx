@@ -13,6 +13,7 @@ type Department = {
   id: string;
   name: string;
   branch: string;
+  sections?: string[];
 };
 
 export default function AdminDepartmentsPage() {
@@ -26,6 +27,7 @@ export default function AdminDepartmentsPage() {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("");
+  const [sectionsCount, setSectionsCount] = useState(1);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -65,6 +67,7 @@ export default function AdminDepartmentsPage() {
     setEditingDepartment(null);
     setName("");
     setBranch("");
+    setSectionsCount(1);
     setFormError("");
     setShowFormModal(true);
   };
@@ -73,6 +76,7 @@ export default function AdminDepartmentsPage() {
     setEditingDepartment(dept);
     setName(dept.name);
     setBranch(dept.branch);
+    setSectionsCount(dept.sections?.length || 1);
     setFormError("");
     setShowFormModal(true);
   };
@@ -86,6 +90,7 @@ export default function AdminDepartmentsPage() {
     }
 
     setIsSubmitting(true);
+    const sections = Array.from({ length: sectionsCount }, (_, i) => String.fromCharCode(65 + i));
     try {
       if (editingDepartment) {
         const { data } = await api.put(
@@ -93,6 +98,7 @@ export default function AdminDepartmentsPage() {
           {
             name: parsed.data.name.trim(),
             branch: parsed.data.branch.trim(),
+            sections,
           }
         );
         setDepartments((prev) =>
@@ -105,6 +111,7 @@ export default function AdminDepartmentsPage() {
         const { data } = await api.post("/api/departments", {
           name: parsed.data.name.trim(),
           branch: parsed.data.branch.trim(),
+          sections,
         });
         setDepartments((prev) =>
           [...prev, data.department].sort((a, b) =>
@@ -265,6 +272,21 @@ export default function AdminDepartmentsPage() {
               placeholder="e.g. Computer Science, IT, ECE"
               className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
             />
+
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Sections Count
+            </label>
+            <select
+              value={sectionsCount}
+              onChange={(e) => setSectionsCount(parseInt(e.target.value, 10))}
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <option key={num} value={num}>
+                  {num} ({Array.from({ length: num }, (_, i) => String.fromCharCode(65 + i)).join(', ')})
+                </option>
+              ))}
+            </select>
 
             {formError && (
               <p className="mb-3 text-[12px] text-red-400">{formError}</p>

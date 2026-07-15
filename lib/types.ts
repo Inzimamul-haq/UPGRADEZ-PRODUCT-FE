@@ -38,6 +38,7 @@ export interface Department {
   id: string;
   name: string;
   branch: string;
+  sections?: string[];
 }
 
 export interface Subject {

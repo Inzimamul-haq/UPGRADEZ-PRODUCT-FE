@@ -145,19 +145,7 @@ export default function AdminStudentsPage() {
           <option value="4">4th Year</option>
         </select>
         
-        <select 
-          value={branchFilter}
-          onChange={(e) => {
-            setBranchFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-        >
-          <option value="">All Branches</option>
-          {BRANCH_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
+ 
 
         <select 
           value={departmentFilter}
@@ -175,15 +163,28 @@ export default function AdminStudentsPage() {
           ))}
         </select>
         
-        <input 
-          placeholder="Section (e.g. A)" 
-          value={sectionFilter}
-          onChange={(e) => {
-            setSectionFilter(e.target.value);
-            setPage(1);
-          }}
-          className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
-        />
+        {departmentFilter ? (
+          <select 
+            value={sectionFilter}
+            onChange={(e) => {
+              setSectionFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+          >
+            <option value="">All Sections</option>
+            {departments.find(d => d.id === departmentFilter)?.sections?.map((s: string) => (
+              <option key={s} value={s}>Section {s}</option>
+            ))}
+          </select>
+        ) : (
+          <select 
+            disabled
+            className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#5A5A58] focus:outline-none focus:border-[#4A4A48] opacity-50 cursor-not-allowed"
+          >
+            <option value="">All Sections</option>
+          </select>
+        )}
       </div>
 
       <div className="mt-4 border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">

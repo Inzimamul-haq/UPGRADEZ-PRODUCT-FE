@@ -8,7 +8,6 @@ import api from '@/lib/api';
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
-const SECTIONS = ['A', 'B', 'C', 'D'];
 
 const mapYearToNumber = (y: string) => {
   if (y.startsWith('1')) return 1;
@@ -193,7 +192,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
           <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Section</h2>
           <p className="text-[13px] text-[#8C8C8A] mb-8">Select the section for the exam paper</p>
           <div className="grid grid-cols-2 gap-3">
-            {SECTIONS.map(s => (
+            {(departmentsList.find(d => d.id === departmentId)?.sections || ['A']).map(s => (
               <button
                 key={s}
                 onClick={() => handleSelectSection(s)}

@@ -213,14 +213,16 @@ export default function OnboardingPage() {
               {step === 6 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What is your section?</label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.section}
-                    onChange={(e) => setFormData({...formData, section: e.target.value.toUpperCase()})}
-                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
-                    placeholder="e.g. A"
-                    maxLength={2}
-                  />
+                    onChange={(e) => setFormData({...formData, section: e.target.value})}
+                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
+                  >
+                    <option value="">— Select Section —</option>
+                    {(departments.find(d => d.id === formData.departmentId)?.sections || []).map((s: string) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
