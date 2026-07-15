@@ -15,9 +15,12 @@ import { CollegeUsageTab } from "@/components/super-admin/colleges/CollegeUsageT
 export type CollegeDetail = {
   id: string;
   name: string;
+  shortName: string;
   accessCode: string;
   geminiApiKey: string | null;
   isActive: boolean;
+  logoUrl: string | null;
+  bannerUrl: string | null;
 };
 
 type TabType = "overview" | "departments" | "subjects" | "students" | "usage";
