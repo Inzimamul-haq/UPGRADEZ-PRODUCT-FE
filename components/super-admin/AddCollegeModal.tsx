@@ -12,10 +12,11 @@ interface AddCollegeModalProps {
 export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
   const toast = useToast();
   const [name, setName] = useState("");
+  const [shortName, setShortName] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [limit, setLimit] = useState(5000000);
-  const [planTier, setPlanTier] = useState("standard");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,16 +41,22 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
       setError("Name is required");
       return;
     }
+    if (!shortName.trim()) {
+      setError("Short name is required");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await api.post("/api/colleges", {
-        name: name.trim(),
-        accessCode: accessCode.trim() || undefined,
-        geminiApiKey: geminiApiKey.trim() || undefined,
-        limit,
-        planTier
-      });
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("shortName", shortName.trim());
+      if (accessCode.trim()) formData.append("accessCode", accessCode.trim());
+      if (geminiApiKey.trim()) formData.append("geminiApiKey", geminiApiKey.trim());
+      if (logoFile) formData.append("logo", logoFile);
+      if (bannerFile) formData.append("banner", bannerFile);
+
+      await api.post("/api/colleges", formData);
       toast.success("College created successfully");
       onSuccess();
     } catch (err: any) {
@@ -88,6 +95,18 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
 
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Short Name *
+            </label>
+            <input
+              value={shortName}
+              onChange={(e) => setShortName(e.target.value)}
+              placeholder="e.g. CAHCET"
+              className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
               Access Code
             </label>
             <input
@@ -115,28 +134,25 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
-                Monthly Token Limit
+                College Logo
               </label>
               <input
-                type="number"
-                value={limit}
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
               />
             </div>
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
-                Plan Tier
+                College Banner
               </label>
-              <select
-                value={planTier}
-                onChange={(e) => setPlanTier(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-              >
-                <option value="standard">Standard</option>
-                <option value="premium">Premium</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
+              />
             </div>
           </div>
         </div>

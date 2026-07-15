@@ -20,9 +20,12 @@ type College = {
 function EditCollegeModal({ college, onClose, onSuccess }: { college: College; onClose: () => void; onSuccess: () => void }) {
   const toast = useToast();
   const [name, setName] = useState(college.name);
+  const [shortName, setShortName] = useState((college as any).shortName || "");
   const [accessCode, setAccessCode] = useState(college.accessCode);
   const [geminiApiKey, setGeminiApiKey] = useState(college.geminiApiKey || "");
   const [isActive, setIsActive] = useState(college.isActive);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,12 +34,16 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
     if (!name.trim()) { setError("Name is required"); return; }
     setSaving(true);
     try {
-      await api.put(`/api/colleges/${college.id}`, {
-        name: name.trim(),
-        accessCode: accessCode.trim(),
-        geminiApiKey: geminiApiKey.trim() || undefined,
-        isActive,
-      });
+      const formData = new FormData();
+      if (name.trim() !== college.name) formData.append("name", name.trim());
+      if (shortName.trim() !== (college as any).shortName) formData.append("shortName", shortName.trim());
+      if (accessCode.trim() !== college.accessCode) formData.append("accessCode", accessCode.trim());
+      if (geminiApiKey.trim() !== (college.geminiApiKey || "")) formData.append("geminiApiKey", geminiApiKey.trim());
+      formData.append("isActive", isActive.toString());
+      if (logoFile) formData.append("logo", logoFile);
+      if (bannerFile) formData.append("banner", bannerFile);
+
+      await api.put(`/api/colleges/${college.id}`, formData);
       toast.success("College updated");
       onSuccess();
     } catch (err: any) {
@@ -58,6 +65,10 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
             <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
           </div>
           <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">Short Name</label>
+            <input value={shortName} onChange={(e) => setShortName(e.target.value)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
+          </div>
+          <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">Access Code</label>
             <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] font-mono text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
             <p className="mt-1 text-[11px] text-[#5A5A58]">Students use this code to sign up.</p>
@@ -75,6 +86,16 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
             >
               <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-0.5"}`} />
             </button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-[12px] text-[#8C8C8A]">College Logo</label>
+              <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[12px] text-[#8C8C8A]">College Banner</label>
+              <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+            </div>
           </div>
         </div>
         {error && <p className="mt-3 text-[12px] text-red-400">{error}</p>}
