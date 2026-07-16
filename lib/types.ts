@@ -237,6 +237,8 @@ export interface Student {
   section?: string;
   joined: string;
   role?: string;
+  batchYear?: string;
+  rollNo?: string;
 }
 
 export interface StudentTableRowProps {

@@ -80,14 +80,15 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[900px]">
-        <div className="w-[16%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
-        <div className="w-[22%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
-        <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.year}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
-        <div className="w-[14%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
+      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[1000px]">
+        <div className="w-[12%] text-[13px] text-[#ECECEA] truncate pr-2">{student.rollNo || '-'}</div>
+        <div className="w-[14%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
+        <div className="w-[18%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
+        <div className="w-[6%] text-[13px] text-[#8C8C8A]">{student.year}</div>
+        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.batchYear || '-'}</div>
+        <div className="w-[8%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
+        <div className="w-[12%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
         <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.joined}</div>
         <div className="w-[12%] flex justify-end items-center gap-2">
           <button
             onClick={() => { setShowEditModal(true); setEditError(''); }}

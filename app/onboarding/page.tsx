@@ -21,7 +21,8 @@ export default function OnboardingPage() {
     section: '',
     departmentId: '',
     regulation: '',
-    batchYear: ''
+    batchYear: '',
+    rollNo: ''
   });
 
   useEffect(() => {
@@ -44,7 +45,8 @@ export default function OnboardingPage() {
           departmentId: formData.departmentId,
           section: formData.section,
           regulation: formData.regulation,
-          batchYear: formData.batchYear
+          batchYear: formData.batchYear,
+          rollNo: formData.rollNo
         } : {
           departmentId: formData.departmentId
         })
@@ -72,6 +74,7 @@ export default function OnboardingPage() {
     if (step === 4) return !!formData.regulation;
     if (step === 5) return !!formData.batchYear;
     if (step === 6) return !!formData.section;
+    if (step === 7) return !!formData.rollNo;
     return false;
   };
 
@@ -103,7 +106,7 @@ export default function OnboardingPage() {
           <p className="text-sm text-[#8C8C8A]">
             {role === 'faculty'
               ? 'Select your department to get started. This is required to personalise your experience.'
-              : `Step ${step} of 6`}
+              : `Step ${step} of 7`}
           </p>
         </div>
 
@@ -205,7 +208,7 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Batch Year —</option>
-                    {[2020, 2021, 2022, 2023, 2024, 2025].map(y => <option key={y} value={y}>{y}</option>)}
+                    {['2020-2024', '2021-2025', '2022-2026', '2023-2027', '2024-2028', '2025-2029'].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               )}
@@ -225,17 +228,31 @@ export default function OnboardingPage() {
                   </select>
                 </div>
               )}
+
+              {step === 7 && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <label className="block text-sm text-[#ECECEA] mb-1.5">What is your Roll Number?</label>
+                  <input
+                    type="text"
+                    value={formData.rollNo}
+                    onChange={(e) => setFormData({...formData, rollNo: e.target.value.toUpperCase()})}
+                    placeholder="e.g. 21X15A0501"
+                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
+                    required
+                  />
+                </div>
+              )}
             </div>
           )}
 
           <div className="pt-4 flex flex-col gap-3">
             {role === 'student' ? (
               <button 
-                type={step === 6 ? "submit" : "button"} 
-                onClick={step < 6 ? () => handleNext() : undefined}
+                type={step === 7 ? "submit" : "button"} 
+                onClick={step < 7 ? () => handleNext() : undefined}
                 disabled={loading || !canProceed()} 
                 className="w-full bg-[var(--theme-color)] text-white rounded-xl py-3 px-4 font-medium hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
-                {step < 6 ? 'Next' : (loading ? 'Finish Setup' : 'Finish Setup')}
+                {step < 7 ? 'Next' : (loading ? 'Finish Setup' : 'Finish Setup')}
               </button>
             ) : (
               <button 

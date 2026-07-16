@@ -12,6 +12,7 @@ import { BRANCH_OPTIONS } from '@/lib/constants';
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
+  const [batchYearFilter, setBatchYearFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
@@ -44,6 +45,9 @@ export default function AdminStudentsPage() {
       if (yearFilter !== 'All') {
         params.year = parseInt(yearFilter.replace(/\D/g, ''), 10);
       }
+      if (batchYearFilter !== 'All') {
+        params.batchYear = batchYearFilter;
+      }
 
       const res = await api.get('/api/profiles/students', { params });
       setStudents(res.data.students);
@@ -66,7 +70,7 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-  }, [searchName, yearFilter, branchFilter, departmentFilter, sectionFilter, page, rowsPerPage]);
+  }, [searchName, yearFilter, batchYearFilter, branchFilter, departmentFilter, sectionFilter, page, rowsPerPage]);
 
   const handleDelete = async (id: string) => {
     // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
@@ -145,7 +149,19 @@ export default function AdminStudentsPage() {
           <option value="4">4th Year</option>
         </select>
         
- 
+        <select 
+          value={batchYearFilter} 
+          onChange={(e) => {
+            setBatchYearFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="All">All Batches</option>
+          {['2020-2024', '2021-2025', '2022-2026', '2023-2027', '2024-2028', '2025-2029'].map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
 
         <select 
           value={departmentFilter}
@@ -188,15 +204,16 @@ export default function AdminStudentsPage() {
       </div>
 
       <div className="mt-4 border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[900px]">
+        <div className="min-w-[1000px]">
           <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[16%]">Name</div>
-            <div className="w-[22%]">Email</div>
-            <div className="w-[8%]">Year</div>
-            <div className="w-[10%]">Branch</div>
-            <div className="w-[14%]">Department</div>
+            <div className="w-[12%]">Roll No</div>
+            <div className="w-[14%]">Name</div>
+            <div className="w-[18%]">Email</div>
+            <div className="w-[6%]">Year</div>
+            <div className="w-[10%]">Batch</div>
+            <div className="w-[8%]">Branch</div>
+            <div className="w-[12%]">Department</div>
             <div className="w-[8%]">Section</div>
-            <div className="w-[10%]">Joined</div>
             <div className="w-[12%] text-right">Action</div>
           </div>
           
@@ -226,6 +243,8 @@ export default function AdminStudentsPage() {
                     section: s.section || '-',
                     joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
                     role: s.role || 'student',
+                    batchYear: s.batchYear,
+                    rollNo: s.rollNo,
                   }} 
                   onDelete={handleDelete}
                   onPromoteSuccess={fetchStudents}

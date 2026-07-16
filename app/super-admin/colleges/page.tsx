@@ -131,6 +131,9 @@ export default function SuperAdminCollegesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editCollege, setEditCollege] = useState<College | null>(null);
   const [deleteCollege, setDeleteCollege] = useState<College | null>(null);
+  const [deleteSecret, setDeleteSecret] = useState("");
+  const [secretPromptCollege, setSecretPromptCollege] = useState<College | null>(null);
+  const [deleteSecretInput, setDeleteSecretInput] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchColleges = async () => {
@@ -154,12 +157,13 @@ export default function SuperAdminCollegesPage() {
   });
 
   const handleDelete = async () => {
-    if (!deleteCollege) return;
+    if (!deleteCollege || !deleteSecret) return;
     setDeleteLoading(true);
     try {
-      await api.delete(`/api/colleges/${deleteCollege.id}`);
+      await api.delete(`/api/colleges/${deleteCollege.id}`, { data: { secret: deleteSecret } });
       toast.success("College deleted");
       setDeleteCollege(null);
+      setDeleteSecret("");
       fetchColleges();
     } catch (err: any) {
       toast.error(err.response?.data?.error ?? "Failed to delete");
@@ -222,7 +226,10 @@ export default function SuperAdminCollegesPage() {
                   <button onClick={() => setEditCollege(college)} className="p-1.5 rounded-md text-[#8C8C8A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors" title="Edit">
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => setDeleteCollege(college)} className="p-1.5 rounded-md text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
+                  <button onClick={() => {
+                    setSecretPromptCollege(college);
+                    setDeleteSecretInput('');
+                  }} className="p-1.5 rounded-md text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -235,6 +242,59 @@ export default function SuperAdminCollegesPage() {
       {showAddModal && <AddCollegeModal onClose={() => setShowAddModal(false)} onSuccess={() => { setShowAddModal(false); fetchColleges(); }} />}
       {editCollege && <EditCollegeModal college={editCollege} onClose={() => setEditCollege(null)} onSuccess={() => { setEditCollege(null); fetchColleges(); }} />}
       {deleteCollege && <ConfirmDeleteModal name={deleteCollege.name} onClose={() => setDeleteCollege(null)} onConfirm={handleDelete} loading={deleteLoading} />}
+      {secretPromptCollege && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
+            <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Enter Super Admin Secret</h2>
+            <input
+              type="password"
+              placeholder="Secret"
+              value={deleteSecretInput}
+              onChange={(e) => setDeleteSecretInput(e.target.value)}
+              className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] mb-6"
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter') {
+                  if (!deleteSecretInput) return;
+                  try {
+                    await api.post('/api/colleges/verify-secret', { secret: deleteSecretInput });
+                    setDeleteSecret(deleteSecretInput);
+                    setDeleteCollege(secretPromptCollege);
+                    setSecretPromptCollege(null);
+                    setDeleteSecretInput('');
+                  } catch {
+                    toast.error("Invalid SUPER_ADMIN_SECRET");
+                  }
+                }
+              }}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setSecretPromptCollege(null)}
+                className="text-[13px] text-[#8C8C8A] hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!deleteSecretInput) return;
+                  try {
+                    await api.post('/api/colleges/verify-secret', { secret: deleteSecretInput });
+                    setDeleteSecret(deleteSecretInput);
+                    setDeleteCollege(secretPromptCollege);
+                    setSecretPromptCollege(null);
+                    setDeleteSecretInput('');
+                  } catch {
+                    toast.error("Invalid SUPER_ADMIN_SECRET");
+                  }
+                }}
+                className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+              >
+                Verify
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
