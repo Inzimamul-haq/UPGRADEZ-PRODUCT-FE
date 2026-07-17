@@ -14,6 +14,7 @@ export interface User {
   regulation?: string | null;
   batchYear?: string | null;
   collegeId?: string | null;
+  college?: { id: string; name: string; shortName: string | null } | null;
   department?: { id: string; name: string; branch: string } | null;
 }
 

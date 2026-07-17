@@ -1,6 +1,9 @@
-import React from 'react';
+"use client";
+
+import React, { useEffect, useState } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TokenUsageBar } from '@/components/dashboard/TokenUsageBar';
+import { useAuth } from '@/context/AuthContext';
 
 // Mock data fetching
 async function getAdminStats() {
@@ -10,7 +13,6 @@ async function getAdminStats() {
     subjectCount: 42,
     tokenUsage: 4500000,
     tokenLimit: 5000000,
-    collegeName: "Anna University",
     recentStudents: [
       { id: '1', name: 'John Doe', branch: 'CSE', year: '3rd Year', joined: '2 hours ago' },
       { id: '2', name: 'Jane Smith', branch: 'ECE', year: '2nd Year', joined: '5 hours ago' },
@@ -28,16 +30,23 @@ async function getAdminStats() {
   };
 }
 
-export default async function AdminDashboardPage() {
-  const data = await getAdminStats();
+export default function AdminDashboardPage() {
+  const { user } = useAuth();
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    getAdminStats().then(setData);
+  }, []);
 
   const formatK = (num: number) => `${Math.floor(num / 1000)}k`;
+
+  if (!data) return null;
 
   return (
     <div className="px-6 py-6 w-full">
       <div>
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Dashboard</h1>
-        <p className="text-[12px] text-[#8C8C8A] mt-0.5">{data.collegeName}</p>
+        <p className="text-[12px] text-[#8C8C8A] mt-0.5">{user?.college?.name || "College Name"}</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
@@ -60,7 +69,7 @@ export default async function AdminDashboardPage() {
         <div>
           <h2 className="text-[14px] font-medium text-[#ECECEA] mb-3">Recent Students</h2>
           <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg overflow-hidden">
-            {data.recentStudents.map((s) => (
+            {data.recentStudents.map((s: any) => (
               <div key={s.id} className="flex justify-between items-center px-4 py-3 border-b border-[#2E2E2C] last:border-0 hover:bg-[#333331] transition-colors">
                 <div>
                   <p className="text-[13px] text-[#ECECEA]">{s.name}</p>
@@ -75,7 +84,7 @@ export default async function AdminDashboardPage() {
         <div>
           <h2 className="text-[14px] font-medium text-[#ECECEA] mb-3">Recent Papers</h2>
           <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg overflow-hidden">
-            {data.recentPapers.map((p) => (
+            {data.recentPapers.map((p: any) => (
               <div key={p.id} className="px-4 py-3 border-b border-[#2E2E2C] last:border-0 hover:bg-[#333331] transition-colors">
                 <div className="flex justify-between items-start mb-0.5">
                   <p className="text-[13px] text-[#ECECEA]">{p.subject}</p>

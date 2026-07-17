@@ -91,7 +91,15 @@ export default function SettingsPage() {
   return (
     <AppShell role={role ?? 'student'} navItems={navItems}>
       <div className="max-w-3xl mx-auto px-6 py-8 w-full relative">
-        <h1 className="text-[20px] font-medium text-[#ECECEA] mb-6">Settings</h1>
+        <div>
+          <h1 className="text-[20px] font-medium text-[#ECECEA]">Settings</h1>
+          {user?.college && (
+            <p className="text-[13px] text-[#8C8C8A] mt-1 mb-6">
+              {user.college.shortName || user.college.name}
+            </p>
+          )}
+          {!user?.college && <div className="mb-6" />}
+        </div>
 
         <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl p-6 mb-4">
           <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Profile</h2>

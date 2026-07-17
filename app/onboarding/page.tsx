@@ -24,6 +24,30 @@ export default function OnboardingPage() {
     batchYear: '',
     rollNo: ''
   });
+  const [batchError, setBatchError] = useState('');
+  const [rollError, setRollError] = useState('');
+
+  const validateBatchYear = (val: string) => {
+    if (!val) return 'Required';
+    const match = val.match(/^(\d{4})\s*-\s*(\d{4})$/);
+    if (!match) return 'Format should be YYYY-YYYY (e.g. 2022-2026)';
+    const start = parseInt(match[1]);
+    const end = parseInt(match[2]);
+    if (start >= end) return 'End year must be greater than start year';
+    if (end - start > 6) return 'Duration cannot exceed 6 years';
+    if (start < 2000 || start > 2050) return 'Invalid start year';
+    return '';
+  };
+
+  const validateRollNo = (val: string) => {
+    if (!val) return 'Required';
+    if (!/^[A-Za-z0-9]+$/.test(val)) return 'Must contain only letters and numbers';
+    const letterCount = (val.match(/[A-Za-z]/g) || []).length;
+    if (letterCount > 2) return 'Can contain at most 2 letters';
+    if (/^([A-Za-z0-9])\1+$/.test(val)) return 'Invalid repetitive pattern (e.g. 1111)';
+    if (val.length < 4) return 'Roll number too short';
+    return '';
+  };
 
   useEffect(() => {
     api.get('/api/departments').then(res => setDepartments(res.data.departments || []));
@@ -64,18 +88,40 @@ export default function OnboardingPage() {
   };
 
   const handleNext = () => {
+    if (step === 3) {
+      const err = validateBatchYear(formData.batchYear);
+      if (err) {
+        setBatchError(err);
+        return;
+      }
+      setBatchError('');
+    }
     setStep(s => s + 1);
   };
 
   const canProceed = () => {
     if (step === 1) return !!formData.branch;
     if (step === 2) return !!formData.departmentId;
-    if (step === 3) return !!formData.year;
-    if (step === 4) return !!formData.regulation;
-    if (step === 5) return !!formData.batchYear;
+    if (step === 3) return !!formData.batchYear;
+    if (step === 4) return !!formData.year;
+    if (step === 5) return !!formData.regulation;
     if (step === 6) return !!formData.section;
-    if (step === 7) return !!formData.rollNo;
+    if (step === 7) {
+      return !!formData.rollNo && !validateRollNo(formData.rollNo);
+    }
     return false;
+  };
+
+  const getComputedYear = () => {
+    if (!formData.batchYear) return 0;
+    const match = formData.batchYear.match(/^(\d{4})\s*-\s*(\d{4})$/);
+    if (!match) return 0;
+    const start = parseInt(match[1]);
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    let diff = currentYear - start;
+    if (currentMonth >= 6) diff += 1;
+    return Math.max(1, Math.min(4, diff));
   };
 
   return (
@@ -173,6 +219,23 @@ export default function OnboardingPage() {
 
               {step === 3 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <label className="block text-sm text-[#ECECEA] mb-1.5">Admission / Batch Year</label>
+                  <input
+                    type="text"
+                    value={formData.batchYear}
+                    onChange={(e) => {
+                      setFormData({...formData, batchYear: e.target.value, year: ''});
+                      setBatchError('');
+                    }}
+                    placeholder="e.g. 2022-2026"
+                    className={`w-full bg-[#1F1F1E] border ${batchError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
+                  />
+                  {batchError && <p className="text-red-500 text-xs mt-1.5">{batchError}</p>}
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What year are you in?</label>
                   <select
                     value={formData.year}
@@ -180,12 +243,20 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Year —</option>
-                    {[1,2,3,4].map(y => <option key={y} value={y}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>)}
+                    {[1,2,3,4].map(y => {
+                      const compYear = getComputedYear();
+                      const disabled = compYear > 0 && y !== compYear;
+                      return (
+                        <option key={y} value={y} disabled={disabled}>
+                          {y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}
 
-              {step === 4 && (
+              {step === 5 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What is your regulation?</label>
                   <select
@@ -195,20 +266,6 @@ export default function OnboardingPage() {
                   >
                     <option value="">— Select Regulation —</option>
                     {['R17', 'R19', 'R20', 'R21', 'R22', 'R23', 'R2021', 'R2017'].map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {step === 5 && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <label className="block text-sm text-[#ECECEA] mb-1.5">Admission / Batch Year</label>
-                  <select
-                    value={formData.batchYear}
-                    onChange={(e) => setFormData({...formData, batchYear: e.target.value})}
-                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
-                  >
-                    <option value="">— Select Batch Year —</option>
-                    {['2020-2024', '2021-2025', '2022-2026', '2023-2027', '2024-2028', '2025-2029'].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               )}
@@ -235,11 +292,15 @@ export default function OnboardingPage() {
                   <input
                     type="text"
                     value={formData.rollNo}
-                    onChange={(e) => setFormData({...formData, rollNo: e.target.value.toUpperCase()})}
+                    onChange={(e) => {
+                      setFormData({...formData, rollNo: e.target.value.toUpperCase()});
+                      setRollError(validateRollNo(e.target.value.toUpperCase()));
+                    }}
                     placeholder="e.g. 21X15A0501"
-                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
+                    className={`w-full bg-[#1F1F1E] border ${rollError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
                     required
                   />
+                  {rollError && <p className="text-red-500 text-xs mt-1.5">{rollError}</p>}
                 </div>
               )}
             </div>

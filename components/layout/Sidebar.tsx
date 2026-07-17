@@ -5,12 +5,14 @@ import { SidebarNavItem } from './SidebarNavItem';
 import { SidebarRecentChats } from './SidebarRecentChats';
 import { SidebarUserFooter } from './SidebarUserFooter';
 import { useSidebar } from '@/context/SidebarContext';
+import { useAuth } from '@/context/AuthContext';
 import { Plus, Search, PanelLeft } from 'lucide-react';
 import Link from 'next/link';
 import {SidebarProps } from '@/lib/types';
 
 export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   const { openSearch } = useSidebar();
+  const { user } = useAuth();
 
   const isPaperRole = ['faculty', 'admin', 'super_admin', 'super-admin'].includes(role);
 
@@ -19,6 +21,8 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       setIsOpen(false);
     }
   };
+
+  const displayTitle = user?.college?.shortName || user?.college?.name || 'StudyMate';
 
   return (
     <div
@@ -30,8 +34,8 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
     >
       {/* Header: Logo + Search + Close toggle */}
       <div className="flex items-center justify-between px-3 py-3">
-        <h1 className="pl-1 text-[16px] font-medium tracking-wide text-[#ECECEA]">
-          StudyMate
+        <h1 className="pl-1 text-[16px] font-medium tracking-wide text-[#ECECEA] truncate">
+          {displayTitle}
         </h1>
 
         <div className="flex items-center gap-1.5">
@@ -80,6 +84,9 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       {/* Footer */}
       <div className="relative mt-auto border-t border-[#2E2E2C] px-3 py-3">
         <SidebarUserFooter />
+        <div className="mt-2 text-center">
+          <span className="text-[10px] text-[#5A5A58]">Powered by StudyMate</span>
+        </div>
       </div>
     </div>
   );
