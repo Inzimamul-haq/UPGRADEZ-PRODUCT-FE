@@ -8,6 +8,7 @@ import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
+import { QuestionsPanel } from './QuestionsPanel';
 import api from '@/lib/api';
 import { SessionData, ChatContainerProps, PaperKind } from "@/lib/types";
 import { CHAT_MESSAGES } from '@/lib/messages';
@@ -89,6 +90,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
   const [chatId, setChatId] = useState<string | undefined>(initialSessionId);
+  const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
+  const [resolvedQuestions, setResolvedQuestions] = useState<{ id: string; text: string }[]>([]);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
@@ -181,6 +185,11 @@ useEffect(() => {
           toast.info('Exam paper already assigned for this session.');
         }
 
+        setResolvedPaperId(chat.paperId || null);
+        if (chat.paper?.questions) {
+          setResolvedQuestions(chat.paper.questions.map((q: any) => ({ id: q.id, text: q.questionText || q.text })));
+        }
+
         setMessages(mapped);
       } catch (error) {
         console.error('Failed to load existing chat', error);
@@ -203,6 +212,15 @@ useEffect(() => {
             paperKind: 'EXAM_PAPER',
             hasLinkedIQ: false,
           });
+
+          setResolvedPaperId(initialPaperId);
+          if (data.questions) {
+            setResolvedQuestions(data.questions.map((q: any) => ({
+              id: q.id,
+              text: q.questionText || q.text,
+            })));
+          }
+
           setMessages([{
             id: crypto.randomUUID(),
             role: 'assistant',
@@ -234,6 +252,25 @@ useEffect(() => {
             role: 'assistant',
             content: `Hello! 👋 Continuing your study session for **${data.subject.name}** — ${initialExamType}. What would you like to ask?`,
           }]);
+          
+          if (!isFaculty) {
+            try {
+              const res = await api.get('/api/question-papers/resolve', {
+                params: { subjectId: initialSubjectId, examType: initialExamType }
+              });
+              if (res.data.success && res.data.data.paperId) {
+                setResolvedPaperId(res.data.data.paperId);
+                if (res.data.data.questions) {
+                  setResolvedQuestions(res.data.data.questions.map((q: any) => ({
+                    id: q.id,
+                    text: q.questionText || q.text
+                  })));
+                }
+              }
+            } catch (err) {
+              console.error('Failed to resolve paper for cohort', err);
+            }
+          }
         } catch (error) {
           console.error('Failed to load subject context', error);
         }
@@ -268,6 +305,24 @@ useEffect(() => {
 
     if (!isFaculty) {
       setSessionData({ ...base, paperKind: 'EXAM_PAPER' });
+      
+      try {
+        const res = await api.get('/api/question-papers/resolve', {
+          params: { subjectId: data.subject.id, examType: data.examType }
+        });
+        if (res.data.success && res.data.data.paperId) {
+          setResolvedPaperId(res.data.data.paperId);
+          if (res.data.data.questions) {
+            setResolvedQuestions(res.data.data.questions.map((q: any) => ({
+              id: q.id,
+              text: q.questionText || q.text
+            })));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve paper for cohort', err);
+      }
+
       setMessages([pushMsg(
         CHAT_MESSAGES.studentWelcome(
           data.subject.name,
@@ -603,9 +658,16 @@ useEffect(() => {
         <ChatHeader
           subjectName={sessionData?.subjectName ?? 'Study Session'}
           examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
-          questionsToday={!isFaculty ? questionsToday : 0}
+          paperResolved={!!resolvedPaperId || !!initialPaperId}
+          onOpenQuestions={() => setIsPanelOpen(true)}
         />
       )}
+
+      <QuestionsPanel 
+        isOpen={isPanelOpen} 
+        onClose={() => setIsPanelOpen(false)} 
+        questions={resolvedQuestions} 
+      />
 
       <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
 

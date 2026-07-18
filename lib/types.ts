@@ -68,7 +68,8 @@ export interface ChatInputProps {
 export interface ChatHeaderProps {
   subjectName: string;
   examType: string;
-  questionsToday: number;
+  paperResolved: boolean;
+  onOpenQuestions: () => void;
 }
 
 export interface Question {
