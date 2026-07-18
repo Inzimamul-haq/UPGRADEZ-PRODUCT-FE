@@ -187,7 +187,11 @@ useEffect(() => {
 
         setResolvedPaperId(chat.paperId || null);
         if (chat.paper?.questions) {
-          setResolvedQuestions(chat.paper.questions.map((q: any) => ({ id: q.id, text: q.questionText || q.text })));
+          setResolvedQuestions(chat.paper.questions.map((q: any) => ({ 
+            id: q.id, 
+            text: q.questionText || q.text,
+            marks: q.marks
+          })));
         }
 
         setMessages(mapped);
@@ -218,6 +222,7 @@ useEffect(() => {
             setResolvedQuestions(data.questions.map((q: any) => ({
               id: q.id,
               text: q.questionText || q.text,
+              marks: q.marks,
             })));
           }
 
@@ -263,7 +268,8 @@ useEffect(() => {
                 if (res.data.data.questions) {
                   setResolvedQuestions(res.data.data.questions.map((q: any) => ({
                     id: q.id,
-                    text: q.questionText || q.text
+                    text: q.questionText || q.text,
+                    marks: q.marks
                   })));
                 }
               }
@@ -292,6 +298,8 @@ useEffect(() => {
   }) => {
     setShowOverlay(false);
     setSessionLocked(false);
+    setResolvedPaperId(null);
+    setResolvedQuestions([]);
 
     const base: SessionData = {
       ...data,
@@ -315,7 +323,8 @@ useEffect(() => {
           if (res.data.data.questions) {
             setResolvedQuestions(res.data.data.questions.map((q: any) => ({
               id: q.id,
-              text: q.questionText || q.text
+              text: q.questionText || q.text,
+              marks: q.marks
             })));
           }
         }
@@ -499,6 +508,8 @@ useEffect(() => {
       setSessionLocked(false);
       setSessionData(null);
       setMessages([]);
+      setResolvedPaperId(null);
+      setResolvedQuestions([]);
       setShowOverlay(true);
       return;
     }

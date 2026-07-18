@@ -77,6 +77,7 @@ export interface Question {
   paper_id: string;
   question_text: string;
   mark_type: string;
+  marks: number;
 }
 
 export interface ChatSession {

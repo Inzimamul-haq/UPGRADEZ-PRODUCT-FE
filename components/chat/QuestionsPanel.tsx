@@ -1,10 +1,11 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { cleanQuestionText, getMarksColor } from '@/lib/utils';
 
 interface QuestionsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  questions: { id: string; text: string }[];
+  questions: { id: string; text: string; marks?: number }[];
 }
 
 export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelProps) {
@@ -25,7 +26,16 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
         }`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#3A3A38]">
-          <h2 className="text-[15px] font-medium text-[#ECECEA]">Paper Questions</h2>
+          <div>
+            <h2 className="text-[15px] font-medium text-[#ECECEA]">Paper Questions</h2>
+            {questions.length > 0 && (
+              <div className="flex items-center gap-3 mt-1.5 text-[11px]">
+                <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-green-500"></div> &le; 5 Marks</span>
+                <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-orange-500"></div> &le; 10 Marks</span>
+                <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-red-500"></div> 11+ Marks</span>
+              </div>
+            )}
+          </div>
           <button 
             onClick={onClose}
             className="text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
@@ -41,8 +51,8 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
             questions.map((q, i) => (
               <div key={q.id || i} className="bg-[#2C2C2A] p-4 rounded-xl border border-[#3A3A38]">
                 <p className="text-[13px] text-[#ECECEA] leading-relaxed">
-                  <span className="text-orange-500 font-medium mr-2">Q{i + 1}.</span>
-                  {q.text}
+                  <span className={`font-medium mr-2 ${getMarksColor(q.marks)}`}>Q{i + 1}.</span>
+                  {cleanQuestionText(q.text)}
                 </p>
               </div>
             ))

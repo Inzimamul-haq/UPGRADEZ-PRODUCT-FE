@@ -48,6 +48,15 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
             Assigned by {paper.creator.name}
           </p>
         )}
+        
+        {/* Legend for question marks */}
+        {!loading && questions.length > 0 && (
+          <div className="flex items-center gap-4 mt-4 text-[12px]">
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-green-500"></div> &le; 5 Marks</span>
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-orange-500"></div> &le; 10 Marks</span>
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-red-500"></div> 11+ Marks</span>
+          </div>
+        )}
       </div>
 
 
