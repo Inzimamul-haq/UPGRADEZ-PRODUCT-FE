@@ -34,6 +34,9 @@ export function cleanQuestionText(text: string): string {
   // Also remove standalone "2 Marks" at the end if there's a dash before it like "- 2 Marks"
   cleaned = cleaned.replace(/\s*-\s*\d+\s*[Mm]arks?\s*$/g, '');
   
+  // Strip the leading question number if it exists (e.g. "1. ") since QuestionRow already prepends Q1
+  cleaned = cleaned.replace(/^\s*\d+\.\s*/, '');
+  
   return cleaned.trim();
 }
 

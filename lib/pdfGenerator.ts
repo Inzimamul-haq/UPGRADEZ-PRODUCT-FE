@@ -1,95 +1,143 @@
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export function generateQuestionPaperPDF({ paper, assignment, questions, subject }: any) {
   const doc = new jsPDF();
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(paper.examType.toUpperCase().replace(/\s+/g, ''));
 
-  const hasParts = questions.some((q: any) => q.part);
-  
-  const partA = hasParts ? questions.filter((q: any) => q.part === 'A') : questions.slice(0, 5);
-  const partB = hasParts ? questions.filter((q: any) => q.part === 'B') : (isCAT ? questions.slice(5, 8) : questions.slice(5, 10));
-  const partC = hasParts ? questions.filter((q: any) => q.part === 'C') : (isCAT ? questions.slice(8, 9) : questions.slice(10, 11));
+  // Separate questions by part based on extraction
+  const partA = questions.filter((q: any) => q.part === 'A');
+  const partB = questions.filter((q: any) => q.part === 'B');
+  const partC = questions.filter((q: any) => q.part === 'C');
+
+  // Fallbacks if part tags are missing but total questions exist
+  if (partA.length === 0 && questions.length > 0) {
+    if (isCAT) {
+      partA.push(...questions.slice(0, 5));
+      partB.push(...questions.slice(5));
+    } else {
+      partA.push(...questions.slice(0, 10));
+      partB.push(...questions.slice(10, 15));
+      partC.push(...questions.slice(15));
+    }
+  }
 
   const totalMarks = isCAT ? 50 : 100;
-  const duration = isCAT ? '1.5 Hours' : '3 Hours';
+  const duration = isCAT ? '1.5 Hrs' : '03 Hrs';
+  const examDate = paper.examDate ? new Date(paper.examDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
 
-  let y = 15;
+  let y = 10;
 
-  // Header
-  doc.setFontSize(14);
-  doc.text("C. Abdul Hakeem College of Engineering", 105, y, { align: 'center' });
-  y += 10;
+  // Top right regulation
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text("Regulation: 2021", 195, y, { align: 'right' });
+  y += 3;
 
+  // Calculate marks string for table header if we can sum it up
+  // Or just use placeholders
+  const partAMarksSum = partA.reduce((sum: number, q: any) => sum + (q.marks || 2), 0);
+  const partBMarksSum = partB.reduce((sum: number, q: any) => sum + (q.marks || (isCAT ? 20 : 13)), 0) / (partB.length > 0 ? (partB[0].text.toLowerCase().includes('or') ? 2 : 1) : 1);
+
+  // Outer Header Box using autoTable
+  autoTable(doc, {
+    startY: y,
+    theme: 'plain',
+    styles: { lineWidth: 0.1, lineColor: 0, cellPadding: 2, fontSize: 10, textColor: 0 },
+    columnStyles: {
+      0: { cellWidth: 30, halign: 'center', valign: 'middle' }, // Logo placeholder
+      1: { halign: 'center', valign: 'middle' },
+      2: { cellWidth: 40, halign: 'left' }
+    },
+    body: [
+      [
+        { content: '[ LOGO ]', rowSpan: 2 },
+        { content: 'C. Abdul Hakeem College of Engineering and Technology\nDegree/Branch: Department Of B.E.(' + (assignment.assignedToBranch || 'CSE') + ')', styles: { fontStyle: 'bold' } },
+        { content: `Date: ${examDate}\nMarks: ${totalMarks}\nDuration: ${duration}` }
+      ],
+      [
+        { content: `Academic Year: ${paper.academicYear}\nSub Code & Name: ${subject.code}/${subject.name}`, styles: { halign: 'left' } },
+        { content: `Year/Sem/Sec: ${assignment.assignedToYear}/-/${assignment.assignedToSection || '-'}\nExam: ${paper.examType}`, styles: { halign: 'left' } }
+      ]
+    ]
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 5;
+
+  // Center instruction
   doc.setFontSize(11);
-  doc.text(`Exam Type: ${paper.examType}`, 14, y);
-  doc.text(`Academic Year: ${paper.academicYear}`, 140, y);
-  y += 7;
+  doc.setFont("helvetica", "bold");
+  doc.text("Answer All the Questions", 105, y, { align: 'center' });
+  y += 5;
 
-  doc.text(`Subject: ${subject.name} (${subject.code})`, 14, y);
-  y += 7;
+  // Generic Part Renderer
+  const renderPart = (partName: string, partQuestions: any[], startIndex: number, marksFormula: string) => {
+    if (!partQuestions || partQuestions.length === 0) return startIndex;
 
-  doc.text(`Department: ${subject.department || '-'}`, 14, y);
-  y += 7;
-
-  doc.text(`Branch: ${assignment.assignedToBranch}`, 14, y);
-  doc.text(`Year: ${assignment.assignedToYear}`, 100, y);
-  doc.text(`Section: ${assignment.assignedToSection || '-'}`, 150, y);
-  y += 7;
-
-  doc.text(`Total Marks: ${totalMarks}`, 14, y);
-  doc.text(`Duration: ${duration}`, 140, y);
-  y += 12;
-
-  // PART A
-  doc.setFontSize(12);
-  doc.text("PART - A (10 Marks)", 14, y);
-  y += 6;
-  doc.setFontSize(10);
-  doc.text("Answer ALL Questions", 14, y);
-  y += 8;
-
-  partA.forEach((q: any, i: number) => {
-    const lines = doc.splitTextToSize(`${i + 1}. ${q.text}`, 180);
-    doc.text(lines, 14, y);
-    y += 6 * lines.length + 2;
-  });
-
-  // PART B
-  y += 4;
-  if (y > 270) { doc.addPage(); y = 20; }
-  doc.setFontSize(12);
-  doc.text(`PART - B (${isCAT ? 36 : 65} Marks)`, 14, y);
-  y += 6;
-  doc.setFontSize(10);
-  doc.text(isCAT ? "Answer ANY THREE Questions" : "Answer ANY FIVE Questions", 14, y);
-  y += 8;
-
-  partB.forEach((q: any, i: number) => {
-    const lines = doc.splitTextToSize(`${i + 6}. ${q.text}`, 180);
-    if (y + (6 * lines.length) > 280) { doc.addPage(); y = 20; }
-    doc.text(lines, 14, y);
-    y += 6 * lines.length + 4;
-  });
-
-  // PART C
-  if (partC.length > 0) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Part ${partName} (${marksFormula})`, 105, y, { align: 'center' });
     y += 4;
-    if (y > 270) { doc.addPage(); y = 20; }
-    doc.setFontSize(12);
-    doc.text(`PART - C (${isCAT ? 14 : 15} Marks)`, 14, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.text("Answer the following", 14, y);
-    y += 8;
 
-    partC.forEach((q: any, i: number) => {
-      const lines = doc.splitTextToSize(`${partA.length + partB.length + i + 1}. ${q.text}`, 180);
-      if (y + (6 * lines.length) > 280) { doc.addPage(); y = 20; }
-      doc.text(lines, 14, y);
-      y += 6 * lines.length + 4;
+    const tableBody: any[] = [];
+    let qIdx = startIndex;
+
+    for (let i = 0; i < partQuestions.length; i++) {
+      const q = partQuestions[i];
+      
+      // If Part B or C has OR questions, they might be stored sequentially or joined
+      // Let's assume standard Q. No handling
+      
+      // If we detect an "OR" string or if we are alternating a/b manually
+      const isOr = q.text.toUpperCase().trim() === 'OR';
+      
+      if (isOr) {
+        tableBody.push([{ content: 'OR', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' } }]);
+      } else {
+        // If it's a paired question (like 11.a and 11.b)
+        // Since we don't have the exact a/b parsing, we'll just number them sequentially for now
+        // or check if it matches a paired pattern
+        
+        let qNumStr = `${qIdx}.`;
+        
+        // Very basic OR pairing if we know it's Part B and it's every two questions with OR in between
+        // We'll leave it as simple numbering for robustness if no "OR" string is found
+        
+        tableBody.push([
+          { content: qNumStr, styles: { halign: 'center' } },
+          { content: q.text },
+          { content: '-', styles: { halign: 'center' } }, // CO placeholder
+          { content: '-', styles: { halign: 'center' } }  // RBT placeholder
+        ]);
+        qIdx++;
+      }
+    }
+
+    autoTable(doc, {
+      startY: y,
+      theme: 'grid',
+      styles: { lineColor: 0, lineWidth: 0.1, textColor: 0, fontSize: 10 },
+      headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: 'bold' },
+      head: [['Q. No.', 'Questions', 'COs', 'RBT Level']],
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 15 },
+        3: { cellWidth: 25 }
+      },
+      body: tableBody,
+      margin: { top: 20 }
     });
-  }
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+    return qIdx;
+  };
+
+  let qIndex = 1;
+  qIndex = renderPart('A', partA, qIndex, isCAT ? `5 x 2 = 10` : `10 x 2 = 20`);
+  qIndex = renderPart('B', partB, qIndex, isCAT ? `2 x 20 = 40` : `5 x 13 = 65`);
+  qIndex = renderPart('C', partC, qIndex, isCAT ? `` : `1 x 15 = 15`);
 
   doc.save(`${subject.code}_${paper.examType}_${paper.academicYear}.pdf`);
 }

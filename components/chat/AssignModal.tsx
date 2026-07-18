@@ -87,23 +87,32 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
     for (const line of lines) {
       const trimmed = line.trim();
       
-      const partMatch = trimmed.match(/\*\*Part\s+([A-Z])\*\*/i);
+      // Match Part headers like "**Part A**", "Part A (10 x 2 = 20 Marks)", "**Part B (2 x 13 = 26)**"
+      const partMatch = trimmed.match(/\*?\*?Part\s+([A-Z])(?:\s*\(.*?\))?\*?\*?/i);
       if (partMatch) {
         currentPart = partMatch[1].toUpperCase();
+        // If we were building a question, save it
+        if (currentQ) {
+          questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
+          currentQ = '';
+        }
         continue;
       }
 
+      // Try to find standalone section marks if provided
       const marksMatch = trimmed.match(/(\d+)\s*Marks/i);
       if (marksMatch && !/^\s*\d+\.\s+/.test(trimmed)) {
         currentMarks = parseInt(marksMatch[1], 10);
       }
 
-      // Strip other instructional lines
+      // Strip other instructional lines:
+      // "Section A", "Answer all the questions", "Answer any five", "Note:", "Marks:"
       if (/^\s*\**Section\s+[A-Z]\**/i.test(trimmed) ||
           /answer\s+(all|any|the\s+following)/i.test(trimmed) ||
           /^Note:/i.test(trimmed) ||
           /^Marks:/i.test(trimmed) ||
-          /^\*\*\*+/.test(trimmed)) {
+          /^\*\*\*+/.test(trimmed) ||
+          /^\s*(OR|or|Or)\s*$/.test(trimmed)) {
         if (currentQ) {
           questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
           currentQ = '';
@@ -111,17 +120,18 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
         continue;
       }
       
-      const match = trimmed.match(/^\s*\d+\.\s+(.*)/);
+      const match = trimmed.match(/^\s*(\d+\.)\s*(.*)/);
       if (match) {
         if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-        currentQ = match[1];
+        // Include Q.No in the text as user requested: "only question text having Qno and Mark thats all"
+        currentQ = match[1] + ' ' + match[2];
       } else if (currentQ && trimmed) {
         currentQ += '\n' + trimmed;
       }
     }
     if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
 
-    return questions;
+    return questions.filter(q => q.text.trim().length > 0);
   };
 
   const handleSubmit = async () => {
