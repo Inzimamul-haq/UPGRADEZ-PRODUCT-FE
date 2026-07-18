@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, Upload, X } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
+import { UploadQPModal } from '@/components/chat/UploadQPModal';
 import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
 import { useAuth } from '@/context/AuthContext';
 
@@ -75,6 +76,8 @@ export default function PapersPage() {
     paperId: string; currentDate: string | null; subjectName: string; examType: string;
   } | null>(null);
 
+  // Upload Q/P modal
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -143,51 +146,75 @@ export default function PapersPage() {
   // ─── Subject list ──────────────────────────────────────────────────────────
   if (!selectedSubject) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
-            <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
+      <>
+        <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
+              <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 bg-[#2C2C2A] border border-[#3A3A38] text-[#ECECEA] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#333331] transition-colors"
+              >
+                <Upload size={14} /> Upload Q/P
+              </button>
+              <Link
+                href={`/chat/new?role=${currentRole}`}
+                className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
+              >
+                <FileText size={14} /> Generate
+              </Link>
+            </div>
           </div>
-          <Link
-            href={`/chat/new?role=${currentRole}`}
-            className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
-          >
-            <FileText size={14} /> Generate
-          </Link>
+
+          <div className="mt-6 flex flex-col gap-2">
+            {loadingSubjects ? (
+              <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
+            ) : subjects.length === 0 ? (
+              <div className="flex flex-col items-center py-14">
+                <FileText size={28} className="text-[#3A3A38] mb-3" />
+                <p className="text-[14px] text-[#5A5A58]">No papers generated yet</p>
+                <p className="text-[12px] text-[#3A3A38] mt-1">Use Generate to create your first paper</p>
+              </div>
+            ) : (
+              subjects.map(subject => (
+                <button
+                  key={subject.id}
+                  onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
+                  className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
+                >
+                  <div>
+                    <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
+                    <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
+                    <p className="text-[12px] text-[#5A5A58] mt-1">
+                      {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors" />
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-2">
-          {loadingSubjects ? (
-            <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
-          ) : subjects.length === 0 ? (
-            <div className="flex flex-col items-center py-14">
-              <FileText size={28} className="text-[#3A3A38] mb-3" />
-              <p className="text-[14px] text-[#5A5A58]">No papers generated yet</p>
-              <p className="text-[12px] text-[#3A3A38] mt-1">Use Generate to create your first paper</p>
-            </div>
-          ) : (
-            subjects.map(subject => (
-              <button
-                key={subject.id}
-                onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
-                className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
-              >
-                <div>
-                  <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
-                  <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
-                  <p className="text-[12px] text-[#5A5A58] mt-1">
-                    {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors" />
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+        {/* Upload Q/P Modal */}
+        {showUploadModal && (
+          <UploadQPModal
+            onClose={() => setShowUploadModal(false)}
+            onSuccess={async () => {
+              try {
+                const res = await api.get('/api/question-papers');
+                setSubjects(res.data.subjects || []);
+              } catch {}
+            }}
+          />
+        )}
+      </>
     );
   }
+
 
   // ─── Papers list ───────────────────────────────────────────────────────────
   return (

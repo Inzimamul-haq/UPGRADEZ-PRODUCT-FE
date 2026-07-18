@@ -6,10 +6,15 @@ import { StudentTableRow } from '@/components/admin/StudentTableRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/hooks/useAuth';
 
 import { BRANCH_OPTIONS } from '@/lib/constants';
 
 export default function AdminStudentsPage() {
+  const { user } = useAuth();
+  const isEngineering = user?.college?.name?.toLowerCase().includes('engineering') ?? true;
+  const maxYears = isEngineering ? 4 : 3;
+
   const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
   const [batchYearFilter, setBatchYearFilter] = useState('All');
@@ -86,7 +91,7 @@ export default function AdminStudentsPage() {
   };
 
 
-  const availablePromoteYears = ['1', '2', '3', '4'].filter(y => {
+  const availablePromoteYears = Array.from({ length: maxYears }, (_, i) => String(i + 1)).filter(y => {
     return parseInt(y) > parseInt(bulkYear);
   });
 
@@ -143,10 +148,9 @@ export default function AdminStudentsPage() {
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           <option value="All">All Years</option>
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
+          {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => (
+            <option key={y} value={String(y)}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>
+          ))}
         </select>
         
         <select 
@@ -158,9 +162,12 @@ export default function AdminStudentsPage() {
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           <option value="All">All Batches</option>
-          {['2020-2024', '2021-2025', '2022-2026', '2023-2027', '2024-2028', '2025-2029'].map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
+          {Array.from({ length: 6 }, (_, i) => {
+            const startYear = 2020 + i;
+            const endYear = startYear + maxYears;
+            const batch = `${startYear}-${endYear}`;
+            return <option key={batch} value={batch}>{batch}</option>;
+          })}
         </select>
 
         <select 
@@ -318,7 +325,8 @@ export default function AdminStudentsPage() {
                 >
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
-                  <option value="3">3rd Year</option>
+                  {maxYears >= 3 && <option value="3">3rd Year</option>}
+                  {maxYears >= 4 && <option value="4">4th Year</option>}
                 </select>
               </div>
 

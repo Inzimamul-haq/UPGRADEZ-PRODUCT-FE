@@ -13,6 +13,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState<any[]>([]);
+  const [regulations, setRegulations] = useState<string[]>([]);
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -27,6 +28,9 @@ export default function OnboardingPage() {
   const [batchError, setBatchError] = useState('');
   const [rollError, setRollError] = useState('');
 
+  const isEngineering = user?.college?.name?.toLowerCase().includes('engineering') ?? true;
+  const maxYears = isEngineering ? 4 : 3;
+
   const validateBatchYear = (val: string) => {
     if (!val) return 'Required';
     const match = val.match(/^(\d{4})\s*-\s*(\d{4})$/);
@@ -34,8 +38,9 @@ export default function OnboardingPage() {
     const start = parseInt(match[1]);
     const end = parseInt(match[2]);
     if (start >= end) return 'End year must be greater than start year';
-    if (end - start > 6) return 'Duration cannot exceed 6 years';
+    if (end - start > maxYears + 2) return `Duration cannot exceed ${maxYears + 2} years`;
     if (start < 2000 || start > 2050) return 'Invalid start year';
+    // Validate exact expected duration if needed? For now just max.
     return '';
   };
 
@@ -52,6 +57,18 @@ export default function OnboardingPage() {
   useEffect(() => {
     api.get('/api/departments').then(res => setDepartments(res.data.departments || []));
   }, []);
+
+  useEffect(() => {
+    if (formData.departmentId && formData.year) {
+      api.get('/api/subjects/regulations', { 
+        params: { departmentId: formData.departmentId, year: formData.year }
+      })
+      .then(res => {
+        setRegulations(res.data.regulations || []);
+      })
+      .catch(() => setRegulations([]));
+    }
+  }, [formData.departmentId, formData.year]);
 
   const handleSkip = () => {
     localStorage.setItem('onboardingSkipped', 'true');
@@ -120,8 +137,8 @@ export default function OnboardingPage() {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth();
     let diff = currentYear - start;
-    if (currentMonth >= 6) diff += 1;
-    return Math.max(1, Math.min(4, diff));
+    if (currentMonth >= 6) diff += 1; // July onwards is next academic year
+    return Math.max(1, Math.min(maxYears, diff));
   };
 
   return (
@@ -227,7 +244,7 @@ export default function OnboardingPage() {
                       setFormData({...formData, batchYear: e.target.value, year: ''});
                       setBatchError('');
                     }}
-                    placeholder="e.g. 2022-2026"
+                    placeholder={isEngineering ? "e.g. 2022-2026" : "e.g. 2022-2025"}
                     className={`w-full bg-[#1F1F1E] border ${batchError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
                   />
                   {batchError && <p className="text-red-500 text-xs mt-1.5">{batchError}</p>}
@@ -243,7 +260,7 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Year —</option>
-                    {[1,2,3,4].map(y => {
+                    {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => {
                       const compYear = getComputedYear();
                       const disabled = compYear > 0 && y !== compYear;
                       return (
@@ -265,8 +282,17 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Regulation —</option>
-                    {['R17', 'R19', 'R20', 'R21', 'R22', 'R23', 'R2021', 'R2017'].map(r => <option key={r} value={r}>{r}</option>)}
+                    {regulations.length > 0 ? (
+                      regulations.map(r => <option key={r} value={r}>{r}</option>)
+                    ) : (
+                      <option value="" disabled>No regulations found for this department & year</option>
+                    )}
                   </select>
+                  {regulations.length === 0 && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Please ask your faculty to upload syllabus with regulations first, or contact admin.
+                    </p>
+                  )}
                 </div>
               )}
 

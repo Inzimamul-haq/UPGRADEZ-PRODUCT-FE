@@ -6,9 +6,6 @@ import { BRANCH_OPTIONS } from "@/lib/constants";
 import api from "@/lib/api";
 import { DepartmentOption, SubjectFormModalProps } from "@/lib/types";
 
-
-const REGULATION_OPTIONS = ["R2021", "R2017"];
-
 export default function SubjectFormModal({
   open,
   mode,
@@ -198,17 +195,12 @@ export default function SubjectFormModal({
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 Regulation
               </label>
-              <select
+              <input
+                placeholder="e.g. R2021"
                 value={regulation}
                 onChange={(e) => setRegulation(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-              >
-                {REGULATION_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+              />
             </div>
           </div>
 

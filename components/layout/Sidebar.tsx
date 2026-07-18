@@ -84,9 +84,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       {/* Footer */}
       <div className="relative mt-auto border-t border-[#2E2E2C] px-3 py-3">
         <SidebarUserFooter />
-        <div className="mt-2 text-center">
-          <span className="text-[10px] text-[#5A5A58]">Powered by StudyMate</span>
-        </div>
+
       </div>
     </div>
   );
