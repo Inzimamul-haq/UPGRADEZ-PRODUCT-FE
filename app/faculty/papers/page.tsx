@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
 import { UploadQPModal } from '@/components/chat/UploadQPModal';
-import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
+import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { useAuth } from '@/context/AuthContext';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
@@ -126,14 +126,21 @@ export default function PapersPage() {
     try {
       const res = await api.get(`/api/question-papers/${paper.id}/questions`);
       const detail: PaperDetail = res.data.paper;
-      generateQuestionPaperPDF({
+      const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
+      const pdfParams = {
         paper: { id: paper.id, examType: paper.examType, academicYear: paper.academicYear, subjectId: selectedSubject?.id || '' },
         assignment: { assignedToYear: null, assignedToBranch: null, assignedToSection: null },
         questions: detail.questions.map(q => ({ text: q.questionText })),
         subject: selectedSubject ? { name: selectedSubject.name, code: selectedSubject.code } : undefined,
         college: user?.college,
         department: user?.department,
-      });
+      };
+      
+      if (isModelOrSemester) {
+        generateModelSemesterPaperPDF(pdfParams);
+      } else {
+        generateQuestionPaperPDF(pdfParams);
+      }
     } catch {
       toast.error('Failed to generate PDF');
     }

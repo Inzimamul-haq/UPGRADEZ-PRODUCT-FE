@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
+import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
@@ -82,6 +82,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
   // Extract questions from raw AI text
   const extractQuestions = (text: string) => {
     const questions: { text: string; part?: string; marks?: number }[] = [];
+    text = text.replace(/\s+OR\s+(b\)|(?:\(b\)))/gi, '\nOR\n$1');
     const lines = text.split('\n');
     let currentQ = '';
     let currentPart = '';
@@ -91,10 +92,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
       if (currentQ) {
         let text = currentQ.trim();
         let marks = currentMarks;
-        const marksMatch = text.match(/(.*?)\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+        const marksMatch = text.match(/\(\s*(\d+)\s*marks?\s*\)/i);
         if (marksMatch) {
-          text = marksMatch[1].trim();
-          marks = parseInt(marksMatch[2], 10);
+          marks = parseInt(marksMatch[1], 10);
         }
         questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
         currentQ = '';
@@ -129,13 +129,6 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
         continue;
       }
       
-      // Preserve "OR" lines
-      if (/^\s*(OR|or|Or)\s*$/.test(trimmed)) {
-        flushQuestion();
-        questions.push({ text: 'OR', part: currentPart || undefined });
-        continue;
-      }
-      
       const match = trimmed.match(/^\s*(?:\d+\.)\s*(.*)/);
       if (match) {
         flushQuestion();
@@ -147,10 +140,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
     if (currentQ) {
       let text = currentQ.trim();
       let marks = currentMarks;
-      const marksMatch = text.match(/(.*?)\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+      const marksMatch = text.match(/\(\s*(\d+)\s*marks?\s*\)/i);
       if (marksMatch) {
-        text = marksMatch[1].trim();
-        marks = parseInt(marksMatch[2], 10);
+        marks = parseInt(marksMatch[1], 10);
       }
       questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
     }
@@ -186,14 +178,21 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
 
       // Download PDF for exam papers
       if (sessionData.paperKind === 'EXAM_PAPER') {
-        generateQuestionPaperPDF({ 
+        const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
+        const pdfParams = { 
           paper, 
           assignment: { ...assignment, assignedToBranch: branch }, 
           questions: savedQ, 
           subject: sessionData.subject,
           college: user?.college,
           department: user?.department
-        });
+        };
+        
+        if (isModelOrSemester) {
+          generateModelSemesterPaperPDF(pdfParams);
+        } else {
+          generateQuestionPaperPDF(pdfParams);
+        }
       }
 
       const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
@@ -301,14 +300,20 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
               <button
                 onClick={() => {
                   const questions = extractQuestions(rawText);
-                  generateQuestionPaperPDF({
+                  const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
+                  const pdfParams = {
                     paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}` },
                     assignment: { assignedToYear: defaultYear || '2', assignedToBranch: branch || 'All', assignedToSection: section || 'All' },
                     questions,
                     subject: sessionData.subject,
                     college: user?.college,
                     department: user?.department
-                  });
+                  };
+                  if (isModelOrSemester) {
+                    generateModelSemesterPaperPDF(pdfParams);
+                  } else {
+                    generateQuestionPaperPDF(pdfParams);
+                  }
                 }}
                 className="flex-1 border border-blue-500/30 text-blue-400 bg-blue-500/10 rounded-xl py-2 text-[13px] hover:bg-blue-500/20 transition-colors flex justify-center items-center gap-1.5"
               >
