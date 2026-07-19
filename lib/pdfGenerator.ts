@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export function generateQuestionPaperPDF({ paper, assignment, questions, subject }: any) {
+export function generateQuestionPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
   const doc = new jsPDF();
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(paper.examType.toUpperCase().replace(/\s+/g, ''));
@@ -38,7 +38,9 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
   // Calculate marks string for table header if we can sum it up
   // Or just use placeholders
   const partAMarksSum = partA.reduce((sum: number, q: any) => sum + (q.marks || 2), 0);
-  const partBMarksSum = partB.reduce((sum: number, q: any) => sum + (q.marks || (isCAT ? 20 : 13)), 0) / (partB.length > 0 ? (partB[0].text.toLowerCase().includes('or') ? 2 : 1) : 1);
+  // If there are OR questions, the sum would be halved. For simplicity, if partB has more than 5 questions in university, it's likely OR.
+  const partBMarksSum = partB.reduce((sum: number, q: any) => sum + (q.marks || (isCAT ? 20 : 13)), 0);
+  const partCMarksSum = partC.reduce((sum: number, q: any) => sum + (q.marks || 15), 0);
 
   // Outer Header Box using autoTable
   autoTable(doc, {
@@ -53,12 +55,12 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
     body: [
       [
         { content: '[ LOGO ]', rowSpan: 2 },
-        { content: 'C. Abdul Hakeem College of Engineering and Technology\nDegree/Branch: Department Of B.E.(' + (assignment.assignedToBranch || 'CSE') + ')', styles: { fontStyle: 'bold' } },
+        { content: `${college?.name || 'College Name'}\nDegree/Branch: Department Of ${department?.branch || assignment.assignedToBranch || 'Branch'}(${department?.name || 'Department'})`, styles: { fontStyle: 'bold' } },
         { content: `Date: ${examDate}\nMarks: ${totalMarks}\nDuration: ${duration}` }
       ],
       [
         { content: `Academic Year: ${paper.academicYear}\nSub Code & Name: ${subject.code}/${subject.name}`, styles: { halign: 'left' } },
-        { content: `Year/Sem/Sec: ${assignment.assignedToYear}/-/${assignment.assignedToSection || '-'}\nExam: ${paper.examType}`, styles: { halign: 'left' } }
+        { content: `Year/Sec: ${assignment.assignedToYear || '-'}/${assignment.assignedToSection || '-'}\nExam: ${paper.examType}`, styles: { halign: 'left' } }
       ]
     ]
   });
@@ -134,10 +136,26 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
     return qIdx;
   };
 
+  const formatPartMarks = (qs: any[], defaultFormula: string) => {
+    if (!qs || qs.length === 0) return defaultFormula;
+    const firstQ = qs[0];
+    if (firstQ.marks) {
+       // Just showing total marks for the part or dynamically calculating based on questions
+       // If it's Part B in University, it might have ORs, so just show the marks per question
+       const hasOr = qs.some((q:any) => q.text.toUpperCase().trim() === 'OR');
+       let numQs = qs.length;
+       if (hasOr) {
+           numQs = Math.ceil(qs.length / 2);
+       }
+       return `${numQs} x ${firstQ.marks} = ${numQs * firstQ.marks}`;
+    }
+    return defaultFormula;
+  };
+
   let qIndex = 1;
-  qIndex = renderPart('A', partA, qIndex, isCAT ? `5 x 2 = 10` : `10 x 2 = 20`);
-  qIndex = renderPart('B', partB, qIndex, isCAT ? `2 x 20 = 40` : `5 x 13 = 65`);
-  qIndex = renderPart('C', partC, qIndex, isCAT ? `` : `1 x 15 = 15`);
+  qIndex = renderPart('A', partA, qIndex, formatPartMarks(partA, isCAT ? `5 x 2 = 10` : `10 x 2 = 20`));
+  qIndex = renderPart('B', partB, qIndex, formatPartMarks(partB, isCAT ? `2 x 20 = 40` : `5 x 13 = 65`));
+  qIndex = renderPart('C', partC, qIndex, formatPartMarks(partC, isCAT ? `` : `1 x 15 = 15`));
 
   doc.save(`${subject.code}_${paper.examType}_${paper.academicYear}.pdf`);
 }

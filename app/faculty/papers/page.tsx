@@ -58,7 +58,7 @@ const examLabel: Record<string, string> = {
 
 export default function PapersPage() {
   const toast = useToast();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const currentRole = role ?? 'faculty';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -131,6 +131,8 @@ export default function PapersPage() {
         assignment: { assignedToYear: null, assignedToBranch: null, assignedToSection: null },
         questions: detail.questions.map(q => ({ text: q.questionText })),
         subject: selectedSubject ? { name: selectedSubject.name, code: selectedSubject.code } : undefined,
+        college: user?.college,
+        department: user?.department,
       });
     } catch {
       toast.error('Failed to generate PDF');

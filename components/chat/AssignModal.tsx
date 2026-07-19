@@ -7,11 +7,14 @@ import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
 
+import { useAuth } from '@/context/AuthContext';
+
 export interface AssignModalExtendedProps extends AssignModalProps {
   chatId?: string;
 }
 
 export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }: AssignModalExtendedProps) {
+  const { user } = useAuth();
   // Flow 2B gate state
   const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId;
 
@@ -84,18 +87,28 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
     let currentPart = '';
     let currentMarks = 0;
 
+    const flushQuestion = () => {
+      if (currentQ) {
+        let text = currentQ.trim();
+        let marks = currentMarks;
+        const marksMatch = text.match(/(.*?)\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+        if (marksMatch) {
+          text = marksMatch[1].trim();
+          marks = parseInt(marksMatch[2], 10);
+        }
+        questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
+        currentQ = '';
+      }
+    };
+
     for (const line of lines) {
       const trimmed = line.trim();
       
       // Match Part headers like "**Part A**", "Part A (10 x 2 = 20 Marks)", "**Part B (2 x 13 = 26)**"
       const partMatch = trimmed.match(/\*?\*?Part\s+([A-Z])(?:\s*\(.*?\))?\*?\*?/i);
       if (partMatch) {
+        flushQuestion();
         currentPart = partMatch[1].toUpperCase();
-        // If we were building a question, save it
-        if (currentQ) {
-          questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-          currentQ = '';
-        }
         continue;
       }
 
@@ -111,25 +124,36 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
           /answer\s+(all|any|the\s+following)/i.test(trimmed) ||
           /^Note:/i.test(trimmed) ||
           /^Marks:/i.test(trimmed) ||
-          /^\*\*\*+/.test(trimmed) ||
-          /^\s*(OR|or|Or)\s*$/.test(trimmed)) {
-        if (currentQ) {
-          questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-          currentQ = '';
-        }
+          /^\*\*\*+/.test(trimmed)) {
+        flushQuestion();
         continue;
       }
       
-      const match = trimmed.match(/^\s*(\d+\.)\s*(.*)/);
+      // Preserve "OR" lines
+      if (/^\s*(OR|or|Or)\s*$/.test(trimmed)) {
+        flushQuestion();
+        questions.push({ text: 'OR', part: currentPart || undefined });
+        continue;
+      }
+      
+      const match = trimmed.match(/^\s*(?:\d+\.)\s*(.*)/);
       if (match) {
-        if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-        // Include Q.No in the text as user requested: "only question text having Qno and Mark thats all"
-        currentQ = match[1] + ' ' + match[2];
+        flushQuestion();
+        currentQ = match[1];
       } else if (currentQ && trimmed) {
         currentQ += '\n' + trimmed;
       }
     }
-    if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
+    if (currentQ) {
+      let text = currentQ.trim();
+      let marks = currentMarks;
+      const marksMatch = text.match(/(.*?)\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+      if (marksMatch) {
+        text = marksMatch[1].trim();
+        marks = parseInt(marksMatch[2], 10);
+      }
+      questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
+    }
 
     return questions.filter(q => q.text.trim().length > 0);
   };
@@ -162,7 +186,14 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
 
       // Download PDF for exam papers
       if (sessionData.paperKind === 'EXAM_PAPER') {
-        generateQuestionPaperPDF({ paper, assignment: { ...assignment, assignedToBranch: branch }, questions: savedQ, subject: sessionData.subject });
+        generateQuestionPaperPDF({ 
+          paper, 
+          assignment: { ...assignment, assignedToBranch: branch }, 
+          questions: savedQ, 
+          subject: sessionData.subject,
+          college: user?.college,
+          department: user?.department
+        });
       }
 
       const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
@@ -274,7 +305,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
                     paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}` },
                     assignment: { assignedToYear: defaultYear || '2', assignedToBranch: branch || 'All', assignedToSection: section || 'All' },
                     questions,
-                    subject: sessionData.subject
+                    subject: sessionData.subject,
+                    college: user?.college,
+                    department: user?.department
                   });
                 }}
                 className="flex-1 border border-blue-500/30 text-blue-400 bg-blue-500/10 rounded-xl py-2 text-[13px] hover:bg-blue-500/20 transition-colors flex justify-center items-center gap-1.5"
