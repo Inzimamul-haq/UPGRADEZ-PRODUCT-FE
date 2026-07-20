@@ -16,8 +16,11 @@ export interface AssignModalExtendedProps extends AssignModalProps {
 
 export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }: AssignModalExtendedProps) {
   const { user } = useAuth();
-  // Flow 2B gate state
-  const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId;
+  
+  const isUniversity = sessionData.examType.toUpperCase().includes('UNIVERSITY');
+  
+  // Flow 2B gate state (force false for University Exam Papers)
+  const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId && !isUniversity;
 
   const defaultBranch = sessionData.branch || '';
 
@@ -101,7 +104,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
         assignedToSection: section || null,
         rawQuestions: questions,
         kind: sessionData.paperKind || 'EXAM_PAPER',
-        linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ
+        linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !isUniversity
           ? sessionData.linkedIQPaperId || null
           : null,
         examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
@@ -291,11 +294,17 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
-                  <input
-                    readOnly
-                    value={section || 'All Sections'}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
-                  />
+                  {isUniversity && sessionData.paperKind === 'EXAM_PAPER' ? (
+                     <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                       All Sections (Common Paper)
+                     </div>
+                  ) : (
+                    <input
+                      readOnly
+                      value={section || 'All Sections'}
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
+                    />
+                  )}
                 </div>
                 {needsDirectDate && (
                   <div className="flex items-center gap-3">

@@ -157,7 +157,16 @@ export interface ChatMessagesProps {
 
 export interface ChatStepOverlayProps {
   role?: string;
-  onComplete: (data: { year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string }) => void;
+  onComplete: (data: { 
+    year?: string; 
+    branch?: string; 
+    department?: string; 
+    departmentId?: string; 
+    section?: string; 
+    subject: Subject; 
+    examType: string;
+    paperKind?: PaperKind;
+  }) => void;
 }
 
 export interface DiagramCardProps {

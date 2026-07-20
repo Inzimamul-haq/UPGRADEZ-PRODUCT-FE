@@ -295,7 +295,7 @@ useEffect(() => {
 
   // ── Overlay complete ─────────────────────────────────────────────────────
   const handleCompleteOverlay = async (data: {
-    year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string;
+    year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string; paperKind?: PaperKind;
   }) => {
     setShowOverlay(false);
     setSessionLocked(false);
@@ -426,8 +426,35 @@ useEffect(() => {
           { id: 'start_new_session', label: 'Start a new session' },
         ]
       )]);
+    } else if (data.paperKind) {
+      // 3. Paper kind already chosen in overlay (e.g. University)
+      if (data.paperKind === 'IMPORTANT_QUESTIONS') {
+         setSessionData({ ...session, paperKind: 'IMPORTANT_QUESTIONS' });
+         if (hasLinkedIQ) {
+           setSessionLocked(true);
+           setMessages([pushMsg(
+             `I can see important questions are already assigned for **${data.subject.name}** (${data.examType})${iqCreatorName ? ` — published by **${iqCreatorName}**` : ''}.\n\nThere's nothing new to generate for this combination until the next academic cycle.`,
+             [{ id: 'start_new_session', label: 'Start a new session' }]
+           )]);
+         } else {
+           setMessages([
+             pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
+             pushMsg(`Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`)
+           ]);
+         }
+      } else {
+         setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+         const isUniversity = data.examType.toUpperCase().includes('UNIVERSITY');
+         const msgContent = isUniversity 
+            ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
+            : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+         setMessages([
+           pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
+           pushMsg(msgContent)
+         ]);
+      }
     } else if (hasLinkedIQ) {
-      // 3. IQ exists, no exam paper yet
+      // 4. IQ exists, no exam paper yet (Standard branch)
       setMessages([pushMsg(
         `I can see important questions are already assigned for **${data.subject.name}** (${data.examType})${iqCreatorName ? ` — published by **${iqCreatorName}**` : ''}.\n\nWould you like to generate the actual **Exam Paper** now? If you have any concerns about the existing questions, please reach out to them first.`,
         [
@@ -435,7 +462,7 @@ useEffect(() => {
         ]
       )]);
     } else {
-      // 4. Neither exist (Standard branch question)
+      // 5. Neither exist (Standard branch question)
       setMessages([pushMsg(
         `Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.\n\nWhat would you like to do?`,
         [
@@ -458,12 +485,17 @@ useEffect(() => {
 
     if (actionId === 'pick_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+      
+      const isUniversity = sessionData?.examType.toUpperCase().includes('UNIVERSITY');
       const hasIQ = sessionData?.hasLinkedIQ;
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        hasIQ
+
+      const messageContent = isUniversity
+        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
+        : hasIQ
           ? `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
-          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
-      )));
+          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
       return;
     }
 

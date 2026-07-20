@@ -16,9 +16,13 @@ interface ParsedQuestion { questionText: string; marks: number | null }
 
 interface ExistingPaperInfo {
   exists: boolean;
-  creatorName?: string;
+  creatorName?: string | null;
   assignedSections?: string[];
   paperId?: string;
+  otherKindExists?: boolean;
+  otherKindLabel?: string;
+  otherKindCreatorName?: string | null;
+  otherKindAssignedSections?: string[];
 }
 
 interface UploadQPModalProps {
@@ -75,6 +79,15 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   const [parsedQuestions, setParsedQuestions] = useState<ParsedQuestion[]>([]);
   const [usedOCR, setUsedOCR] = useState(false);
 
+  const isUniversityExamPaper = paperKind === 'EXAM_PAPER' && examType === 'UNIVERSITY';
+
+  // ── Lock section to BOTH for University Exam Papers ──────────
+  useEffect(() => {
+    if (isUniversityExamPaper) {
+      setSection('BOTH');
+    }
+  }, [isUniversityExamPaper]);
+
   // ── Load departments on mount ──────────────────────────────────
   useEffect(() => {
     api.get('/api/departments')
@@ -119,20 +132,33 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   // ── Check duplicate whenever key fields change ────────────────────────────
   useEffect(() => {
     setExistingPaper(null);
-    if (!selectedSubject || !examType || !academicYear || !departmentId) return;
+    if (!selectedSubject || !examType || !academicYear || !departmentId || !assignedToYear) return;
     const timer = setTimeout(async () => {
       setCheckingExists(true);
       try {
         const { data } = await api.get('/api/question-papers/check-exists', {
-          params: { subjectId: selectedSubject.id, examType, academicYear, departmentId },
+          params: { subjectId: selectedSubject.id, examType, academicYear, departmentId, paperKind, assignedToYear },
         });
+        // console.log('[UploadQPModal] /check-exists RES:', data);
         setExistingPaper(data);
-      } catch { /* silent */ } finally {
+      } catch (err) { 
+        console.error('[UploadQPModal] /check-exists ERR:', err);
+      } finally {
         setCheckingExists(false);
       }
     }, 600);
     return () => clearTimeout(timer);
-  }, [selectedSubject, examType, academicYear, departmentId]);
+  }, [selectedSubject, examType, academicYear, departmentId, paperKind, assignedToYear]);
+
+  const isSameKindBlocked = !!existingPaper?.exists && (isUniversityExamPaper || !!existingPaper.assignedSections?.includes(section));
+  const isOtherKindBlocked = paperKind === 'IMPORTANT_QUESTIONS' && !!existingPaper?.otherKindExists && (isUniversityExamPaper || !!existingPaper.otherKindAssignedSections?.includes(section));
+  
+  const isBlocked = isSameKindBlocked || isOtherKindBlocked;
+  const showOtherKindInfo = !isBlocked && !!existingPaper?.otherKindExists && (isUniversityExamPaper || !!existingPaper.otherKindAssignedSections?.includes(section));
+
+  const blockedCreatorName = isSameKindBlocked ? existingPaper?.creatorName : existingPaper?.otherKindCreatorName;
+  const blockedSections = isSameKindBlocked ? existingPaper?.assignedSections : existingPaper?.otherKindAssignedSections;
+  const blockedLabel = isSameKindBlocked ? (paperKind === 'EXAM_PAPER' ? 'Exam Paper' : 'Important Questions') : 'Exam Paper';
 
   // ── Step 1 → Step 2 ───────────────────────────────────────────────────────
   const handleProceedToUpload = () => {
@@ -140,13 +166,24 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
     if (!departmentId) { toast.error('Please select a department'); return; }
     if (!academicYear.match(/^\d{4}-\d{2}$/)) { toast.error('Academic year must be YYYY-YY (e.g. 2025-26)'); return; }
 
-    // Block if duplicate for the chosen section (unless BOTH, handled per-section on BE)
-    if (existingPaper?.exists && section !== 'BOTH') {
-      const blocked = existingPaper.assignedSections?.includes(section);
-      if (blocked) {
-        toast.error(`Already uploaded for Section ${section} by Prof. ${existingPaper.creatorName}`);
+    if (isUniversityExamPaper && academicYear === currentAcYear()) {
+      if (!examDate) {
+        toast.error("Exam date is mandatory for current academic year's University Exam Papers.");
         return;
       }
+      const selected = new Date(examDate);
+      selected.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selected.getTime() !== today.getTime()) {
+        toast.error("Exam date must be today's date for current academic year's University Exam Papers.");
+        return;
+      }
+    }
+
+    if (isBlocked) {
+      toast.error(`Already uploaded by Prof. ${blockedCreatorName}`);
+      return;
     }
     setStep(2);
   };
@@ -264,7 +301,8 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                   <select
                     value={section}
                     onChange={e => setSection(e.target.value)}
-                    className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
+                    disabled={isUniversityExamPaper}
+                    className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] disabled:opacity-50"
                   >
                     {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
                     <option value="BOTH">Both A &amp; B</option>
@@ -349,19 +387,29 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                   <Loader2 size={12} className="animate-spin" /> Checking for existing papers…
                 </div>
               )}
-              {!checkingExists && existingPaper?.exists && (
-                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 flex items-start gap-3">
+              {!checkingExists && isBlocked && (
+                <div className="rounded-xl border px-4 py-3 flex items-start gap-3 border-red-500/30 bg-red-500/5">
+                  <AlertTriangle size={15} className="text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[13px] font-medium text-red-400">{blockedLabel} already exists</p>
+                    <p className="text-[12px] text-[#8C8C8A] mt-0.5">
+                      Uploaded by <strong className="text-[#ECECEA]">Prof. {blockedCreatorName}</strong>
+                      {blockedSections?.length && blockedSections[0] !== 'BOTH'
+                        ? ` for Section ${blockedSections.join(', ')}`
+                        : ''}.
+                      {isOtherKindBlocked ? ' No need to upload Important Questions.' : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {!checkingExists && showOtherKindInfo && (
+                <div className="rounded-xl border px-4 py-3 flex items-start gap-3 border-amber-400/20 bg-amber-400/5">
                   <AlertTriangle size={15} className="text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[13px] text-amber-400 font-medium">Paper already exists</p>
+                    <p className="text-[13px] font-medium text-amber-400">{existingPaper?.otherKindLabel} already assigned</p>
                     <p className="text-[12px] text-[#8C8C8A] mt-0.5">
-                      Uploaded by <strong className="text-[#ECECEA]">Prof. {existingPaper.creatorName}</strong>
-                      {existingPaper.assignedSections?.length
-                        ? ` for Section ${existingPaper.assignedSections.join(', ')}`
-                        : ''}.
-                      {section !== 'BOTH' && !existingPaper.assignedSections?.includes(section)
-                        ? ` You can still upload for Section ${section}.`
-                        : ''}
+                      Assigned by <strong className="text-[#ECECEA]">Prof. {existingPaper?.otherKindCreatorName}</strong>. 
+                      You can still upload the {paperKind === 'EXAM_PAPER' ? 'Exam Paper' : 'Important Questions'}.
                     </p>
                   </div>
                 </div>
@@ -457,7 +505,8 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
           {step === 1 && (
             <button
               onClick={handleProceedToUpload}
-              className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] px-5 py-2 rounded-lg text-[13px] font-medium hover:bg-white transition-colors"
+              disabled={isBlocked}
+              className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] px-5 py-2 rounded-lg text-[13px] font-medium hover:bg-white transition-colors disabled:opacity-40"
             >
               Continue <ChevronRight size={14} />
             </button>
