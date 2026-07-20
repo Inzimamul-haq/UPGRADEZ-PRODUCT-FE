@@ -34,6 +34,11 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
     }
   };
 
+  // Pre-process message content:
+  // Add a newline before (i), (ii), etc. if it's preceded by text and not already on a new line.
+  const processedContent = (message.content || '')
+    .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n$2');
+
   return (
     <div className="flex justify-start">
       <div className="max-w-[85%]">
@@ -68,11 +73,29 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
                 );
               },
               p: ({ node, ...props }) => {
-                const content = String(props.children);
+                const extractText = (child: any): string => {
+                  if (typeof child === 'string') return child;
+                  if (Array.isArray(child)) return child.map(extractText).join('');
+                  if (child?.props?.children) return extractText(child.props.children);
+                  return '';
+                };
+                const content = extractText(props.children);
+
                 if (content.startsWith('Answer:') || content.startsWith('**Answer:**') || content.includes('Answer:')) {
                   return <p className="border-l-[3px] border-[#818CF8] pl-4 py-2 font-bold my-4 bg-[#2C2C2A] rounded-r-md text-[#F4F4F5]" {...props} />;
                 }
-                return <p className="mb-3" {...props} />;
+                
+                if (content.trim() === 'OR' || content.trim() === '**OR**') {
+                  return (
+                    <div className="flex items-center gap-3 py-1 px-1 my-4">
+                      <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+                      <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
+                      <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+                    </div>
+                  );
+                }
+
+                return <p className="mb-3 whitespace-pre-wrap" {...props} />;
               },
               ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-2" {...props} />,
               ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2" {...props} />,
@@ -94,7 +117,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
               blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
             }}
           >
-            {message.content}
+            {processedContent}
           </ReactMarkdown>
         </div>
         

@@ -3,13 +3,87 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { QuestionRow } from '@/components/questions/QuestionRow';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from '@/lib/qpParser';
+import { getMarksColor } from '@/lib/utils';
 
-export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string, paperId: string }) {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface RawQuestion {
+  id: string;
+  questionText: string;
+  marks?: number;
+}
+
+interface DecodedQuestion extends DecodedQPPrefix {
+  id: string;
+  marks?: number;
+}
+
+interface PartGroup {
+  groupIndex: number;
+  a: DecodedQuestion | null;
+  b: DecodedQuestion | null;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function decodeQuestion(q: RawQuestion): DecodedQuestion {
+  const raw = q.questionText ?? '';
+  const decoded = decodeQPPrefix(raw);
+  if (decoded) return { ...decoded, id: q.id, marks: q.marks };
+  // Legacy question (no prefix) → flat Part A
+  return { text: stripQPPrefix(raw), part: 'A', groupIndex: 1, subLabel: '', id: q.id, marks: q.marks };
+}
+
+function groupByIndex(questions: DecodedQuestion[]): PartGroup[] {
+  const map = new Map<number, PartGroup>();
+  for (const q of questions) {
+    if (!map.has(q.groupIndex)) {
+      map.set(q.groupIndex, { groupIndex: q.groupIndex, a: null, b: null });
+    }
+    const grp = map.get(q.groupIndex)!;
+    if (q.subLabel === 'b') grp.b = q;
+    else grp.a = q;
+  }
+  return Array.from(map.values()).sort((x, y) => x.groupIndex - y.groupIndex);
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function QuestionBlock({
+  question,
+  label,
+}: {
+  question: DecodedQuestion;
+  label: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 py-3">
+      <span className={`text-[12px] font-medium w-8 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
+        {label}
+      </span>
+      <p className="flex-1 text-[14px] text-[#ECECEA] leading-relaxed">{question.text}</p>
+    </div>
+  );
+}
+
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3 py-1 px-1">
+      <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+      <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
+      <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string; paperId: string }) {
   const router = useRouter();
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [rawQuestions, setRawQuestions] = useState<RawQuestion[]>([]);
   const [paper, setPaper] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { role } = useAuth();
@@ -20,7 +94,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
         setLoading(true);
         const { data } = await api.get(`/api/question-papers/${paperId}/questions`);
         setPaper(data.paper);
-        setQuestions(data.paper?.questions || []);
+        setRawQuestions(data.paper?.questions || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -29,6 +103,66 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
     };
     fetchQuestions();
   }, [paperId]);
+
+  // Decode once — never re-parse raw text again after this point
+  const decoded = rawQuestions.map(decodeQuestion);
+  const partA = decoded.filter(q => q.part === 'A');
+  const partB = decoded.filter(q => q.part === 'B');
+  const partC = decoded.filter(q => q.part === 'C');
+
+  // For legacy papers that have no part info, everything lands in A
+  const hasStructure = decoded.some(q => q.part !== 'A') || decoded.some(q => q.subLabel !== '');
+
+  const renderPartA = () => {
+    if (partA.length === 0) return null;
+    return (
+      <section>
+        <h2 className="text-[13px] font-semibold text-[#8C8C8A] uppercase tracking-wider mt-6 mb-1">Part A</h2>
+        <div className="divide-y divide-[#2E2E2C]">
+          {partA.map((q, i) => (
+            <QuestionBlock key={q.id} question={q} label={`Q${i + 1}`} />
+          ))}
+        </div>
+      </section>
+    );
+  };
+
+  const renderAdvancedPart = (label: string, questions: DecodedQuestion[], startQNum: number) => {
+    if (questions.length === 0) return null;
+    const groups = groupByIndex(questions);
+    return (
+      <section>
+        <h2 className="text-[13px] font-semibold text-[#8C8C8A] uppercase tracking-wider mt-6 mb-1">
+          Part {label}
+        </h2>
+        <div>
+          {groups.map((grp, idx) => {
+            const qNum = startQNum + idx;
+            return (
+              <div key={grp.groupIndex} className="border-b border-[#2E2E2C]">
+                {grp.a && (
+                  <QuestionBlock
+                    question={grp.a}
+                    label={grp.b ? `${qNum}a` : `Q${qNum}`}
+                  />
+                )}
+                {grp.b && (
+                  <>
+                    <OrDivider />
+                    <QuestionBlock question={grp.b} label={`${qNum}b`} />
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
+
+  const partBStartNum = partA.length > 0 ? 11 : 1;
+  const partBGroups = groupByIndex(partB);
+  const partCStartNum = partBStartNum + partBGroups.length;
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-6 pb-24 w-full">
@@ -44,40 +178,54 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
           {paper?.subject?.name || 'Subject'} — {paper?.examType} {paper?.academicYear}
         </h1>
         {paper?.creator?.name && (
-          <p className="text-[12px] text-[#8C8C8A] mt-0.5">
-            Assigned by {paper.creator.name}
-          </p>
+          <p className="text-[12px] text-[#8C8C8A] mt-0.5">Assigned by {paper.creator.name}</p>
         )}
-        
-        {/* Legend for question marks */}
-        {!loading && questions.length > 0 && (
+
+        {/* Marks legend */}
+        {!loading && rawQuestions.length > 0 && (
           <div className="flex items-center gap-4 mt-4 text-[12px]">
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-green-500"></div> &le; 5 Marks</span>
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-orange-500"></div> &le; 10 Marks</span>
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]"><div className="w-2 h-2 rounded-full bg-red-500"></div> 11+ Marks</span>
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
+              <div className="w-2 h-2 rounded-full bg-green-500" /> ≤ 5 Marks
+            </span>
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
+              <div className="w-2 h-2 rounded-full bg-orange-500" /> ≤ 10 Marks
+            </span>
+            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
+              <div className="w-2 h-2 rounded-full bg-red-500" /> 11+ Marks
+            </span>
           </div>
         )}
       </div>
 
-
-      <div className="mt-4 flex flex-col">
+      <div className="mt-4">
         {loading ? (
           <div className="py-8 text-[#5A5A58] text-[13px] text-center">Loading questions...</div>
-        ) : questions.length === 0 ? (
+        ) : rawQuestions.length === 0 ? (
           <p className="text-[13px] text-[#8C8C8A] mt-4">No questions found.</p>
+        ) : hasStructure ? (
+          <>
+            {renderPartA()}
+            {renderAdvancedPart('B', partB, partBStartNum)}
+            {renderAdvancedPart('C', partC, partCStartNum)}
+          </>
         ) : (
-          questions.map((q: any, i: number) => (
-            <QuestionRow key={q.id} question={{ ...q, question_text: q.questionText }} index={i + 1} />
-          ))
+          // Legacy flat render for papers with no structured prefix
+          <div className="divide-y divide-[#2E2E2C]">
+            {decoded.map((q, i) => (
+              <QuestionBlock key={q.id} question={q} label={`Q${i + 1}`} />
+            ))}
+          </div>
         )}
       </div>
-
-
 
       {role === 'student' && (
         <div className="mt-12 flex justify-center pb-8">
           <button
-            onClick={() => router.push(`/chat/new${paperId ? `?paperId=${paperId}&subjectId=${subjectId}` : `?subjectId=${subjectId}`}`)}
+            onClick={() =>
+              router.push(
+                `/chat/new${paperId ? `?paperId=${paperId}&subjectId=${subjectId}` : `?subjectId=${subjectId}`}`
+              )
+            }
             className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
           >
             Study this paper in chat &rarr;

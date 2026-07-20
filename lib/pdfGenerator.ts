@@ -1,117 +1,168 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from './qpParser';
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+/** Decode a raw DB questionText into structured metadata + clean text. */
+function toDecoded(q: any): DecodedQPPrefix & { marks?: number } {
+  const raw: string = q.questionText ?? q.text ?? '';
+  const decoded = decodeQPPrefix(raw);
+  if (decoded) {
+    return { ...decoded, marks: q.marks };
+  }
+  // Legacy / PDF-uploaded question: no prefix → treat as flat Part A
+  return { text: stripQPPrefix(raw), part: 'A', groupIndex: 1, subLabel: '', marks: q.marks };
+}
+
+interface GroupedQuestion {
+  groupIndex: number;
+  a: (DecodedQPPrefix & { marks?: number }) | null;
+  b: (DecodedQPPrefix & { marks?: number }) | null;
+}
+
+/** Group Part B/C questions by groupIndex so OR-pairs render together. */
+function groupByIndex(questions: (DecodedQPPrefix & { marks?: number })[]): GroupedQuestion[] {
+  const map = new Map<number, GroupedQuestion>();
+  for (const q of questions) {
+    if (!map.has(q.groupIndex)) {
+      map.set(q.groupIndex, { groupIndex: q.groupIndex, a: null, b: null });
+    }
+    const grp = map.get(q.groupIndex)!;
+    if (q.subLabel === 'b') grp.b = q;
+    else grp.a = q; // '' or 'a' both slot as the "a" side
+  }
+  return Array.from(map.values()).sort((x, y) => x.groupIndex - y.groupIndex);
+}
+
+// ─── CAT / CIA paper (autoTable layout) ──────────────────────────────────────
 
 export function generateQuestionPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
   const doc = new jsPDF();
 
-  const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(paper.examType.toUpperCase().replace(/\s+/g, ''));
+  const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3']
+    .includes((paper.examType ?? '').toUpperCase().replace(/\s+/g, ''));
 
-  // Separate questions by part based on extraction
-  const partA = questions.filter((q: any) => q.part === 'A');
-  const partB = questions.filter((q: any) => q.part === 'B');
-  const partC = questions.filter((q: any) => q.part === 'C');
+  // Decode all questions — reads part/groupIndex/subLabel from [[qp:...]] prefix
+  const decoded = questions.map(toDecoded);
+  const partA = decoded.filter((q: DecodedQPPrefix) => q.part === 'A');
+  const partB = decoded.filter((q: DecodedQPPrefix) => q.part === 'B');
+  const partC = decoded.filter((q: DecodedQPPrefix) => q.part === 'C');
 
-  // Fallbacks if part tags are missing but total questions exist
-  if (partA.length === 0 && questions.length > 0) {
-    if (isCAT) {
-      partA.push(...questions.slice(0, 5));
-      partB.push(...questions.slice(5));
-    } else {
-      partA.push(...questions.slice(0, 10));
-      partB.push(...questions.slice(10, 15));
-      partC.push(...questions.slice(15));
-    }
-  }
+  // No more slice-fallbacks — if the parts are empty, render nothing for that section.
 
   const totalMarks = isCAT ? 50 : 100;
   const duration = isCAT ? '1.5 Hrs' : '03 Hrs';
-  const examDate = paper.examDate ? new Date(paper.examDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+  const examDate = paper.examDate
+    ? new Date(paper.examDate).toLocaleDateString('en-GB')
+    : new Date().toLocaleDateString('en-GB');
 
   let y = 10;
 
-  // Top right regulation
   doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("Regulation: 2021", 195, y, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Regulation: 2021', 195, y, { align: 'right' });
   y += 3;
 
-  // Calculate marks string for table header if we can sum it up
-  // Or just use placeholders
-  const partAMarksSum = partA.reduce((sum: number, q: any) => sum + (q.marks || 2), 0);
-  // If there are OR questions, the sum would be halved. For simplicity, if partB has more than 5 questions in university, it's likely OR.
-  const partBMarksSum = partB.reduce((sum: number, q: any) => sum + (q.marks || (isCAT ? 20 : 13)), 0);
-  const partCMarksSum = partC.reduce((sum: number, q: any) => sum + (q.marks || 15), 0);
-
-  // Outer Header Box using autoTable
   autoTable(doc, {
     startY: y,
     theme: 'plain',
     styles: { lineWidth: 0.1, lineColor: 0, cellPadding: 2, fontSize: 10, textColor: 0 },
     columnStyles: {
-      0: { cellWidth: 30, halign: 'center', valign: 'middle' }, // Logo placeholder
+      0: { cellWidth: 30, halign: 'center', valign: 'middle' },
       1: { halign: 'center', valign: 'middle' },
-      2: { cellWidth: 40, halign: 'left' }
+      2: { cellWidth: 40, halign: 'left' },
     },
     body: [
       [
         { content: '[ LOGO ]', rowSpan: 2 },
-        { content: `${college?.name || 'College Name'}\nDegree/Branch: Department Of ${department?.branch || assignment.assignedToBranch || 'Branch'}(${department?.name || 'Department'})`, styles: { fontStyle: 'bold' } },
-        { content: `Date: ${examDate}\nMarks: ${totalMarks}\nDuration: ${duration}` }
+        {
+          content: `${college?.name || 'College Name'}\nDegree/Branch: Department Of ${department?.branch || assignment.assignedToBranch || 'Branch'}(${department?.name || 'Department'})`,
+          styles: { fontStyle: 'bold' },
+        },
+        { content: `Date: ${examDate}\nMarks: ${totalMarks}\nDuration: ${duration}` },
       ],
       [
-        { content: `Academic Year: ${paper.academicYear}\nSub Code & Name: ${subject.code}/${subject.name}`, styles: { halign: 'left' } },
-        { content: `Year/Sec: ${assignment.assignedToYear || '-'}/${assignment.assignedToSection || '-'}\nExam: ${paper.examType}`, styles: { halign: 'left' } }
-      ]
-    ]
+        {
+          content: `Academic Year: ${paper.academicYear}\nSub Code & Name: ${subject.code}/${subject.name}`,
+          styles: { halign: 'left' },
+        },
+        {
+          content: `Year/Sec: ${assignment.assignedToYear || '-'}/${assignment.assignedToSection || '-'}\nExam: ${paper.examType}`,
+          styles: { halign: 'left' },
+        },
+      ],
+    ],
   });
 
   y = (doc as any).lastAutoTable.finalY + 5;
 
-  // Center instruction
   doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("Answer All the Questions", 105, y, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text('Answer All the Questions', 105, y, { align: 'center' });
   y += 5;
 
-  // Generic Part Renderer
-  const renderPart = (partName: string, partQuestions: any[], startIndex: number, marksFormula: string) => {
+  /** Build marks formula string for the part header. */
+  const formatPartMarks = (qs: (DecodedQPPrefix & { marks?: number })[], defaultFormula: string) => {
+    if (!qs || qs.length === 0) return defaultFormula;
+    const groups = groupByIndex(qs);
+    const numGroups = groups.length;
+    const marksPerQ = qs[0]?.marks;
+    if (marksPerQ && numGroups > 0) {
+      return `${numGroups} x ${marksPerQ} = ${numGroups * marksPerQ}`;
+    }
+    return defaultFormula;
+  };
+
+  const renderPart = (
+    partName: string,
+    partQuestions: (DecodedQPPrefix & { marks?: number })[],
+    startIndex: number,
+    marksFormula: string
+  ): number => {
     if (!partQuestions || partQuestions.length === 0) return startIndex;
 
     doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
+    doc.setFont('helvetica', 'bold');
     doc.text(`Part ${partName} (${marksFormula})`, 105, y, { align: 'center' });
     y += 4;
 
     const tableBody: any[] = [];
     let qIdx = startIndex;
 
-    for (let i = 0; i < partQuestions.length; i++) {
-      const q = partQuestions[i];
-
-      // If Part B or C has OR questions, they might be stored sequentially or joined
-      // Let's assume standard Q. No handling
-
-      // If we detect an "OR" string or if we are alternating a/b manually
-      const isOr = q.text.toUpperCase().trim() === 'OR';
-
-      if (isOr) {
-        tableBody.push([{ content: 'OR', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' } }]);
-      } else {
-        // If it's a paired question (like 11.a and 11.b)
-        // Since we don't have the exact a/b parsing, we'll just number them sequentially for now
-        // or check if it matches a paired pattern
-
-        let qNumStr = `${qIdx}.`;
-
-        // Very basic OR pairing if we know it's Part B and it's every two questions with OR in between
-        // We'll leave it as simple numbering for robustness if no "OR" string is found
-
+    if (partName === 'A') {
+      // Part A: simple numbered rows
+      for (const q of partQuestions) {
         tableBody.push([
-          { content: qNumStr, styles: { halign: 'center' } },
+          { content: `${qIdx}.`, styles: { halign: 'center' } },
           { content: q.text },
-          { content: '-', styles: { halign: 'center' } }, // CO placeholder
-          { content: '-', styles: { halign: 'center' } }  // RBT placeholder
+          { content: '-', styles: { halign: 'center' } },
+          { content: '-', styles: { halign: 'center' } },
         ]);
+        qIdx++;
+      }
+    } else {
+      // Part B / C: group by groupIndex, render OR pairs
+      const groups = groupByIndex(partQuestions);
+      for (const grp of groups) {
+        if (grp.a) {
+          const labelA = grp.b ? `${qIdx}. a)` : `${qIdx}.`;
+          tableBody.push([
+            { content: labelA, styles: { halign: 'center' } },
+            { content: grp.a.text },
+            { content: '-', styles: { halign: 'center' } },
+            { content: '-', styles: { halign: 'center' } },
+          ]);
+        }
+        if (grp.b) {
+          tableBody.push([{ content: 'OR', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' } }]);
+          tableBody.push([
+            { content: 'b)', styles: { halign: 'center' } },
+            { content: grp.b.text },
+            { content: '-', styles: { halign: 'center' } },
+            { content: '-', styles: { halign: 'center' } },
+          ]);
+        }
         qIdx++;
       }
     }
@@ -126,39 +177,25 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
         0: { cellWidth: 15 },
         1: { cellWidth: 'auto' },
         2: { cellWidth: 15 },
-        3: { cellWidth: 25 }
+        3: { cellWidth: 25 },
       },
       body: tableBody,
-      margin: { top: 20 }
+      margin: { top: 20 },
     });
 
     y = (doc as any).lastAutoTable.finalY + 8;
     return qIdx;
   };
 
-  const formatPartMarks = (qs: any[], defaultFormula: string) => {
-    if (!qs || qs.length === 0) return defaultFormula;
-    const firstQ = qs[0];
-    if (firstQ.marks) {
-      // Just showing total marks for the part or dynamically calculating based on questions
-      // If it's Part B in University, it might have ORs, so just show the marks per question
-      const hasOr = qs.some((q: any) => q.text.toUpperCase().trim() === 'OR');
-      let numQs = qs.length;
-      if (hasOr) {
-        numQs = Math.ceil(qs.length / 2);
-      }
-      return `${numQs} x ${firstQ.marks} = ${numQs * firstQ.marks}`;
-    }
-    return defaultFormula;
-  };
-
   let qIndex = 1;
-  qIndex = renderPart('A', partA, qIndex, formatPartMarks(partA, isCAT ? `5 x 2 = 10` : `10 x 2 = 20`));
-  qIndex = renderPart('B', partB, qIndex, formatPartMarks(partB, isCAT ? `2 x 20 = 40` : `5 x 13 = 65`));
-  qIndex = renderPart('C', partC, qIndex, formatPartMarks(partC, isCAT ? `` : `1 x 15 = 15`));
+  qIndex = renderPart('A', partA, qIndex, formatPartMarks(partA, isCAT ? '5 x 2 = 10' : '10 x 2 = 20'));
+  qIndex = renderPart('B', partB, qIndex, formatPartMarks(partB, isCAT ? '2 x 20 = 40' : '5 x 13 = 65'));
+  renderPart('C', partC, qIndex, formatPartMarks(partC, isCAT ? '' : '1 x 15 = 15'));
 
   doc.save(`${subject.code}_${paper.examType}_${paper.academicYear}.pdf`);
 }
+
+// ─── Model / Semester / University paper (manual y-coordinate layout) ─────────
 
 export function generateModelSemesterPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
   const doc = new jsPDF();
@@ -166,6 +203,9 @@ export function generateModelSemesterPaperPDF({ paper, assignment, questions, su
   const marginX = 15;
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
+
+  // Line height calculated from actual font size (pt → mm, 1pt = 0.3528mm), × 1.4 leading
+  const lineHeightMm = (fontSize: number) => fontSize * 0.3528 * 1.4;
 
   const checkPageBreak = (requiredSpace: number) => {
     if (y + requiredSpace > pageHeight - 20) {
@@ -178,217 +218,205 @@ export function generateModelSemesterPaperPDF({ paper, assignment, questions, su
   const regNoCells = 12;
   const cellWidth = 5;
   const cellHeight = 6;
-  const startX = pageWidth - marginX - (regNoCells * cellWidth);
+  const startX = pageWidth - marginX - regNoCells * cellWidth;
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text("Reg. No. :", startX - 20, y + 4);
-
+  doc.text('Reg. No. :', startX - 20, y + 4);
   for (let i = 0; i < regNoCells; i++) {
-    doc.rect(startX + (i * cellWidth), y, cellWidth, cellHeight);
+    doc.rect(startX + i * cellWidth, y, cellWidth, cellHeight);
   }
   y += 15;
 
-  // College Name (Centered)
+  // College name
   const collegeName = college?.name || 'College Name';
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(collegeName, pageWidth / 2, y + 6, { align: "center" });
+  doc.text(collegeName, pageWidth / 2, y + 6, { align: 'center' });
   y += 15;
 
-  // Exam Title Block
+  // Exam title block
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  const degreeLine = `${paper.examType || 'B.E./B.Tech.'} DEGREE EXAMINATIONS, ${paper.academicYear || '2023-2024'}`;
-  doc.text(degreeLine, pageWidth / 2, y, { align: "center" });
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    `${paper.examType || 'B.E./B.Tech.'} DEGREE EXAMINATIONS, ${paper.academicYear || '2023-2024'}`,
+    pageWidth / 2,
+    y,
+    { align: 'center' }
+  );
   y += 6;
-
-  const branchLine = `Department Of ${department?.branch || assignment?.assignedToBranch || 'Branch'}`;
-  doc.text(branchLine, pageWidth / 2, y, { align: "center" });
+  doc.text(
+    `Department Of ${department?.branch || assignment?.assignedToBranch || 'Branch'}`,
+    pageWidth / 2,
+    y,
+    { align: 'center' }
+  );
   y += 6;
-
-  const subjectLine = `${subject?.code || ''} - ${subject?.name || ''}`;
-  doc.text(subjectLine, pageWidth / 2, y, { align: "center" });
+  doc.text(`${subject?.code || ''} - ${subject?.name || ''}`, pageWidth / 2, y, { align: 'center' });
   y += 6;
-
-  doc.setFont("helvetica", "normal");
-  const regLine = `(Regulations 2021)`;
-  doc.text(regLine, pageWidth / 2, y, { align: "center" });
+  doc.setFont('helvetica', 'normal');
+  doc.text('(Regulations 2021)', pageWidth / 2, y, { align: 'center' });
   y += 10;
 
-  // Time and Marks
-  doc.setFont("helvetica", "bold");
-  doc.text("Time: Three hours", marginX, y);
-  doc.text(`Maximum: 100 marks`, pageWidth - marginX, y, { align: "right" });
+  doc.setFont('helvetica', 'bold');
+  doc.text('Time: Three hours', marginX, y);
+  doc.text('Maximum: 100 marks', pageWidth - marginX, y, { align: 'right' });
+  y += 10;
+  doc.text('Answer ALL questions.', pageWidth / 2, y, { align: 'center' });
   y += 10;
 
-  // Instruction
-  doc.text("Answer ALL questions.", pageWidth / 2, y, { align: "center" });
-  y += 10;
+  // Decode all questions from [[qp:...]] prefix
+  const decoded = questions.map(toDecoded);
+  const partA = decoded.filter((q: DecodedQPPrefix) => q.part === 'A');
+  const partB = decoded.filter((q: DecodedQPPrefix) => q.part === 'B');
+  const partC = decoded.filter((q: DecodedQPPrefix) => q.part === 'C');
 
-  // Separate questions by part based on extraction
-  const partA = questions.filter((q: any) => q.part === 'A');
-  const partB = questions.filter((q: any) => q.part === 'B');
-  const partC = questions.filter((q: any) => q.part === 'C');
-
-  // Helper
-  const renderTextWithIndent = (text: string, xPos: number, currentY: number, maxWidth: number) => {
-    doc.setFont("helvetica", "normal");
+  /**
+   * Renders a single line of text, wrapping it to fit maxWidth.
+   * Returns the total height consumed (mm).
+   */
+  const renderTextBlock = (text: string, xPos: number, yPos: number, maxWidth: number): number => {
+    doc.setFont('helvetica', 'normal');
+    const fontSize = doc.getFontSize();
+    const lhMm = lineHeightMm(fontSize);
     const lines = doc.splitTextToSize(text, maxWidth);
-    doc.text(lines, xPos, currentY);
-    return lines.length * 5; // approx 5mm per line
+    doc.text(lines, xPos, yPos);
+    return lines.length * lhMm;
   };
 
   const renderPartHeader = (title: string) => {
     checkPageBreak(20);
-    doc.setFont("helvetica", "bold");
-    doc.text(title, pageWidth / 2, y, { align: "center" });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(title, pageWidth / 2, y, { align: 'center' });
     y += 10;
   };
 
-  // Render Part A
+  // ── Part A ────────────────────────────────────────────────────────────────
   if (partA.length > 0) {
-    const partAMarksSum = partA.reduce((sum: number, q: any) => sum + (q.marks || 2), 0);
-    renderPartHeader(`PART A — (${partA.length} x ${partA[0]?.marks || 2} = ${partAMarksSum} marks)`);
+    const marksEach = partA[0]?.marks || 2;
+    const total = partA.length * marksEach;
+    renderPartHeader(`PART A — (${partA.length} x ${marksEach} = ${total} marks)`);
 
-    partA.forEach((q: any, idx: number) => {
+    partA.forEach((q: DecodedQPPrefix & { marks?: number }, idx: number) => {
       checkPageBreak(15);
-      const qNum = `${idx + 1}.`;
-      doc.setFont("helvetica", "normal");
-      doc.text(qNum, marginX, y);
-      
-      let lineText = q.text.trim();
-      let lineMarks = '';
-      const marksMatch = lineText.match(/\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i) || lineText.match(/\s*\(\s*(\d+)\s*\)\s*$/i);
-      if (marksMatch) {
-         lineMarks = marksMatch[1];
-         lineText = lineText.replace(marksMatch[0], '');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(`${idx + 1}.`, marginX, y);
+
+      // Strip inline marks annotation from display text
+      const displayText = q.text.replace(/\(\s*\d+\s*marks?\s*\)\s*$/i, '').trim();
+      const marksStr = q.marks ? `(${q.marks})` : '';
+      const textMaxW = pageWidth - marginX - 10 - 8 - (marksStr ? 15 : 0);
+      const height = renderTextBlock(displayText, marginX + 8, y, textMaxW);
+
+      if (marksStr) {
+        doc.setFont('helvetica', 'normal');
+        doc.text(marksStr, pageWidth - marginX, y + height - lineHeightMm(11), { align: 'right' });
       }
 
-      const textHeight = renderTextWithIndent(lineText, marginX + 8, y, pageWidth - marginX - 10 - 8 - (lineMarks ? 15 : 0));
-      
-      if (lineMarks) {
-         doc.setFont("helvetica", "normal");
-         doc.text(`(${lineMarks})`, pageWidth - marginX, y + textHeight - 5, { align: "right" });
-      }
-
-      y += textHeight + 12; // INCREASED: Proper gapping between Part A questions
+      y += height + 8;
     });
-    y += 10; // Extra gap before next part
+    y += 6;
   }
 
-  // Render Part B / C
-  const renderAdvancedPart = (partQuestions: any[], startIndex: number, partTitle: string) => {
+  // ── Part B / C (grouped OR pairs) ─────────────────────────────────────────
+  const renderAdvancedPart = (
+    partQuestions: (DecodedQPPrefix & { marks?: number })[],
+    startIndex: number,
+    partTitle: string
+  ): number => {
     if (partQuestions.length === 0) return startIndex;
 
-    let realQCount = partQuestions.length;
-    const hasOr = partQuestions.some((q: any) => q.text.toUpperCase().trim() === 'OR');
-    if (hasOr) {
-      realQCount = Math.ceil(partQuestions.length / 2);
-    }
-    const marksPerQ = partQuestions[0]?.marks || (partTitle === 'B' ? 13 : 15);
-    renderPartHeader(`PART ${partTitle} — (${realQCount} x ${marksPerQ} = ${realQCount * marksPerQ} marks)`);
+    const groups = groupByIndex(partQuestions);
+    const marksEach = partQuestions[0]?.marks || (partTitle === 'B' ? 13 : 15);
+    renderPartHeader(`PART ${partTitle} — (${groups.length} x ${marksEach} = ${groups.length * marksEach} marks)`);
 
     let qIdx = startIndex;
 
-    for (let i = 0; i < partQuestions.length; i++) {
-      const q = partQuestions[i];
-      const text = q.text.trim();
+    for (const grp of groups) {
+      // ── "a)" side ────────────────────────────────────────────────────────
+      if (grp.a) {
+        checkPageBreak(20);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        const labelA = grp.b ? `${qIdx}. a)` : `${qIdx}.`;
+        doc.text(labelA, marginX, y);
 
-      const isLegacyOr = text.toUpperCase() === 'OR';
-      if (isLegacyOr) {
+        if (grp.a.marks) {
+          doc.text(`(${grp.a.marks})`, pageWidth - marginX, y, { align: 'right' });
+        }
+
+        const displayA = grp.a.text.replace(/\(\s*\d+\s*marks?\s*\)\s*$/i, '').trim();
+        const subLines = displayA.split('\n');
+        for (const subLine of subLines) {
+          const trimmed = subLine.trim();
+          if (!trimmed) continue;
+
+          let xPos = marginX + 10;
+          // sub-options like (i) or i)
+          if (/^\(?\s*[ivx]+\s*\)/i.test(trimmed)) xPos = marginX + 18;
+
+          checkPageBreak(10);
+          const textMaxW = pageWidth - xPos - 12 - (grp.a.marks ? 15 : 0);
+          const h = renderTextBlock(trimmed, xPos, y, textMaxW);
+          y += h + 3;
+        }
+        y += 6;
+      }
+
+      // ── OR divider ────────────────────────────────────────────────────────
+      if (grp.b) {
         checkPageBreak(15);
-        y += 2;
-        doc.setFont("helvetica", "bold");
-        doc.text("Or", pageWidth / 2, y, { align: "center" });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Or', pageWidth / 2, y, { align: 'center' });
         y += 8;
-        continue;
-      }
 
-      checkPageBreak(20);
+        // ── "b)" side ──────────────────────────────────────────────────────
+        checkPageBreak(20);
+        doc.setFont('helvetica', 'normal');
+        doc.text('b)', marginX, y);
 
-      const isAfterLegacyOr = i > 0 && partQuestions[i - 1].text.toUpperCase().trim() === 'OR';
-      if (!isAfterLegacyOr && !text.match(/^[0-9]+\./)) {
-         doc.setFont("helvetica", "normal");
-         doc.text(`${qIdx}.`, marginX, y);
-      }
-
-      // We print the marks at the end of the question block if q.marks exists 
-      // AND it's a legacy style (no inline OR). If there are inline ORs, marks are handled per line.
-      if (q.marks && !text.toUpperCase().includes('\nOR\n') && !text.toUpperCase().includes('\nOR \n')) {
-         doc.setFont("helvetica", "normal");
-         doc.text(`(${q.marks})`, pageWidth - marginX, y, { align: "right" });
-      }
-
-      const lines = text.split('\n');
-      let currentY = y;
-      
-      lines.forEach((line: string) => {
-        let xPos = marginX + 8;
-        let lineText = line.trim();
-        
-        let lineMarks = '';
-        const marksMatch = lineText.match(/\s*\(\s*(\d+)\s*marks?\s*\)\s*$/i) || lineText.match(/\s*\(\s*(\d+)\s*\)\s*$/i);
-        if (marksMatch) {
-           lineMarks = marksMatch[1];
-           lineText = lineText.replace(marksMatch[0], '');
+        if (grp.b.marks) {
+          doc.text(`(${grp.b.marks})`, pageWidth - marginX, y, { align: 'right' });
         }
 
-        if (lineText.toUpperCase() === 'OR') {
-          currentY += 6; // Space before OR
-          checkPageBreak(15);
-          doc.setFont("helvetica", "bold");
-          doc.text("Or", pageWidth / 2, currentY, { align: "center" });
-          currentY += 10; // Space after OR
-          return; // skip to next line
-        }
-        
-        if (
-          lineText.match(/^\([a-z]\)/i) ||
-          lineText.match(/^[a-z]\)/i)
-        ) {
-          xPos = marginX + 8;
-        } else if (
-          lineText.match(/^\([ivx]+\)/i) ||
-          lineText.match(/^[ivx]+\)/i)
-        ) {
-          xPos = marginX + 16;
-        } else if (isAfterLegacyOr) {
-          xPos = marginX + 8;
-        }
+        const displayB = grp.b.text.replace(/\(\s*\d+\s*marks?\s*\)\s*$/i, '').trim();
+        const subLinesB = displayB.split('\n');
+        for (const subLine of subLinesB) {
+          const trimmed = subLine.trim();
+          if (!trimmed) continue;
 
-        const textHeight = renderTextWithIndent(lineText, xPos, currentY, pageWidth - xPos - 15 - (lineMarks ? 15 : 0));
-        
-        if (lineMarks) {
-           doc.setFont("helvetica", "normal");
-           doc.text(`(${lineMarks})`, pageWidth - marginX, currentY + textHeight - 5, { align: "right" });
+          let xPos = marginX + 10;
+          if (/^\(?\s*[ivx]+\s*\)/i.test(trimmed)) xPos = marginX + 18;
+
+          checkPageBreak(10);
+          const textMaxW = pageWidth - xPos - 12 - (grp.b.marks ? 15 : 0);
+          const h = renderTextBlock(trimmed, xPos, y, textMaxW);
+          y += h + 3;
         }
-        
-        currentY += textHeight + 4; // Extra space between lines/sub-options
-      });
-      
-      y = currentY + 12; // INCREASED: Proper gapping between Part B/C main questions
-      
-      if (!isAfterLegacyOr) {
-        qIdx++;
+        y += 6;
       }
+
+      qIdx++;
     }
 
     return qIdx;
   };
 
+  // Part B starts at Q11 when Part A exists (university convention)
   let qIndex = partA.length > 0 ? 11 : 1;
   qIndex = renderAdvancedPart(partB, qIndex, 'B');
-  qIndex = renderAdvancedPart(partC, qIndex, 'C');
+  renderAdvancedPart(partC, qIndex, 'C');
 
-  // Add Footers to all pages
+  // Page numbers
   const totalPages = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    const footerY = pageHeight - 10;
-    doc.text(`${i}`, pageWidth / 2, footerY, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${i}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
   }
 
   doc.save(`${subject.code}_${paper.examType}_${paper.academicYear}.pdf`);

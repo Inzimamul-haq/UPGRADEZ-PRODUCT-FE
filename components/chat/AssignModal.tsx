@@ -6,6 +6,7 @@ import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/p
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
+import { parseQPStructure } from '@/lib/qpParser';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -61,99 +62,33 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
     }
   };
 
-  // Save exam date (from gate popup) — silent, no notification
+  // Set exam date (from gate popup) — do not patch the IQ, just continue
   const handleSaveExamDate = async () => {
     if (!examDateInput || !sessionData.linkedIQPaperId) return;
-    setSavingDate(true);
-    try {
-      await api.patch(`/api/question-papers/${sessionData.linkedIQPaperId}/exam-date`, {
-        examDate: examDateInput,
-        notify: false,
-      });
-      evaluateGate(examDateInput);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to set exam date';
-      toast.error(msg);
-    } finally {
-      setSavingDate(false);
-    }
+    evaluateGate(examDateInput);
   };
 
-  // Extract questions from raw AI text
-  const extractQuestions = (text: string) => {
-    const questions: { text: string; part?: string; marks?: number }[] = [];
-    text = text.replace(/\s+OR\s+(b\)|(?:\(b\)))/gi, '\nOR\n$1');
-    const lines = text.split('\n');
-    let currentQ = '';
-    let currentPart = '';
-    let currentMarks = 0;
-
-    const flushQuestion = () => {
-      if (currentQ) {
-        let text = currentQ.trim();
-        let marks = currentMarks;
-        const marksMatch = text.match(/\(\s*(\d+)\s*marks?\s*\)/i);
-        if (marksMatch) {
-          marks = parseInt(marksMatch[1], 10);
-        }
-        questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
-        currentQ = '';
-      }
-    };
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      // Match Part headers like "**Part A**", "Part A (10 x 2 = 20 Marks)", "**Part B (2 x 13 = 26)**"
-      const partMatch = trimmed.match(/\*?\*?Part\s+([A-Z])(?:\s*\(.*?\))?\*?\*?/i);
-      if (partMatch) {
-        flushQuestion();
-        currentPart = partMatch[1].toUpperCase();
-        continue;
-      }
-
-      // Try to find standalone section marks if provided
-      const marksMatch = trimmed.match(/(\d+)\s*Marks/i);
-      if (marksMatch && !/^\s*\d+\.\s+/.test(trimmed)) {
-        currentMarks = parseInt(marksMatch[1], 10);
-      }
-
-      // Strip other instructional lines:
-      // "Section A", "Answer all the questions", "Answer any five", "Note:", "Marks:"
-      if (/^\s*\**Section\s+[A-Z]\**/i.test(trimmed) ||
-          /answer\s+(all|any|the\s+following)/i.test(trimmed) ||
-          /^Note:/i.test(trimmed) ||
-          /^Marks:/i.test(trimmed) ||
-          /^\*\*\*+/.test(trimmed)) {
-        flushQuestion();
-        continue;
-      }
-      
-      const match = trimmed.match(/^\s*(?:\d+\.)\s*(.*)/);
-      if (match) {
-        flushQuestion();
-        currentQ = match[1];
-      } else if (currentQ && trimmed) {
-        currentQ += '\n' + trimmed;
-      }
-    }
-    if (currentQ) {
-      let text = currentQ.trim();
-      let marks = currentMarks;
-      const marksMatch = text.match(/\(\s*(\d+)\s*marks?\s*\)/i);
-      if (marksMatch) {
-        marks = parseInt(marksMatch[1], 10);
-      }
-      questions.push({ text, part: currentPart || undefined, marks: marks || undefined });
-    }
-
-    return questions.filter(q => q.text.trim().length > 0);
-  };
 
   const handleSubmit = async () => {
+    if (needsDirectDate) {
+      if (!directExamDate) {
+        toast.error('Please select an exam date.');
+        return;
+      }
+      const selected = new Date(directExamDate);
+      selected.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selected.getTime() !== today.getTime()) {
+        toast.error('Direct exam papers can only be assigned on the current date.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const questions = extractQuestions(rawText);
+      // parseQPStructure is the single authoritative parser — called once at save time
+      const questions = parseQPStructure(rawText);
       const currentYear = new Date().getFullYear();
       const acYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
 
@@ -169,7 +104,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
         linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ
           ? sessionData.linkedIQPaperId || null
           : null,
-        examDate: needsDirectDate ? directExamDate : null,
+        examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
         chatId: chatId || undefined,
       };
 
@@ -299,7 +234,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
               </button>
               <button
                 onClick={() => {
-                  const questions = extractQuestions(rawText);
+                  const questions = parseQPStructure(rawText);
                   const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
                   const pdfParams = {
                     paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}` },

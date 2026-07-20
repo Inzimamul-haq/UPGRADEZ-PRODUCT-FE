@@ -15,6 +15,7 @@ import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { stripQPPrefix } from '@/lib/qpParser';
 
 interface ChatContainerExtendedProps extends ChatContainerProps {
   initialSubjectId?: string;
@@ -189,7 +190,7 @@ useEffect(() => {
         if (chat.paper?.questions) {
           setResolvedQuestions(chat.paper.questions.map((q: any) => ({ 
             id: q.id, 
-            text: q.questionText || q.text,
+            text: stripQPPrefix(q.questionText || q.text || ''),
             marks: q.marks
           })));
         }
@@ -221,7 +222,7 @@ useEffect(() => {
           if (data.questions) {
             setResolvedQuestions(data.questions.map((q: any) => ({
               id: q.id,
-              text: q.questionText || q.text,
+              text: stripQPPrefix(q.questionText || q.text || ''),
               marks: q.marks,
             })));
           }
@@ -268,7 +269,7 @@ useEffect(() => {
                 if (res.data.data.questions) {
                   setResolvedQuestions(res.data.data.questions.map((q: any) => ({
                     id: q.id,
-                    text: q.questionText || q.text,
+                    text: stripQPPrefix(q.questionText || q.text || ''),
                     marks: q.marks
                   })));
                 }
@@ -323,7 +324,7 @@ useEffect(() => {
           if (res.data.data.questions) {
             setResolvedQuestions(res.data.data.questions.map((q: any) => ({
               id: q.id,
-              text: q.questionText || q.text,
+              text: stripQPPrefix(q.questionText || q.text || ''),
               marks: q.marks
             })));
           }
@@ -671,6 +672,7 @@ useEffect(() => {
           examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
           paperResolved={!!resolvedPaperId || !!initialPaperId}
           onOpenQuestions={() => setIsPanelOpen(true)}
+          role={role}
         />
       )}
 
