@@ -21,27 +21,28 @@ interface DashboardStats {
 export default function StudentDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/api/student/dashboard/stats');
-        setStats(res.data.data);
+        const [statsRes, notifRes] = await Promise.all([
+          api.get('/api/student/dashboard/stats'),
+          api.get('/api/notifications')
+        ]);
+        setStats(statsRes.data.data);
+        setNotifications(notifRes.data.data);
       } catch (err) {
-        console.error('Failed to fetch dashboard stats', err);
+        console.error('Failed to fetch dashboard data', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchData();
   }, []);
 
-  const notifications: Notification[] = [
-    { id: '1', type: 'new_paper', message: 'New Model Paper added for Data Structures', read_at: null, created_at: new Date(Date.now() - 3600000).toISOString() },
-    { id: '2', type: 'syllabus_update', message: 'Syllabus updated for Operating Systems', read_at: null, created_at: new Date(Date.now() - 86400000).toISOString() },
-    { id: '3', type: 'study_recap', message: 'You practiced 15 questions in Computer Networks yesterday. Keep it up!', read_at: null, created_at: new Date(Date.now() - 172800000).toISOString() },
-  ];
+
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -90,9 +91,8 @@ export default function StudentDashboardPage() {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-[14px] font-semibold text-[#ECECEA]">Recent Activity</h2>
-          <span className="text-[11px] text-[#8C8C8A] bg-[#2C2C2A] px-2 py-0.5 rounded-full">Coming Soon</span>
         </div>
-        <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden opacity-50 pointer-events-none">
+        <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
           <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-4 pt-3 pb-1">Recent</p>
           <ActivityFeed notifications={notifications} />
         </div>
