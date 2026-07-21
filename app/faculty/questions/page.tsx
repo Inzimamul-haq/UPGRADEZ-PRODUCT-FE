@@ -15,6 +15,8 @@ export default function FacultyGlobalQuestionsPage() {
 
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('1');
+  const [regulationFilter, setRegulationFilter] = useState('All');
+  const [durationYears, setDurationYears] = useState(4);
   const [defaultsApplied, setDefaultsApplied] = useState(false);
 
   const basePath = role === 'admin' || role === 'super_admin' ? '/admin' : '/faculty';
@@ -49,19 +51,37 @@ export default function FacultyGlobalQuestionsPage() {
     setDepartmentFilter(initialDept);
     setYearFilter('1');
     setDefaultsApplied(true);
+
+    // Fetch config for default dept
+    api.get(`/api/departments/${initialDept}/config`)
+      .then(res => setDurationYears(res.data.durationYears || 4))
+      .catch(() => {});
   }, [user, departments, defaultsApplied]);
+
+  const handleDeptChange = (deptId: string) => {
+    setDepartmentFilter(deptId);
+    setYearFilter('1');
+    if (deptId) {
+      api.get(`/api/departments/${deptId}/config`)
+        .then(res => setDurationYears(res.data.durationYears || 4))
+        .catch(() => setDurationYears(4));
+    } else {
+      setDurationYears(4);
+    }
+  };
 
   const filteredSubjects = subjects.filter((s) => {
     const matchYear = s.year?.toString() === yearFilter;
     const matchDept = s.departments?.some((d: any) => d.id === departmentFilter);
-    return matchYear && matchDept;
+    const matchRegulation = regulationFilter === 'All' || s.regulation === regulationFilter;
+    return matchYear && matchDept && matchRegulation;
   });
 
-  const handleDepartmentChange = (deptId: string) => {
-    setDepartmentFilter(deptId);
-  };
+  const uniqueRegulations = Array.from(
+    new Set(subjects.map((s) => s.regulation).filter(Boolean))
+  ).sort();
 
-  return (
+return (
     <div className="px-6 py-6 w-full max-w-4xl mx-auto">
       <div>
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Global Questions</h1>
@@ -71,7 +91,7 @@ export default function FacultyGlobalQuestionsPage() {
       <div className="mt-4 flex flex-wrap gap-3 mb-6">
         <select
           value={departmentFilter}
-          onChange={(e) => handleDepartmentChange(e.target.value)}
+          onChange={(e) => handleDeptChange(e.target.value)}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           {departments.map((d) => (
@@ -84,10 +104,20 @@ export default function FacultyGlobalQuestionsPage() {
           onChange={(e) => setYearFilter(e.target.value)}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
+          {Array.from({ length: durationYears }, (_, i) => i + 1).map(y => (
+            <option key={y} value={String(y)}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>
+          ))}
+        </select>
+
+        <select
+          value={regulationFilter}
+          onChange={(e) => setRegulationFilter(e.target.value)}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="All">All Regulations</option>
+          {uniqueRegulations.map((reg: any) => (
+            <option key={reg} value={reg}>{reg}</option>
+          ))}
         </select>
       </div>
 

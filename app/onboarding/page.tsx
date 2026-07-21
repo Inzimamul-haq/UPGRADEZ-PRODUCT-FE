@@ -28,8 +28,8 @@ export default function OnboardingPage() {
   const [batchError, setBatchError] = useState('');
   const [rollError, setRollError] = useState('');
 
-  const isEngineering = user?.college?.name?.toLowerCase().includes('engineering') ?? true;
-  const maxYears = isEngineering ? 4 : 3;
+  const selectedDept = departments.find(d => d.id === formData.departmentId);
+  const maxYears = selectedDept?.durationYears || 4;
 
   const validateBatchYear = (val: string) => {
     if (!val) return 'Required';
@@ -59,16 +59,14 @@ export default function OnboardingPage() {
   }, []);
 
   useEffect(() => {
-    if (formData.departmentId && formData.year) {
-      api.get('/api/subjects/regulations', { 
-        params: { departmentId: formData.departmentId, year: formData.year }
-      })
+    if (formData.departmentId) {
+      api.get(`/api/departments/${formData.departmentId}/config`)
       .then(res => {
-        setRegulations(res.data.regulations || []);
+        setRegulations(res.data.availableRegulations || []);
       })
       .catch(() => setRegulations([]));
     }
-  }, [formData.departmentId, formData.year]);
+  }, [formData.departmentId]);
 
   const handleSkip = () => {
     localStorage.setItem('onboardingSkipped', 'true');
@@ -244,7 +242,7 @@ export default function OnboardingPage() {
                       setFormData({...formData, batchYear: e.target.value, year: ''});
                       setBatchError('');
                     }}
-                    placeholder={isEngineering ? "e.g. 2022-2026" : "e.g. 2022-2025"}
+                    placeholder={`e.g. 2022-${2022 + maxYears}`}
                     className={`w-full bg-[#1F1F1E] border ${batchError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
                   />
                   {batchError && <p className="text-red-500 text-xs mt-1.5">{batchError}</p>}

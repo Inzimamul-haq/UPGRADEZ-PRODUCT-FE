@@ -179,30 +179,47 @@ export default function SubjectFormModal({
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 Year
               </label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-              >
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
+              {mode === 'edit' ? (
+                <div className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A]/50 px-3 py-2 text-[13px] text-[#8C8C8A] cursor-not-allowed">
+                  {year === '1' ? '1st' : year === '2' ? '2nd' : year === '3' ? '3rd' : `${year}th`} Year
+                </div>
+              ) : (
+                <select
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+                >
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              )}
             </div>
 
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 Regulation
               </label>
-              <input
-                placeholder="e.g. R2021"
-                value={regulation}
-                onChange={(e) => setRegulation(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
-              />
+              {mode === 'edit' ? (
+                <div className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A]/50 px-3 py-2 text-[13px] text-[#8C8C8A] cursor-not-allowed">
+                  {regulation || '—'}
+                </div>
+              ) : (
+                <input
+                  placeholder="e.g. R2021"
+                  value={regulation}
+                  onChange={(e) => setRegulation(e.target.value)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+                />
+              )}
             </div>
           </div>
+          {mode === 'edit' && (
+            <p className="-mt-2 text-[11px] text-[#5A5A58]">
+              Year and Regulation cannot be changed after creation. Delete and re-add the subject to change these.
+            </p>
+          )}
 
           <div>
             <div className="mb-1 flex items-center justify-between">
@@ -215,24 +232,45 @@ export default function SubjectFormModal({
               <div className="mb-2 flex flex-col gap-2 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
-                  <div className="flex items-center gap-3 text-[11px] text-[#ECECEA]">
-                    <label className="flex cursor-pointer items-center gap-1">
+                  <div className="flex items-center gap-3 text-[11px]">
+                    {/* Add More — white style */}
+                    <label className="flex cursor-pointer items-center gap-1.5 text-[#ECECEA]">
+                      <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
+                        uploadMode === 'append'
+                          ? 'border-white'
+                          : 'border-[#5A5A58]'
+                      }`}>
+                        {uploadMode === 'append' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        )}
+                      </span>
                       <input
                         type="radio"
                         name="uploadMode"
                         checked={uploadMode === "append"}
                         onChange={() => setUploadMode("append")}
-                        className="accent-[#ECECEA]"
+                        className="sr-only"
                       />
                       Add More
                     </label>
-                    <label className="flex cursor-pointer items-center gap-1">
+
+                    {/* Replace All — red style */}
+                    <label className="flex cursor-pointer items-center gap-1.5 text-red-400">
+                      <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
+                        uploadMode === 'replace'
+                          ? 'border-red-500'
+                          : 'border-[#5A5A58]'
+                      }`}>
+                        {uploadMode === 'replace' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                        )}
+                      </span>
                       <input
                         type="radio"
                         name="uploadMode"
                         checked={uploadMode === "replace"}
                         onChange={() => setUploadMode("replace")}
-                        className="accent-amber-500"
+                        className="sr-only"
                       />
                       Replace All
                     </label>

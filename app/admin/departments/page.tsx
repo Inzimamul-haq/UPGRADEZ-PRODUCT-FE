@@ -14,6 +14,7 @@ type Department = {
   name: string;
   branch: string;
   sections?: string[];
+  durationYears?: number;
 };
 
 export default function AdminDepartmentsPage() {
@@ -28,6 +29,7 @@ export default function AdminDepartmentsPage() {
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("");
   const [sectionsCount, setSectionsCount] = useState(1);
+  const [durationYears, setDurationYears] = useState(4);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,6 +70,7 @@ export default function AdminDepartmentsPage() {
     setName("");
     setBranch("");
     setSectionsCount(1);
+    setDurationYears(4);
     setFormError("");
     setShowFormModal(true);
   };
@@ -77,6 +80,7 @@ export default function AdminDepartmentsPage() {
     setName(dept.name);
     setBranch(dept.branch);
     setSectionsCount(dept.sections?.length || 1);
+    setDurationYears(dept.durationYears || 4);
     setFormError("");
     setShowFormModal(true);
   };
@@ -99,6 +103,7 @@ export default function AdminDepartmentsPage() {
             name: parsed.data.name.trim(),
             branch: parsed.data.branch.trim(),
             sections,
+            durationYears,
           }
         );
         setDepartments((prev) =>
@@ -112,6 +117,7 @@ export default function AdminDepartmentsPage() {
           name: parsed.data.name.trim(),
           branch: parsed.data.branch.trim(),
           sections,
+          durationYears,
         });
         setDepartments((prev) =>
           [...prev, data.department].sort((a, b) =>
@@ -188,6 +194,8 @@ export default function AdminDepartmentsPage() {
         <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
           <div className="w-28">Branch</div>
           <div className="flex-1">Department</div>
+          <div className="w-32">Duration</div>
+          <div className="w-48">Sections</div>
           <div className="w-24 text-right">Actions</div>
         </div>
 
@@ -216,6 +224,8 @@ export default function AdminDepartmentsPage() {
             >
               <span className="w-28 text-[13px] text-[#8C8C8A]">{dept.branch}</span>
               <span className="flex-1 text-[14px] text-[#ECECEA]">{dept.name}</span>
+              <span className="w-32 text-[13px] text-[#8C8C8A]">{dept.durationYears || 4} Years</span>
+              <span className="w-48 text-[13px] text-[#8C8C8A]">{dept.sections?.join(', ') || '-'}</span>
               <div className="flex w-24 items-center justify-end gap-3">
                 <Pencil
                   size={14}
@@ -284,6 +294,21 @@ export default function AdminDepartmentsPage() {
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <option key={num} value={num}>
                   {num} ({Array.from({ length: num }, (_, i) => String.fromCharCode(65 + i)).join(', ')})
+                </option>
+              ))}
+            </select>
+
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Duration (Years)
+            </label>
+            <select
+              value={durationYears}
+              onChange={(e) => setDurationYears(parseInt(e.target.value, 10))}
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <option key={num} value={num}>
+                  {num} {num === 1 ? 'Year' : 'Years'}
                 </option>
               ))}
             </select>

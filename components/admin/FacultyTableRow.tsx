@@ -32,11 +32,7 @@ export function FacultyTableRow({
           {faculty.email}
         </div>
 
-        <div className="w-[10%] text-[13px] text-[#8C8C8A] truncate pr-2">
-          {faculty.branch}
-        </div>
-
-        <div className="w-[14%] text-[13px] text-[#8C8C8A] truncate pr-2">
+        <div className="w-[24%] text-[13px] text-[#8C8C8A] truncate pr-2">
           {faculty.department}
         </div>
 

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/api";
-import { BRANCH_OPTIONS } from "@/lib/constants";
 import SubjectFormModal, {
 } from "@/components/admin/SubjectFormModal";
 import {
@@ -75,11 +74,37 @@ export default function AdminSyllabusPage() {
 
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
-  const [filterBranch, setFilterBranch] = useState("");
   const [filterDepartmentId, setFilterDepartmentId] = useState("");
   const [filterYear, setFilterYear] = useState("");
+  const [filterRegulation, setFilterRegulation] = useState("All");
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
+  const [filterDeptMaxYears, setFilterDeptMaxYears] = useState(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('lastSyllabusRegulation');
+    if (saved) {
+      setFilterRegulation(saved);
+    }
+  }, []);
+
+  const handleRegulationChange = (val: string) => {
+    setFilterRegulation(val);
+    localStorage.setItem('lastSyllabusRegulation', val);
+  };
+
+  const handleDeptFilterChange = (deptId: string) => {
+    setFilterDepartmentId(deptId);
+    setFilterYear("");
+    if (deptId) {
+      api.get(`/api/departments/${deptId}/config`)
+        .then(res => setFilterDeptMaxYears(res.data.durationYears || 4))
+        .catch(() => setFilterDeptMaxYears(4));
+    } else {
+      setFilterDeptMaxYears(4);
+    }
+  };
+
 
   const fetchSubjects = async (showError = false) => {
     try {
@@ -230,24 +255,21 @@ export default function AdminSyllabusPage() {
 
   const filteredSubjects = useMemo(() => {
     return subjects.filter((s) => {
-      const matchBranch =
-        !filterBranch ||
-        s.departments?.some((d) => d.branch?.toUpperCase() === filterBranch.toUpperCase());
       const matchDept =
         !filterDepartmentId ||
         s.departmentIds?.includes(filterDepartmentId) ||
         s.departments?.some((d) => d.id === filterDepartmentId);
       const matchY = !filterYear || String(s.year) === filterYear;
-      return matchBranch && matchDept && matchY;
+      const matchReg = filterRegulation === "All" || s.regulation === filterRegulation;
+      return matchDept && matchY && matchReg;
     });
-  }, [subjects, filterBranch, filterDepartmentId, filterYear]);
+  }, [subjects, filterDepartmentId, filterYear, filterRegulation]);
 
-  const visibleDepartmentOptions = useMemo(() => {
-    if (!filterBranch) return departmentOptions;
-    return departmentOptions.filter(
-      (d) => d.branch.toUpperCase() === filterBranch.toUpperCase()
-    );
-  }, [departmentOptions, filterBranch]);
+  const uniqueRegulations = useMemo(() => {
+    return Array.from(new Set(subjects.map((s) => s.regulation).filter(Boolean))).sort();
+  }, [subjects]);
+
+  const visibleDepartmentOptions = departmentOptions;
 
   // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
@@ -446,43 +468,40 @@ export default function AdminSyllabusPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-3">
-        {/* Branch filter */}
-        <select
-          value={filterBranch}
-          onChange={(e) => {
-            setFilterBranch(e.target.value);
-            setFilterDepartmentId("");
-          }}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-        >
-          <option value="">All Branches</option>
-          {BRANCH_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-
+        {/* Department filter */}
         <select
           value={filterDepartmentId}
-          onChange={(e) => setFilterDepartmentId(e.target.value)}
+          onChange={(e) => handleDeptFilterChange(e.target.value)}
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
           <option value="">All Departments</option>
-          {visibleDepartmentOptions.map((opt) => (
+          {departmentOptions.map((opt) => (
             <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
           ))}
         </select>
 
-        {/* Year filter */}
+        {/* Year filter — dynamic based on selected dept */}
         <select
           value={filterYear}
           onChange={(e) => setFilterYear(e.target.value)}
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
           <option value="">All Years</option>
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
+          {Array.from({ length: filterDeptMaxYears }, (_, i) => i + 1).map(y => (
+            <option key={y} value={String(y)}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>
+          ))}
+        </select>
+
+        {/* Regulation filter */}
+        <select
+          value={filterRegulation}
+          onChange={(e) => handleRegulationChange(e.target.value)}
+          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+        >
+          <option value="All">All Regulations</option>
+          {uniqueRegulations.map((reg: any) => (
+            <option key={reg} value={reg}>{reg}</option>
+          ))}
         </select>
       </div>
 

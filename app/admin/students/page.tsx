@@ -12,17 +12,17 @@ import { BRANCH_OPTIONS } from '@/lib/constants';
 
 export default function AdminStudentsPage() {
   const { user } = useAuth();
-  const isEngineering = user?.college?.name?.toLowerCase().includes('engineering') ?? true;
-  const maxYears = isEngineering ? 4 : 3;
 
   const [students, setStudents] = useState<any[]>([]);
   const [yearFilter, setYearFilter] = useState('All');
   const [batchYearFilter, setBatchYearFilter] = useState('All');
+  const [regulationFilter, setRegulationFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
   const [searchName, setSearchName] = useState('');
   const [departments, setDepartments] = useState<any[]>([]);
+  const [availableRegulations, setAvailableRegulations] = useState<string[]>(['R2021', 'R2025']);
   
   const [rowsPerPage, setRowsPerPage] = useState('10');
   const [page, setPage] = useState(1);
@@ -34,7 +34,13 @@ export default function AdminStudentsPage() {
   const [bulkBranch, setBulkBranch] = useState('');
   const [bulkDepartment, setBulkDepartment] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
+  
+  const selectedDept = departments.find(d => d.id === departmentFilter);
+  const maxYears = selectedDept?.durationYears || 4;
 
+  const selectedBulkDept = departments.find(d => d.id === bulkDepartment);
+  const bulkMaxYears = selectedBulkDept?.durationYears || 4;
+  
   const toast = useToast();
 
   const fetchStudents = async () => {
@@ -52,6 +58,9 @@ export default function AdminStudentsPage() {
       }
       if (batchYearFilter !== 'All') {
         params.batchYear = batchYearFilter;
+      }
+      if (regulationFilter !== 'All') {
+        params.regulation = regulationFilter;
       }
 
       const res = await api.get('/api/profiles/students', { params });
@@ -74,8 +83,48 @@ export default function AdminStudentsPage() {
   }, []);
 
   useEffect(() => {
+    if (departmentFilter) {
+      api.get(`/api/departments/${departmentFilter}/config`)
+        .then(res => setAvailableRegulations(res.data.availableRegulations || []))
+        .catch(() => setAvailableRegulations([]));
+    } else {
+      setAvailableRegulations(['R2021', 'R2025']);
+    }
+    // If current regulation filter is not in new list, reset to 'All'
+    setRegulationFilter('All');
+  }, [departmentFilter]);
+
+  useEffect(() => {
     fetchStudents();
-  }, [searchName, yearFilter, batchYearFilter, branchFilter, departmentFilter, sectionFilter, page, rowsPerPage]);
+  }, [searchName, yearFilter, batchYearFilter, regulationFilter, branchFilter, departmentFilter, sectionFilter, page, rowsPerPage]);
+
+  const handleDownloadCSV = () => {
+    if (students.length === 0) {
+      toast.error('No data to download');
+      return;
+    }
+    const headers = ['Roll No', 'Name', 'Email', 'Year', 'Batch', 'Regulation', 'Branch', 'Department', 'Section'];
+    const rows = students.map(s => [
+      s.rollNo || '-',
+      s.name || '-',
+      s.email || '-',
+      s.year ? `${s.year} Year` : '-',
+      s.batchYear || '-',
+      s.regulation || '-',
+      s.department?.branch || '-',
+      s.department?.name || '-',
+      s.section || '-'
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'students_data.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleDelete = async (id: string) => {
     // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
@@ -91,7 +140,7 @@ export default function AdminStudentsPage() {
   };
 
 
-  const availablePromoteYears = Array.from({ length: maxYears }, (_, i) => String(i + 1)).filter(y => {
+  const availablePromoteYears = Array.from({ length: bulkMaxYears }, (_, i) => String(i + 1)).filter(y => {
     return parseInt(y) > parseInt(bulkYear);
   });
 
@@ -117,15 +166,24 @@ export default function AdminStudentsPage() {
     <div className="px-6 py-6 w-full relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Students</h1>
-        <button 
-          onClick={() => setShowBulkModal(true)}
-          className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
-        >
-          Bulk Update
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleDownloadCSV}
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+          >
+            Download Data
+          </button>
+          <button 
+            onClick={() => setShowBulkModal(true)}
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+          >
+            Bulk Update
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
+        {/* 1. Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A58]" />
           <input 
@@ -139,13 +197,93 @@ export default function AdminStudentsPage() {
           />
         </div>
 
+        {/* 2. Department */}
         <select 
-          value={yearFilter} 
+          value={departmentFilter}
           onChange={(e) => {
-            setYearFilter(e.target.value);
+            setDepartmentFilter(e.target.value);
+            setYearFilter('All');
+            setBatchYearFilter('All');
+            setRegulationFilter('All');
             setPage(1);
           }}
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+        >
+          <option value="">All Departments</option>
+          {departments.map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
+          ))}
+        </select>
+
+        {/* 3. Batch Year — guarded */}
+        <select 
+          value={batchYearFilter} 
+          onFocus={() => {
+            if (!departmentFilter) {
+              toast.error('Select a department first to filter by batch year');
+            }
+          }}
+          onChange={(e) => {
+            if (!departmentFilter) return;
+            setBatchYearFilter(e.target.value);
+            setPage(1);
+          }}
+          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+          }`}
+        >
+          <option value="All">All Batches</option>
+          {Array.from({ length: 6 }, (_, i) => {
+            const startYear = 2019 + i;
+            const endYear = startYear + maxYears;
+            const batch = `${startYear}-${endYear}`;
+            return <option key={batch} value={batch}>{batch}</option>;
+          })}
+        </select>
+
+        {/* 4. Regulation — guarded */}
+        <select 
+          value={regulationFilter} 
+          onFocus={() => {
+            if (!departmentFilter) {
+              toast.error('Select a department first to filter by regulation');
+            }
+          }}
+          onChange={(e) => {
+            if (!departmentFilter) return;
+            setRegulationFilter(e.target.value);
+            setPage(1);
+          }}
+          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+          }`}
+        >
+          <option value="All">All Regulations</option>
+          {availableRegulations.length > 0 ? (
+            availableRegulations.map(reg => (
+              <option key={reg} value={reg}>{reg}</option>
+            ))
+          ) : (
+            <option value="" disabled>No regulations available</option>
+          )}
+        </select>
+
+        {/* 5. Year — guarded */}
+        <select 
+          value={yearFilter} 
+          onFocus={() => {
+            if (!departmentFilter) {
+              toast.error('Select a department first to filter by year');
+            }
+          }}
+          onChange={(e) => {
+            if (!departmentFilter) return;
+            setYearFilter(e.target.value);
+            setPage(1);
+          }}
+          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+          }`}
         >
           <option value="All">All Years</option>
           {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => (
@@ -153,39 +291,7 @@ export default function AdminStudentsPage() {
           ))}
         </select>
         
-        <select 
-          value={batchYearFilter} 
-          onChange={(e) => {
-            setBatchYearFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-        >
-          <option value="All">All Batches</option>
-          {Array.from({ length: 6 }, (_, i) => {
-            const startYear = 2020 + i;
-            const endYear = startYear + maxYears;
-            const batch = `${startYear}-${endYear}`;
-            return <option key={batch} value={batch}>{batch}</option>;
-          })}
-        </select>
-
-        <select 
-          value={departmentFilter}
-          onChange={(e) => {
-            setDepartmentFilter(e.target.value);
-            setPage(1);
-          }}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
-        >
-          <option value="">All Departments</option>
-          {departments
-            .filter(d => !branchFilter || d.branch === branchFilter)
-            .map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
-          ))}
-        </select>
-        
+        {/* 6. Section — only if dept selected */}
         {departmentFilter ? (
           <select 
             value={sectionFilter}
@@ -325,8 +431,9 @@ export default function AdminStudentsPage() {
                 >
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
-                  {maxYears >= 3 && <option value="3">3rd Year</option>}
-                  {maxYears >= 4 && <option value="4">4th Year</option>}
+                  {bulkMaxYears >= 3 && <option value="3">3rd Year</option>}
+                  {bulkMaxYears >= 4 && <option value="4">4th Year</option>}
+                  {bulkMaxYears >= 5 && <option value="5">5th Year</option>}
                 </select>
               </div>
 

@@ -138,8 +138,7 @@ export default function AdminFacultyPage() {
           <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
             <div className="w-[20%]">Name</div>
             <div className="w-[26%]">Email</div>
-            <div className="w-[10%]">Branch</div>
-            <div className="w-[14%]">Department</div>
+            <div className="w-[24%]">Department</div>
             <div className="w-[10%]">Joined</div>
             <div className="w-[20%] text-right">Action</div>
           </div>
@@ -162,7 +161,6 @@ export default function AdminFacultyPage() {
                     id: f.id,
                     name: f.name,
                     email: f.email,
-                    branch: f.branch || '-',
                     department: f.department?.name || '-',
                     joined: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '-'
                   }}
@@ -240,31 +238,14 @@ export default function AdminFacultyPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[12px] text-[#8C8C8A]">Branch</label>
-                <select
-                  value={editBranch}
-                  onChange={(e) => {
-                    setEditBranch(e.target.value);
-                    setEditDepartmentId('');
-                  }}
-                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-                >
-                  <option value="">— Select Branch —</option>
-                  {BRANCH_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="mb-1 block text-[12px] text-[#8C8C8A]">Department</label>
                 <select
                   value={editDepartmentId}
                   onChange={(e) => setEditDepartmentId(e.target.value)}
-                  disabled={!editBranch}
-                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none disabled:opacity-50"
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
                 >
                   <option value="">— Select Department —</option>
-                  {filteredDepartments.map((dept) => (
+                  {departments.map((dept) => (
                     <option key={dept.id} value={dept.id}>{dept.name}</option>
                   ))}
                 </select>

@@ -150,7 +150,9 @@ export default function PapersPage() {
     setPapers(prev => prev.map(p => p.id === paperId ? { ...p, examDate: newDate } : p));
   };
 
-  const filtered = papers.filter(p => p.examType === activeTab);
+  const filtered = papers
+    .filter(p => p.examType === activeTab)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // ─── Subject list ──────────────────────────────────────────────────────────
   if (!selectedSubject) {
