@@ -476,7 +476,7 @@ export default function AdminSyllabusPage() {
         >
           <option value="">All Departments</option>
           {departmentOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
+            <option key={opt.id} value={opt.id}>{opt.branch} - {opt.name}</option>
           ))}
         </select>
 

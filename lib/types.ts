@@ -223,7 +223,7 @@ export interface Faculty {
   email: string;
   branch: string;
   department: string;
-  joined: string;
+  role: string;
 }
 
 export interface FacultyTableRowProps {

@@ -279,7 +279,7 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                 >
                   <option value="">Select department…</option>
                   {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name} — {d.branch}</option>
+                    <option key={d.id} value={d.id}>{d.branch} - {d.name}</option>
                   ))}
                 </select>
               </div>

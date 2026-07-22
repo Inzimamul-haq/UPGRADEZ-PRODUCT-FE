@@ -95,7 +95,7 @@ return (
           className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
         >
           {departments.map((d) => (
-            <option key={d.id} value={d.id}>{d.branch}/{d.name}</option>
+            <option key={d.id} value={d.id}>{d.branch} - {d.name}</option>
           ))}
         </select>
 

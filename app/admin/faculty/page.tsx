@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { FacultyTableRow } from '@/components/admin/FacultyTableRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
-import { BRANCH_OPTIONS } from '@/lib/constants';
 
 type DepartmentOption = {
   id: string;
@@ -28,7 +27,6 @@ export default function AdminFacultyPage() {
   
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [editBranch, setEditBranch] = useState('');
   const [editDepartmentId, setEditDepartmentId] = useState('');
   const [editRole, setEditRole] = useState('');
 
@@ -66,12 +64,6 @@ export default function AdminFacultyPage() {
     loadDepartments();
   }, [editModalOpen]);
 
-  const filteredDepartments = useMemo(() => {
-    if (!editBranch) return departments;
-    return departments.filter(
-      (d) => d.branch.toUpperCase() === editBranch.toUpperCase()
-    );
-  }, [departments, editBranch]);
 
   const handleEdit = (id: string) => {
     const fac = faculty.find(f => f.id === id);
@@ -79,7 +71,6 @@ export default function AdminFacultyPage() {
     setEditingFaculty(fac);
     setEditName(fac.name);
     setEditEmail(fac.email);
-    setEditBranch(fac.branch || '');
     setEditDepartmentId(fac.departmentId || fac.department?.id || '');
     setEditRole(fac.role);
     setEditModalOpen(true);
@@ -91,7 +82,6 @@ export default function AdminFacultyPage() {
       await api.put(`/api/profiles/faculty/${editingFaculty.id}`, {
         name: editName,
         email: editEmail,
-        branch: editBranch,
         departmentId: editDepartmentId || null,
         role: editRole
       });
@@ -139,7 +129,7 @@ export default function AdminFacultyPage() {
             <div className="w-[20%]">Name</div>
             <div className="w-[26%]">Email</div>
             <div className="w-[24%]">Department</div>
-            <div className="w-[10%]">Joined</div>
+            <div className="w-[10%]">Role</div>
             <div className="w-[20%] text-right">Action</div>
           </div>
 
@@ -161,8 +151,9 @@ export default function AdminFacultyPage() {
                     id: f.id,
                     name: f.name,
                     email: f.email,
+                    branch: f.branch || '',
                     department: f.department?.name || '-',
-                    joined: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '-'
+                    role: f.role,
                   }}
                   onEdit={handleEdit}
                   onDelete={handleDelete}

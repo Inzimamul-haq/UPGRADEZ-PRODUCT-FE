@@ -211,7 +211,7 @@ export default function AdminStudentsPage() {
         >
           <option value="">All Departments</option>
           {departments.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
+            <option key={opt.id} value={opt.id}>{opt.branch} - {opt.name}</option>
           ))}
         </select>
 

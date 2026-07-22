@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { TokenUsageBar } from '@/components/dashboard/TokenUsageBar';
+import { TokenUsageChart } from '@/components/dashboard/analytics/TokenUsageChart';
+import { RequestTrendChart } from '@/components/dashboard/analytics/RequestTrendChart';
+import { QuotaStatusDonut } from '@/components/dashboard/analytics/QuotaStatusDonut';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { Notification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
@@ -75,21 +77,28 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      <div className="mt-4">
-        {loading ? (
-          <div className="animate-pulse bg-[#2C2C2A] h-12 rounded-lg"></div>
-        ) : data ? (
-          <TokenUsageBar used={data.tokenUsage.used} limit={data.tokenUsage.limit} showLabel />
-        ) : null}
-      </div>
-
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-semibold text-[#ECECEA]">Recent Activity</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        <div className="col-span-1 lg:col-span-2">
+           <TokenUsageChart />
         </div>
-        <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
-          <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-4 pt-3 pb-1">Recent</p>
-          <ActivityFeed notifications={notifications} />
+        <div className="col-span-1">
+           <QuotaStatusDonut />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="col-span-1">
+           <RequestTrendChart />
+        </div>
+        <div className="col-span-1 flex flex-col h-[300px]">
+          <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-5 mb-2">
+              <h2 className="text-[14px] font-medium text-[#ECECEA]">Recent Activity</h2>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-5 pt-1 pb-1">Recent</p>
+              <ActivityFeed notifications={notifications} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
