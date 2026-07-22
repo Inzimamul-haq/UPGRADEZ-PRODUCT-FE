@@ -6,13 +6,14 @@ import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { AddCollegeModal } from "@/components/super-admin/AddCollegeModal";
+import { useRouter } from "next/navigation";
 
 type College = {
   id: string;
   name: string;
   accessCode: string;
   isActive: boolean;
-  geminiApiKey?: string | null;
+  hasGeminiApiKey?: boolean;
   logoUrl?: string | null;
   bannerUrl?: string | null;
   _count: { profiles: number };
@@ -23,7 +24,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
   const [name, setName] = useState(college.name);
   const [shortName, setShortName] = useState((college as any).shortName || "");
   const [accessCode, setAccessCode] = useState(college.accessCode);
-  const [geminiApiKey, setGeminiApiKey] = useState(college.geminiApiKey || "");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [isActive, setIsActive] = useState(college.isActive);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -39,7 +40,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
       if (name.trim() !== college.name) formData.append("name", name.trim());
       if (shortName.trim() !== (college as any).shortName) formData.append("shortName", shortName.trim());
       if (accessCode.trim() !== college.accessCode) formData.append("accessCode", accessCode.trim());
-      if (geminiApiKey.trim() !== (college.geminiApiKey || "")) formData.append("geminiApiKey", geminiApiKey.trim());
+      if (geminiApiKey.trim() !== "") formData.append("geminiApiKey", geminiApiKey.trim());
       formData.append("isActive", isActive.toString());
       if (logoFile) formData.append("logo", logoFile);
       if (bannerFile) formData.append("banner", bannerFile);
@@ -125,6 +126,7 @@ function ConfirmDeleteModal({ name, onClose, onConfirm, loading }: { name: strin
 }
 
 export default function SuperAdminCollegesPage() {
+  const router = useRouter();
   const toast = useToast();
   const [colleges, setColleges] = useState<College[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -200,7 +202,7 @@ export default function SuperAdminCollegesPage() {
           <div className="w-20 text-center">Logo</div>
           <div className="w-20 text-center">Banner</div>
           <div className="w-20 text-center">Status</div>
-          <div className="w-24 text-right">Action</div>
+          <div className="w-32 text-right">Action</div>
         </div>
 
         {isLoading ? (
@@ -220,7 +222,7 @@ export default function SuperAdminCollegesPage() {
                 </div>
                 <div className="w-16 text-center text-[13px] text-[#8C8C8A]">{college._count.profiles}</div>
                 <div className="w-20 text-center text-[13px] text-[#8C8C8A]">
-                  <span className={college.geminiApiKey ? "text-green-400" : "text-[#5A5A58]"}>{college.geminiApiKey ? "Yes" : "No"}</span>
+                  <span className={college.hasGeminiApiKey ? "text-green-400" : "text-[#5A5A58]"}>{college.hasGeminiApiKey ? "Yes" : "No"}</span>
                 </div>
                 <div className="w-20 text-center text-[13px] text-[#8C8C8A]">
                   <span className={college.logoUrl ? "text-green-400" : "text-[#5A5A58]"}>{college.logoUrl ? "Yes" : "No"}</span>
@@ -233,7 +235,12 @@ export default function SuperAdminCollegesPage() {
                     {college.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
-                <div className="w-24 flex items-center justify-end gap-2">
+                <div className="w-32 flex items-center justify-end gap-2">
+                  <button onClick={() => router.push(`/super-admin/colleges/${college.id}`)} className="p-1.5 rounded-md text-[#8C8C8A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors" title="View Analytics">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+                    </svg>
+                  </button>
                   <button onClick={() => setEditCollege(college)} className="p-1.5 rounded-md text-[#8C8C8A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors" title="Edit">
                     <Pencil size={14} />
                   </button>

@@ -4,7 +4,7 @@ import api from '@/lib/api';
 
 type Range = 'day' | 'week' | 'month' | 'year';
 
-export const TokenUsageChart = () => {
+export const TokenUsageChart = ({ collegeId }: { collegeId?: string }) => {
   const [range, setRange] = useState<Range>('month');
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState<{ label: string, tokensUsed: number }[]>([]);
@@ -14,7 +14,10 @@ export const TokenUsageChart = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get(`/api/admin/dashboard/analytics/token-usage?range=${range}${range === 'year' ? `&year=${year}` : ''}`);
+        const endpoint = collegeId 
+          ? `/api/super-admin/colleges/${collegeId}/dashboard/analytics/token-usage`
+          : '/api/admin/dashboard/analytics/token-usage';
+        const res = await api.get(`${endpoint}?range=${range}${range === 'year' ? `&year=${year}` : ''}`);
         setData(res.data.data);
       } catch (e) {
         console.error(e);

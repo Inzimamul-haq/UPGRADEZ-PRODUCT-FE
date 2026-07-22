@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '@/lib/api';
 
-export const RequestTrendChart = () => {
+export const RequestTrendChart = ({ collegeId }: { collegeId?: string }) => {
   const [data, setData] = useState<{ month: string, requestCount: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -10,7 +10,10 @@ export const RequestTrendChart = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/api/admin/dashboard/analytics/request-trend');
+        const endpoint = collegeId 
+          ? `/api/super-admin/colleges/${collegeId}/dashboard/analytics/request-trend`
+          : '/api/admin/dashboard/analytics/request-trend';
+        const res = await api.get(endpoint);
         setData(res.data.data);
       } catch (e) {
         console.error(e);

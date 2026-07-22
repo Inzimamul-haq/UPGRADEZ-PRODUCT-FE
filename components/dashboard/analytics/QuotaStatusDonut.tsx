@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '@/lib/api';
 
-export const QuotaStatusDonut = () => {
+export const QuotaStatusDonut = ({ collegeId }: { collegeId?: string }) => {
   const [data, setData] = useState<{ used: number, limit: number, remaining: number, percentUsed: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -10,7 +10,10 @@ export const QuotaStatusDonut = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/api/admin/dashboard/analytics/quota-status');
+        const endpoint = collegeId 
+          ? `/api/super-admin/colleges/${collegeId}/dashboard/analytics/quota-status`
+          : '/api/admin/dashboard/analytics/quota-status';
+        const res = await api.get(endpoint);
         setData(res.data.data);
       } catch (e) {
         console.error(e);
@@ -54,7 +57,7 @@ export const QuotaStatusDonut = () => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value: number) => new Intl.NumberFormat('en-US').format(value)}
+                  formatter={(value) => new Intl.NumberFormat('en-US').format(Number(value ?? 0))}
                   contentStyle={{ backgroundColor: '#242422', borderColor: '#2E2E2C', borderRadius: '8px', color: '#ECECEA', fontSize: '12px' }} 
                 />
               </PieChart>
