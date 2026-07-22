@@ -17,6 +17,8 @@ type Admin = {
 };
 type Pagination = { total: number; page: number; limit: number; totalPages: number };
 
+const BRANCHES = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "MBA", "MCA"];
+
 function ConfirmDeleteModal({ name, onClose, onConfirm, loading }: { name: string; onClose: () => void; onConfirm: () => void; loading: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
@@ -79,6 +81,7 @@ export default function SuperAdminAdminPage() {
 
   const [search, setSearch] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const [deleteTarget, setDeleteTarget] = useState<Admin | null>(null);
@@ -95,6 +98,7 @@ export default function SuperAdminAdminPage() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (collegeFilter) params.set("collegeId", collegeFilter);
+      if (branchFilter) params.set("branch", branchFilter);
       params.set("page", String(page));
       params.set("limit", "15");
       const { data } = await api.get(`/api/profiles/admins?${params}`);
@@ -105,7 +109,7 @@ export default function SuperAdminAdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, collegeFilter, page]);
+  }, [search, collegeFilter, branchFilter, page]);
 
   useEffect(() => { fetchAdmins(); }, [fetchAdmins]);
 
@@ -142,16 +146,20 @@ export default function SuperAdminAdminPage() {
           <option value="">All Colleges</option>
           {colleges.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <select value={branchFilter} onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]">
+          <option value="">All Departments</option>
+          {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+        </select>
       </div>
 
       {/* Table */}
       <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#1F1F1E]">
         <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
-          <div className="flex-1">Name</div>
-          <div className="w-48">Email</div>
-          <div className="w-44">College</div>
-          <div className="w-36">Department</div>
-          <div className="w-24 text-right">Actions</div>
+          <div className="w-[200px]">Name</div>
+          <div className="w-[200px]">Email</div>
+          <div className="w-[160px]">College</div>
+          <div className="w-[128px]">Department</div>
+          <div className="w-[96px] text-right ml-auto">Actions</div>
         </div>
 
         {isLoading ? (
@@ -161,11 +169,11 @@ export default function SuperAdminAdminPage() {
         ) : (
           admins.map((a) => (
             <div key={a.id} className="flex items-center border-t border-[#2E2E2C] px-4 py-3 hover:bg-[#252523]">
-              <div className="flex-1 text-[13px] text-[#ECECEA] truncate pr-2">{a.name}</div>
-              <div className="w-48 text-[13px] text-[#8C8C8A] truncate pr-2">{a.email}</div>
-              <div className="w-44 text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(a.collegeId)}</div>
-              <div className="w-36 text-[12px] text-[#8C8C8A] truncate">{a.department?.name ?? "—"}</div>
-              <div className="w-24 flex justify-end gap-1.5">
+              <div className="w-[200px] text-[13px] text-[#ECECEA] truncate pr-2">{a.name}</div>
+              <div className="w-[200px] text-[13px] text-[#8C8C8A] truncate pr-2">{a.email}</div>
+              <div className="w-[160px] text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(a.collegeId)}</div>
+              <div className="w-[128px] text-[12px] text-[#8C8C8A] truncate pr-2">{a.department?.name ?? "—"}</div>
+              <div className="w-[96px] flex justify-end gap-1.5 ml-auto">
                 <button onClick={() => setPromoteTarget(a)} className="rounded px-2 py-1 text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] border border-[#3A3A38] hover:border-[#4A4A48] transition-colors">Promote</button>
                 <button onClick={() => setDeleteTarget(a)} className="p-1.5 rounded text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
               </div>

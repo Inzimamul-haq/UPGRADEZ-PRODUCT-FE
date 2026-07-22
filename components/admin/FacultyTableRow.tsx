@@ -3,6 +3,7 @@
 import { FacultyTableRowProps } from "@/lib/types";
 import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 export function FacultyTableRow({
   faculty,
@@ -68,29 +69,12 @@ export function FacultyTableRow({
       </div>
 
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6">
-            <p className="mt-2 text-[13px] text-[#8C8C8A]">
-              {`Are you sure you want to delete "${faculty.name}"? This action cannot be undone.`}
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmAction(null)}
-                className="text-[13px] text-[#8C8C8A] hover:text-white"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleConfirm}
-                className="rounded-md px-4 py-2 text-[13px] border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDeleteModal
+          name={faculty.name}
+          entityLabel="Faculty"
+          onClose={() => setConfirmAction(null)}
+          onConfirm={handleConfirm}
+        />
       )}
     </>
   );

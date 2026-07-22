@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { FacultyTableRow } from '@/components/admin/FacultyTableRow';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { TableShell } from '@/components/ui/TableShell';
+import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 
@@ -123,89 +124,44 @@ export default function AdminFacultyPage() {
         </div>
       </div>
 
-      <div className="border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[900px]">
-          <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[20%]">Name</div>
-            <div className="w-[26%]">Email</div>
-            <div className="w-[24%]">Department</div>
-            <div className="w-[10%]">Role</div>
-            <div className="w-[20%] text-right">Action</div>
-          </div>
+      <TableShell
+        columns={[
+          { label: 'Name', width: '20%' },
+          { label: 'Email', width: '26%' },
+          { label: 'Department', width: '24%' },
+          { label: 'Role', width: '10%' },
+          { label: 'Action', width: '20%', align: 'right' },
+        ]}
+        isLoading={isLoading}
+        isEmpty={faculty.length === 0}
+        emptyIcon={GraduationCap}
+        emptyHeading="No faculty found"
+        minWidth="900px"
+      >
+        {faculty.map((f) => (
+          <FacultyTableRow
+            key={f.id}
+            faculty={{
+              id: f.id,
+              name: f.name,
+              email: f.email,
+              branch: f.branch || '',
+              department: f.department?.name || '-',
+              role: f.role,
+            }}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ))}
+      </TableShell>
 
-          <div className="flex flex-col">
-            {isLoading ? (
-               <div className="py-8 text-center text-[#5A5A58] text-[13px]">Loading...</div>
-            ) : faculty.length === 0 ? (
-              <div className="py-8">
-                <EmptyState
-                  icon={GraduationCap}
-                  heading="No faculty found"
-                />
-              </div>
-            ) : (
-              faculty.map((f) => (
-                <FacultyTableRow
-                  key={f.id}
-                  faculty={{
-                    id: f.id,
-                    name: f.name,
-                    email: f.email,
-                    branch: f.branch || '',
-                    department: f.department?.name || '-',
-                    role: f.role,
-                  }}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#2E2E2C] bg-[#1F1F1E]">
-          <div className="flex items-center gap-4">
-            <span className="text-[12px] text-[#8C8C8A]">
-              Showing {Math.min((page - 1) * parseInt(rowsPerPage) + 1, total)} to {Math.min(page * parseInt(rowsPerPage), total)} of {total} results
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[#8C8C8A]">Rows per page:</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(e.target.value);
-                  setPage(1);
-                }}
-                className="bg-[#2C2C2A] border border-[#3A3A38] rounded text-[12px] text-[#ECECEA] px-1 py-0.5 focus:outline-none"
-              >
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="70">70</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Previous
-            </button>
-            <button className="px-2 py-1 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded">
-              {page}
-            </button>
-            <button 
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
+      <TablePagination
+        page={page}
+        total={total}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setPage}
+        onRowsPerPageChange={(v) => { setRowsPerPage(v); setPage(1); }}
+      />
 
       {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">

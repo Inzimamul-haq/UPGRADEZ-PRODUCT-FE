@@ -5,6 +5,7 @@ import { Pencil, Trash2, X } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
 import { DepartmentOption, StudentTableRowProps } from '@/lib/types';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const ROLE_OPTIONS = ['student', 'faculty', 'admin'];
 
@@ -108,28 +109,12 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-            <h2 className="text-[14px] font-medium text-[#ECECEA] mb-2">Delete Student</h2>
-            <p className="text-[13px] text-[#8C8C8A] mb-6">
-              Are you sure you want to delete <span className="text-[#ECECEA]">{student.name}</span>? This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="text-[13px] text-[#8C8C8A] hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { onDelete(student.id); setShowDeleteModal(false); }}
-                className="rounded-md border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 text-[13px] transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDeleteModal
+          name={student.name}
+          entityLabel="Student"
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => { onDelete(student.id); setShowDeleteModal(false); }}
+        />
       )}
 
       {showEditModal && (

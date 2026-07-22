@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search } from 'lucide-react';
 import { StudentTableRow } from '@/components/admin/StudentTableRow';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { TableShell } from '@/components/ui/TableShell';
+import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -316,101 +317,55 @@ export default function AdminStudentsPage() {
         )}
       </div>
 
-      <div className="mt-4 border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[1000px]">
-          <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[12%]">Roll No</div>
-            <div className="w-[14%]">Name</div>
-            <div className="w-[18%]">Email</div>
-            <div className="w-[6%]">Year</div>
-            <div className="w-[10%]">Batch</div>
-            <div className="w-[8%]">Branch</div>
-            <div className="w-[12%]">Department</div>
-            <div className="w-[8%]">Section</div>
-            <div className="w-[12%] text-right">Action</div>
-          </div>
-          
-          <div className="flex flex-col">
-            {isLoading ? (
-               <div className="py-8 text-center text-[#5A5A58] text-[13px]">Loading...</div>
-            ) : students.length === 0 ? (
-              <div className="py-8">
-                <EmptyState 
-                  icon={Users} 
-                  heading="No students found" 
-                  subtext="Try adjusting your filters" 
-                />
-              </div>
-            ) : (
-              students.map((s) => (
-                <StudentTableRow 
-                  key={s.id} 
-                  student={{
-                    id: s.id,
-                    name: s.name,
-                    email: s.email,
-                    year: s.year ? `${s.year} Year` : '-',
-                    branch: s.department?.branch || '-',
-                    department: s.department?.name || '-',
-                    departmentId: s.departmentId || s.department?.id,
-                    section: s.section || '-',
-                    joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
-                    role: s.role || 'student',
-                    batchYear: s.batchYear,
-                    rollNo: s.rollNo,
-                  }} 
-                  onDelete={handleDelete}
-                  onPromoteSuccess={fetchStudents}
-                />
-              ))
-            )}
-          </div>
-        </div>
-        
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#2E2E2C] bg-[#1F1F1E]">
-          <div className="flex items-center gap-4">
-            <span className="text-[12px] text-[#8C8C8A]">
-              Showing {Math.min((page - 1) * parseInt(rowsPerPage) + 1, total)} to {Math.min(page * parseInt(rowsPerPage), total)} of {total} results
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[#8C8C8A]">Rows per page:</span>
-              <select 
-                value={rowsPerPage} 
-                onChange={(e) => {
-                  setRowsPerPage(e.target.value);
-                  setPage(1);
-                }}
-                className="bg-[#2C2C2A] border border-[#3A3A38] rounded text-[12px] text-[#ECECEA] px-1 py-0.5 focus:outline-none"
-              >
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="70">70</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Previous
-            </button>
-            <button className="px-2 py-1 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded">
-              {page}
-            </button>
-            <button 
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
+      <TableShell
+        columns={[
+          { label: 'Roll No', width: '12%' },
+          { label: 'Name', width: '14%' },
+          { label: 'Email', width: '18%' },
+          { label: 'Year', width: '6%' },
+          { label: 'Batch', width: '10%' },
+          { label: 'Branch', width: '8%' },
+          { label: 'Department', width: '12%' },
+          { label: 'Section', width: '8%' },
+          { label: 'Action', width: '12%', align: 'right' },
+        ]}
+        isLoading={isLoading}
+        isEmpty={students.length === 0}
+        emptyIcon={Users}
+        emptyHeading="No students found"
+        emptySubtext="Try adjusting your filters"
+        minWidth="1000px"
+      >
+        {students.map((s) => (
+          <StudentTableRow
+            key={s.id}
+            student={{
+              id: s.id,
+              name: s.name,
+              email: s.email,
+              year: s.year ? `${s.year} Year` : '-',
+              branch: s.department?.branch || '-',
+              department: s.department?.name || '-',
+              departmentId: s.departmentId || s.department?.id,
+              section: s.section || '-',
+              joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
+              role: s.role || 'student',
+              batchYear: s.batchYear,
+              rollNo: s.rollNo,
+            }}
+            onDelete={handleDelete}
+            onPromoteSuccess={fetchStudents}
+          />
+        ))}
+      </TableShell>
+
+      <TablePagination
+        page={page}
+        total={total}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setPage}
+        onRowsPerPageChange={(v) => { setRowsPerPage(v); setPage(1); }}
+      />
 
       {/* Bulk Update Modal */}
       {showBulkModal && (

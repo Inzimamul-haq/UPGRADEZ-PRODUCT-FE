@@ -13,8 +13,9 @@ type College = {
   accessCode: string;
   isActive: boolean;
   geminiApiKey?: string | null;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
   _count: { profiles: number };
-  collegeUsage: Array<{ tokensUsed: number }>;
 };
 
 function EditCollegeModal({ college, onClose, onSuccess }: { college: College; onClose: () => void; onSuccess: () => void }) {
@@ -193,9 +194,11 @@ export default function SuperAdminCollegesPage() {
       <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#1F1F1E]">
         <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
           <div className="flex-1">Name</div>
-          <div className="w-36">Access Code</div>
-          <div className="w-20 text-center">Members</div>
-          <div className="w-28 text-right">Tokens (Month)</div>
+          <div className="w-28">Access Code</div>
+          <div className="w-16 text-center">Members</div>
+          <div className="w-20 text-center">Gemini API</div>
+          <div className="w-20 text-center">Logo</div>
+          <div className="w-20 text-center">Banner</div>
           <div className="w-20 text-center">Status</div>
           <div className="w-24 text-right">Action</div>
         </div>
@@ -208,15 +211,23 @@ export default function SuperAdminCollegesPage() {
           </div>
         ) : (
           filtered.map((college) => {
-            const usage = college.collegeUsage?.[0]?.tokensUsed ?? 0;
+
             return (
               <div key={college.id} className="flex items-center border-t border-[#3A3A38] px-4 py-3 hover:bg-[#252523]">
                 <div className="flex-1 text-[14px] text-[#ECECEA] truncate pr-4">{college.name}</div>
-                <div className="w-36">
+                <div className="w-28">
                   <span className="rounded bg-[#2C2C2A] px-1.5 py-0.5 text-[12px] font-mono text-[#B0B0AE]">{college.accessCode}</span>
                 </div>
-                <div className="w-20 text-center text-[13px] text-[#8C8C8A]">{college._count.profiles}</div>
-                <div className="w-28 text-right text-[13px] text-[#8C8C8A]">{new Intl.NumberFormat('en-US').format(Number(usage))}</div>
+                <div className="w-16 text-center text-[13px] text-[#8C8C8A]">{college._count.profiles}</div>
+                <div className="w-20 text-center text-[13px] text-[#8C8C8A]">
+                  <span className={college.geminiApiKey ? "text-green-400" : "text-[#5A5A58]"}>{college.geminiApiKey ? "Yes" : "No"}</span>
+                </div>
+                <div className="w-20 text-center text-[13px] text-[#8C8C8A]">
+                  <span className={college.logoUrl ? "text-green-400" : "text-[#5A5A58]"}>{college.logoUrl ? "Yes" : "No"}</span>
+                </div>
+                <div className="w-20 text-center text-[13px] text-[#8C8C8A]">
+                  <span className={college.bannerUrl ? "text-green-400" : "text-[#5A5A58]"}>{college.bannerUrl ? "Yes" : "No"}</span>
+                </div>
                 <div className="w-20 text-center">
                   <span className={`text-[11px] px-2 py-0.5 rounded-full ${college.isActive ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
                     {college.isActive ? "Active" : "Inactive"}

@@ -4,7 +4,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Users, Search, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { TableShell } from "@/components/ui/TableShell";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
+import { Users, Search, Trash2 } from "lucide-react";
 
 type College = { id: string; name: string };
 type Student = {
@@ -14,6 +17,8 @@ type Student = {
   year: number | null;
   section: string | null;
   role: string;
+  rollNo: string | null;
+  regulation: string | null;
   collegeId: string | null;
   department: { id: string; name: string; branch: string } | null;
 };
@@ -24,20 +29,6 @@ const BRANCHES = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "MBA", "MCA"];
 const YEARS = [1, 2, 3, 4];
 const PROMOTE_ROLES = ["faculty", "admin"];
 
-function ConfirmDeleteModal({ name, onClose, onConfirm, loading }: { name: string; onClose: () => void; onConfirm: () => void; loading: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
-      <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-        <h2 className="mb-2 text-[15px] font-medium text-[#ECECEA]">Delete Student</h2>
-        <p className="text-[13px] text-[#8C8C8A]">Delete <span className="text-[#ECECEA]">{name}</span>? This cannot be undone.</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} disabled={loading} className="rounded-md border border-[#3A3A38] px-4 py-2 text-[13px] text-[#B0B0AE] hover:bg-[#2C2C2A] disabled:opacity-40">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="rounded-md bg-red-500/20 border border-red-500/40 px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/30 disabled:opacity-50">{loading ? "Deleting..." : "Delete"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PromoteModal({ student, onClose, onSuccess }: { student: Student; onClose: () => void; onSuccess: () => void }) {
   const toast = useToast();
@@ -87,6 +78,8 @@ export default function SuperAdminStudentsPage() {
   const [collegeFilter, setCollegeFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [branchFilter, setBranchFilter] = useState("");
+  const [batchYearFilter, setBatchYearFilter] = useState("");
+  const [regulationFilter, setRegulationFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
@@ -105,6 +98,8 @@ export default function SuperAdminStudentsPage() {
       if (collegeFilter) params.set("collegeId", collegeFilter);
       if (yearFilter) params.set("year", yearFilter);
       if (branchFilter) params.set("branch", branchFilter);
+      if (batchYearFilter) params.set("batchYear", batchYearFilter);
+      if (regulationFilter) params.set("regulation", regulationFilter);
       params.set("page", String(page));
       params.set("limit", "15");
       const { data } = await api.get(`/api/profiles/students?${params}`);
@@ -115,7 +110,7 @@ export default function SuperAdminStudentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, collegeFilter, yearFilter, branchFilter, page]);
+  }, [search, collegeFilter, yearFilter, branchFilter, batchYearFilter, regulationFilter, page]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
@@ -160,52 +155,65 @@ export default function SuperAdminStudentsPage() {
           <option value="">All Branches</option>
           {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
         </select>
+        <select value={batchYearFilter} onChange={(e) => { setBatchYearFilter(e.target.value); setPage(1); }} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]">
+          <option value="">All Batches</option>
+          <option value="2020">2020</option>
+          <option value="2021">2021</option>
+          <option value="2022">2022</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+        </select>
+        <select value={regulationFilter} onChange={(e) => { setRegulationFilter(e.target.value); setPage(1); }} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]">
+          <option value="">All Regulations</option>
+          <option value="R20">R20</option>
+          <option value="R22">R22</option>
+          <option value="R23">R23</option>
+        </select>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#1F1F1E]">
-        <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
-          <div className="flex-1">Name</div>
-          <div className="w-40">Email</div>
-          <div className="w-40">College</div>
-          <div className="w-28">Department</div>
-          <div className="w-16 text-center">Year</div>
-          <div className="w-16 text-center">Sec</div>
-          <div className="w-24 text-right">Actions</div>
-        </div>
-
-        {isLoading ? (
-          <p className="px-4 py-8 text-[13px] text-[#5A5A58]">Loading...</p>
-        ) : students.length === 0 ? (
-          <div className="py-8"><EmptyState icon={Users} heading="No students found" /></div>
-        ) : (
-          students.map((s) => (
-            <div key={s.id} className="flex items-center border-t border-[#2E2E2C] px-4 py-3 hover:bg-[#252523]">
-              <div className="flex-1 text-[13px] text-[#ECECEA] truncate pr-2">{s.name}</div>
-              <div className="w-40 text-[13px] text-[#8C8C8A] truncate pr-2">{s.email}</div>
-              <div className="w-40 text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(s.collegeId)}</div>
-              <div className="w-28 text-[12px] text-[#8C8C8A] truncate">{s.department?.name ?? "—"}</div>
-              <div className="w-16 text-center text-[13px] text-[#8C8C8A]">{s.year ?? "—"}</div>
-              <div className="w-16 text-center text-[13px] text-[#8C8C8A]">{s.section ?? "—"}</div>
-              <div className="w-24 flex justify-end gap-1.5">
-                <button onClick={() => setPromoteTarget(s)} className="rounded px-2 py-1 text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] border border-[#3A3A38] hover:border-[#4A4A48] transition-colors">Promote</button>
-                <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
-              </div>
+      <TableShell
+        columns={[
+          { label: 'Name', width: '200px' },
+          { label: 'Email', width: '180px' },
+          { label: 'College', width: '128px' },
+          { label: 'Department', width: '96px' },
+          { label: 'Roll No', width: '100px' },
+          { label: 'Regulation', width: '80px' },
+          { label: 'Year', width: '64px', align: 'right' },
+          { label: 'Sec', width: '64px', align: 'right' },
+          { label: 'Actions', width: '96px', align: 'right' },
+        ]}
+        isLoading={isLoading}
+        isEmpty={students.length === 0}
+        emptyIcon={Users}
+        emptyHeading="No students found"
+      >
+        {students.map((s) => (
+          <div key={s.id} className="flex items-center border-t border-[#2E2E2C] px-4 py-3 hover:bg-[#252523]">
+            <div className="w-[200px] text-[13px] text-[#ECECEA] truncate pr-2">{s.name}</div>
+            <div className="w-[180px] text-[13px] text-[#8C8C8A] truncate pr-2">{s.email}</div>
+            <div className="w-32 text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(s.collegeId)}</div>
+            <div className="w-24 text-[12px] text-[#8C8C8A] truncate">{s.department?.name ?? "—"}</div>
+            <div className="w-[100px] text-[13px] text-[#8C8C8A] truncate pr-2">{s.rollNo ?? "—"}</div>
+            <div className="w-[80px] text-[13px] text-[#8C8C8A] truncate">{s.regulation ?? "—"}</div>
+            <div className="w-16 text-[13px] text-[#8C8C8A] text-right">{s.year ?? "—"}</div>
+            <div className="w-16 text-[13px] text-[#8C8C8A] text-right">{s.section ?? "—"}</div>
+            <div className="w-24 flex justify-end gap-1.5 ml-auto">
+              <button onClick={() => setPromoteTarget(s)} className="rounded px-2 py-1 text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] border border-[#3A3A38] hover:border-[#4A4A48] transition-colors">Promote</button>
+              <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
             </div>
-          ))
-        )}
-      </div>
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-[13px] text-[#8C8C8A]">
-          <span>Page {pagination.page} of {pagination.totalPages}</span>
-          <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="p-1.5 rounded-md border border-[#3A3A38] hover:bg-[#2C2C2A] disabled:opacity-30"><ChevronLeft size={14} /></button>
-            <button onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={page >= pagination.totalPages} className="p-1.5 rounded-md border border-[#3A3A38] hover:bg-[#2C2C2A] disabled:opacity-30"><ChevronRight size={14} /></button>
           </div>
-        </div>
-      )}
+        ))}
+      </TableShell>
+
+      <TablePagination
+        page={page}
+        total={pagination.total}
+        rowsPerPage={String(pagination.limit)}
+        onPageChange={setPage}
+        onRowsPerPageChange={() => {}}
+      />
 
       {deleteTarget && <ConfirmDeleteModal name={deleteTarget.name} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />}
       {promoteTarget && <PromoteModal student={promoteTarget} onClose={() => setPromoteTarget(null)} onSuccess={() => { setPromoteTarget(null); fetchStudents(); }} />}

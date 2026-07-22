@@ -4,7 +4,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Users, Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { TableShell } from "@/components/ui/TableShell";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
+import { Users, Search, Trash2 } from "lucide-react";
 
 type College = { id: string; name: string };
 type Faculty = {
@@ -13,24 +16,13 @@ type Faculty = {
   email: string;
   role: string;
   collegeId: string | null;
+  createdAt: string;
   department: { id: string; name: string; branch: string } | null;
 };
 type Pagination = { total: number; page: number; limit: number; totalPages: number };
 
-function ConfirmDeleteModal({ name, onClose, onConfirm, loading }: { name: string; onClose: () => void; onConfirm: () => void; loading: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
-      <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-        <h2 className="mb-2 text-[15px] font-medium text-[#ECECEA]">Delete Faculty</h2>
-        <p className="text-[13px] text-[#8C8C8A]">Delete <span className="text-[#ECECEA]">{name}</span>? This cannot be undone.</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} disabled={loading} className="rounded-md border border-[#3A3A38] px-4 py-2 text-[13px] text-[#B0B0AE] hover:bg-[#2C2C2A] disabled:opacity-40">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="rounded-md bg-red-500/20 border border-red-500/40 px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/30 disabled:opacity-50">{loading ? "Deleting..." : "Delete"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const BRANCHES = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "MBA", "MCA"];
+
 
 function PromoteModal({ faculty, onClose, onSuccess }: { faculty: Faculty; onClose: () => void; onSuccess: () => void }) {
   const toast = useToast();
@@ -81,6 +73,7 @@ export default function SuperAdminFacultyPage() {
 
   const [search, setSearch] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const [deleteTarget, setDeleteTarget] = useState<Faculty | null>(null);
@@ -97,6 +90,7 @@ export default function SuperAdminFacultyPage() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (collegeFilter) params.set("collegeId", collegeFilter);
+      if (branchFilter) params.set("branch", branchFilter);
       params.set("page", String(page));
       params.set("limit", "15");
       const { data } = await api.get(`/api/profiles/faculty?${params}`);
@@ -107,7 +101,7 @@ export default function SuperAdminFacultyPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, collegeFilter, page]);
+  }, [search, collegeFilter, branchFilter, page]);
 
   useEffect(() => { fetchFaculty(); }, [fetchFaculty]);
 
@@ -144,48 +138,48 @@ export default function SuperAdminFacultyPage() {
           <option value="">All Colleges</option>
           {colleges.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        <select value={branchFilter} onChange={(e) => { setBranchFilter(e.target.value); setPage(1); }} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]">
+          <option value="">All Departments</option>
+          {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+        </select>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#1F1F1E]">
-        <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
-          <div className="flex-1">Name</div>
-          <div className="w-44">Email</div>
-          <div className="w-44">College</div>
-          <div className="w-36">Department</div>
-          <div className="w-24 text-right">Actions</div>
-        </div>
-
-        {isLoading ? (
-          <p className="px-4 py-8 text-[13px] text-[#5A5A58]">Loading...</p>
-        ) : faculty.length === 0 ? (
-          <div className="py-8"><EmptyState icon={Users} heading="No faculty found" /></div>
-        ) : (
-          faculty.map((f) => (
-            <div key={f.id} className="flex items-center border-t border-[#2E2E2C] px-4 py-3 hover:bg-[#252523]">
-              <div className="flex-1 text-[13px] text-[#ECECEA] truncate pr-2">{f.name}</div>
-              <div className="w-44 text-[13px] text-[#8C8C8A] truncate pr-2">{f.email}</div>
-              <div className="w-44 text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(f.collegeId)}</div>
-              <div className="w-36 text-[12px] text-[#8C8C8A] truncate">{f.department?.name ?? "—"}</div>
-              <div className="w-24 flex justify-end gap-1.5">
-                <button onClick={() => setPromoteTarget(f)} className="rounded px-2 py-1 text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] border border-[#3A3A38] hover:border-[#4A4A48] transition-colors">Promote</button>
-                <button onClick={() => setDeleteTarget(f)} className="p-1.5 rounded text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
-              </div>
+      <TableShell
+        columns={[
+          { label: 'Name', width: '200px' },
+          { label: 'Email', width: '200px' },
+          { label: 'College', width: '160px' },
+          { label: 'Department', width: '128px' },
+          { label: 'Joined', width: '96px' },
+          { label: 'Actions', width: '96px', align: 'right' },
+        ]}
+        isLoading={isLoading}
+        isEmpty={faculty.length === 0}
+        emptyIcon={Users}
+        emptyHeading="No faculty found"
+      >
+        {faculty.map((f) => (
+          <div key={f.id} className="flex items-center border-t border-[#2E2E2C] px-4 py-3 hover:bg-[#252523]">
+            <div className="w-[200px] text-[13px] text-[#ECECEA] truncate pr-2">{f.name}</div>
+            <div className="w-[200px] text-[13px] text-[#8C8C8A] truncate pr-2">{f.email}</div>
+            <div className="w-[160px] text-[13px] text-[#8C8C8A] truncate pr-2">{collegeName(f.collegeId)}</div>
+            <div className="w-[128px] text-[12px] text-[#8C8C8A] truncate pr-2">{f.department?.name ?? "—"}</div>
+            <div className="w-[96px] text-[12px] text-[#8C8C8A] truncate">{new Date(f.createdAt).toLocaleDateString()}</div>
+            <div className="w-[96px] flex justify-end gap-1.5 ml-auto">
+              <button onClick={() => setPromoteTarget(f)} className="rounded px-2 py-1 text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] border border-[#3A3A38] hover:border-[#4A4A48] transition-colors">Promote</button>
+              <button onClick={() => setDeleteTarget(f)} className="p-1.5 rounded text-[#8C8C8A] hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={13} /></button>
             </div>
-          ))
-        )}
-      </div>
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-[13px] text-[#8C8C8A]">
-          <span>Page {pagination.page} of {pagination.totalPages}</span>
-          <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="p-1.5 rounded-md border border-[#3A3A38] hover:bg-[#2C2C2A] disabled:opacity-30"><ChevronLeft size={14} /></button>
-            <button onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={page >= pagination.totalPages} className="p-1.5 rounded-md border border-[#3A3A38] hover:bg-[#2C2C2A] disabled:opacity-30"><ChevronRight size={14} /></button>
           </div>
-        </div>
-      )}
+        ))}
+      </TableShell>
+
+      <TablePagination
+        page={page}
+        total={pagination.total}
+        rowsPerPage={String(pagination.limit)}
+        onPageChange={setPage}
+        onRowsPerPageChange={() => {}}
+      />
 
       {deleteTarget && <ConfirmDeleteModal name={deleteTarget.name} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />}
       {promoteTarget && <PromoteModal faculty={promoteTarget} onClose={() => setPromoteTarget(null)} onSuccess={() => { setPromoteTarget(null); fetchFaculty(); }} />}
