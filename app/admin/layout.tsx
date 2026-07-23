@@ -3,6 +3,7 @@
 import React from 'react';
 import { Home, Users, GraduationCap, BookOpen, FileText, HelpCircle, Building2 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { ActiveBroadcastBanner } from '@/components/broadcast/ActiveBroadcastBanner';
 
 const adminNavItems = [
   { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
@@ -18,6 +19,7 @@ const adminNavItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell role="admin" navItems={adminNavItems}>
+      <ActiveBroadcastBanner />
       {children}
     </AppShell>
   );

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Home, FileText, BookOpen, HelpCircle, } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { ActiveBroadcastBanner } from '@/components/broadcast/ActiveBroadcastBanner';
 
 const facultyNavItems = [
   { href: '/faculty/dashboard', icon: Home, label: 'Dashboard' },
@@ -14,6 +15,7 @@ const facultyNavItems = [
 export default function FacultyLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell role="faculty" navItems={facultyNavItems}>
+      <ActiveBroadcastBanner />
       {children}
     </AppShell>
   );
