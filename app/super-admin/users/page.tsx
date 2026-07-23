@@ -5,6 +5,8 @@ import { Users, User, UserCog, Search } from 'lucide-react';
 import { TableShell, ColumnDef } from '@/components/ui/TableShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
+import { UserModal } from '@/components/super-admin/UserModal';
+import { ConfirmDeleteModal } from '@/components/super-admin/ConfirmDeleteModal';
 
 interface College {
   id: string;
@@ -40,6 +42,12 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState("20");
+
+  // Modals state
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState<any>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
 
   useEffect(() => {
     api.get('/api/superadmin/users/filters/colleges')
@@ -121,6 +129,45 @@ export default function UsersPage() {
     fetchData();
   }, [role, selectedCollege, selectedDepartment, selectedBatchYear, selectedSection, page, limit, searchQuery]);
 
+  const refreshData = () => {
+    setPage(1);
+    // fetchData will be triggered by page change or we can force it, but since page is in deps, it triggers if page changes. If page is already 1, we need to trigger it manually.
+    // A simple hack is to just re-fetch:
+    const query = new URLSearchParams({
+      page: page.toString(),
+      limit,
+    });
+    if (selectedCollege) query.append('collegeId', selectedCollege);
+    if (selectedDepartment) query.append('departmentId', selectedDepartment);
+    if (searchQuery) query.append('search', searchQuery);
+    if (role === 'student') {
+      if (selectedBatchYear) query.append('batchYear', selectedBatchYear);
+      if (selectedSection) query.append('section', selectedSection);
+    }
+    setIsLoading(true);
+    api.get(`/api/superadmin/users/${role === 'student' ? 'students' : 'staff'}?${query.toString()}`)
+      .then(res => {
+        setData(res.data?.data || []);
+        setTotal(res.data?.meta?.total || 0);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  };
+
+  const handleDelete = async (secret?: string) => {
+    if (!userToDelete) return;
+    try {
+      await api.delete(`/api/superadmin/users/${userToDelete.id}`, {
+        headers: { 'x-super-admin-secret': secret }
+      });
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      refreshData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete user');
+    }
+  };
+
   const studentColumns: ColumnDef[] = [
     { label: "Roll No", width: "120px" },
     { label: "Name", width: "200px" },
@@ -131,7 +178,7 @@ export default function UsersPage() {
     { label: "Year", width: "80px" },
     { label: "Section", width: "80px" },
     { label: "Joined Date", width: "120px" },
-    { label: "Actions", width: "80px", align: "right" },
+    { label: "Actions", width: "100px", align: "right" },
   ];
 
   const staffColumns: ColumnDef[] = [
@@ -141,7 +188,7 @@ export default function UsersPage() {
     { label: "College", width: "120px" },
     { label: "Joined Date", width: "120px" },
     { label: "Role", width: "100px" },
-    { label: "Actions", width: "80px", align: "right" },
+    { label: "Actions", width: "100px", align: "right" },
   ];
 
   const formatDate = (dateString: string) => {
@@ -158,28 +205,37 @@ export default function UsersPage() {
           <p className="text-text-muted text-sm">View and manage all users across colleges</p>
         </div>
 
-        <div className="flex bg-panel border border-border-default rounded-lg p-1 w-fit">
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${role === 'student' ? 'bg-[#2C2C2A] text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
-            onClick={() => {
-              setRole('student');
-              setPage(1);
-            }}
+        <div className="flex items-center gap-4">
+          <div className="flex bg-panel border border-border-default rounded-lg p-1 w-fit">
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${role === 'student' ? 'bg-[#2C2C2A] text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+              onClick={() => {
+                setRole('student');
+                setPage(1);
+              }}
+            >
+              <User className="w-4 h-4" />
+              Students
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${role === 'staff' ? 'bg-[#2C2C2A] text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
+              onClick={() => {
+                setRole('staff');
+                setPage(1);
+                setSelectedBatchYear('');
+                setSelectedSection('');
+              }}
+            >
+              <UserCog className="w-4 h-4" />
+              Faculty & Admin
+            </button>
+          </div>
+          
+          <button 
+            onClick={() => { setUserToEdit(null); setIsUserModalOpen(true); }}
+            className="rounded-md bg-[#ECECEA] px-4 py-2 text-sm font-medium text-[#1C1C1B] transition-colors hover:bg-white"
           >
-            <User className="w-4 h-4" />
-            Students
-          </button>
-          <button
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors ${role === 'staff' ? 'bg-[#2C2C2A] text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}
-            onClick={() => {
-              setRole('staff');
-              setPage(1);
-              setSelectedBatchYear('');
-              setSelectedSection('');
-            }}
-          >
-            <UserCog className="w-4 h-4" />
-            Faculty & Admin
+            Add User
           </button>
         </div>
       </div>
@@ -306,8 +362,9 @@ export default function UsersPage() {
                 </div>
               </>
             )}
-            <div style={{ width: "80px" }} className="text-right">
-              <button className="text-text-muted hover:text-text-primary text-xs transition-colors font-medium">View</button>
+            <div style={{ width: "100px" }} className="flex justify-end gap-3">
+              <button onClick={() => { setUserToEdit(user); setIsUserModalOpen(true); }} className="text-text-muted hover:text-text-primary text-xs transition-colors font-medium">Edit</button>
+              <button onClick={() => { setUserToDelete(user); setIsDeleteModalOpen(true); }} className="text-red-400 hover:text-red-300 text-xs transition-colors font-medium">Delete</button>
             </div>
           </div>
         ))}
@@ -325,6 +382,22 @@ export default function UsersPage() {
           }}
         />
       )}
+
+      <UserModal 
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        onSuccess={refreshData}
+        userToEdit={userToEdit}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete User"
+        description={`Are you sure you want to delete ${userToDelete?.name}? This action cannot be undone.`}
+        requireSecret={true}
+      />
     </div>
   );
 }

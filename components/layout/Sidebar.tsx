@@ -39,12 +39,14 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
         </h1>
 
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={openSearch}
-            className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-[#ECECEA]"
-          >
-            <Search size={16} />
-          </button>
+          {role !== 'super_admin' && (
+            <button
+              onClick={openSearch}
+              className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-[#ECECEA]"
+            >
+              <Search size={16} />
+            </button>
+          )}
 
           <button
             onClick={() => setIsOpen(false)}
@@ -56,18 +58,20 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       </div>
 
       {/* New Chat / New Paper */}
-      <div className="px-3 pb-2">
-        <Link
-          href={isPaperRole ? `/chat/new?role=${role}` : '/chat/new'}
-          onClick={handleLinkClick}
-          className="flex w-full items-center gap-2 rounded-md bg-[#ECECEA] px-3 py-2 font-medium text-[#1C1C1B] transition-colors hover:bg-white"
-        >
-          <Plus size={16} />
-          <span className="text-[13px]">
-            {isPaperRole ? 'New paper' : 'New chat'}
-          </span>
-        </Link>
-      </div>
+      {role !== 'super_admin' && (
+        <div className="px-3 pb-2">
+          <Link
+            href={isPaperRole ? `/chat/new?role=${role}` : '/chat/new'}
+            onClick={handleLinkClick}
+            className="flex w-full items-center gap-2 rounded-md bg-[#ECECEA] px-3 py-2 font-medium text-[#1C1C1B] transition-colors hover:bg-white"
+          >
+            <Plus size={16} />
+            <span className="text-[13px]">
+              {isPaperRole ? 'New paper' : 'New chat'}
+            </span>
+          </Link>
+        </div>
+      )}
 
       {/* Nav Items */}
       <div className="flex flex-col gap-0.5 px-3">
@@ -79,7 +83,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       </div>
 
       {/* Recent Chats */}
-      <SidebarRecentChats />
+      {role !== 'super_admin' && <SidebarRecentChats />}
 
       {/* Footer */}
       <div className="relative mt-auto border-t border-[#2E2E2C] px-3 py-3">

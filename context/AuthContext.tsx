@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [questionsToday, setQuestionsToday] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isCollegeInactive, setIsCollegeInactive] = useState(false);
 
   const roleToRoute = (role: string) => {
     switch (role) {
@@ -41,6 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const data = res.data;
         setUser(data.user);
+
+        // Check if college is inactive
+        if (data.user?.college?.isActive === false && data.user.role !== 'super_admin') {
+          setIsCollegeInactive(true);
+          setLoading(false);
+          return;
+        }
 
         if (isPublicRoute) {
           router.push(`/${data.user.role}/dashboard`);
@@ -91,6 +99,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const role = user?.role ?? null;
+
+  if (isCollegeInactive) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#1C1C1B] px-4 text-center text-[#ECECEA]">
+        <div className="max-w-md rounded-xl border border-[#3A3A38] bg-[#2C2C2A] p-8 shadow-2xl">
+          <h1 className="mb-4 text-2xl font-bold text-red-500">Account Suspended</h1>
+          <p className="mb-6 text-[#8C8C8A]">
+            Your college account is currently suspended or inactive.
+          </p>
+          <div className="rounded-lg bg-[#1F1F1E] p-4 text-sm text-[#ECECEA]">
+            {role === 'admin' ? (
+              <p>Please contact the StudyMate owner at <strong>contact@studymate.com</strong> for assistance.</p>
+            ) : (
+              <p>Please contact your College Administrator for assistance.</p>
+            )}
+          </div>
+          <button
+            onClick={logout}
+            className="mt-6 w-full rounded-lg bg-[#3A3A38] py-2.5 text-sm font-medium transition-colors hover:bg-[#4A4A48]"
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, role, questionsToday, setUser, setQuestionsToday, logout, loading }}>

@@ -14,6 +14,7 @@ type College = {
   accessCode: string;
   isActive: boolean;
   hasGeminiApiKey?: boolean;
+  tokenLimit?: string;
   logoUrl?: string | null;
   bannerUrl?: string | null;
   _count: { profiles: number };
@@ -25,6 +26,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
   const [shortName, setShortName] = useState((college as any).shortName || "");
   const [accessCode, setAccessCode] = useState(college.accessCode);
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [tokenLimit, setTokenLimit] = useState(college.tokenLimit || "");
   const [isActive, setIsActive] = useState(college.isActive);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -41,6 +43,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
       if (shortName.trim() !== (college as any).shortName) formData.append("shortName", shortName.trim());
       if (accessCode.trim() !== college.accessCode) formData.append("accessCode", accessCode.trim());
       if (geminiApiKey.trim() !== "") formData.append("geminiApiKey", geminiApiKey.trim());
+      if (tokenLimit.toString().trim() !== (college.tokenLimit || "")) formData.append("tokenLimit", tokenLimit.toString().trim());
       formData.append("isActive", isActive.toString());
       if (logoFile) formData.append("logo", logoFile);
       if (bannerFile) formData.append("banner", bannerFile);
@@ -78,6 +81,10 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">Gemini API Key (Optional)</label>
             <input value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} type="password" placeholder="Leave blank to use default" className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
+          </div>
+          <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">Token Limit</label>
+            <input type="number" value={tokenLimit} onChange={(e) => setTokenLimit(e.target.value)} placeholder="e.g. 1000000" className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
           </div>
           <div className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2.5">
             <span className="text-[13px] text-[#ECECEA]">Active Status</span>

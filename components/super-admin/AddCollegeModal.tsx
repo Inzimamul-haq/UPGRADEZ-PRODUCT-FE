@@ -15,6 +15,7 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
   const [shortName, setShortName] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [tokenLimit, setTokenLimit] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +54,7 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
       formData.append("shortName", shortName.trim());
       if (accessCode.trim()) formData.append("accessCode", accessCode.trim());
       if (geminiApiKey.trim()) formData.append("geminiApiKey", geminiApiKey.trim());
+      if (tokenLimit.trim()) formData.append("tokenLimit", tokenLimit.trim());
       if (logoFile) formData.append("logo", logoFile);
       if (bannerFile) formData.append("banner", bannerFile);
 
@@ -127,6 +129,19 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
               onChange={(e) => setGeminiApiKey(e.target.value)}
               type="password"
               placeholder="Leave blank to use default key"
+              className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Token Limit
+            </label>
+            <input
+              type="number"
+              value={tokenLimit}
+              onChange={(e) => setTokenLimit(e.target.value)}
+              placeholder="e.g. 1000000 (Defaults to 10M if blank)"
               className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
             />
           </div>

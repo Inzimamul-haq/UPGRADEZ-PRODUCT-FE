@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Megaphone, Send, Users, Shield, GraduationCap, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { ConfirmDeleteModal } from '@/components/super-admin/ConfirmDeleteModal';
 
 export default function BroadcastPage() {
   const [message, setMessage] = useState('');
@@ -10,6 +11,8 @@ export default function BroadcastPage() {
   const [target, setTarget] = useState('ALL');
   const [loading, setLoading] = useState(false);
   const [recentBroadcasts, setRecentBroadcasts] = useState<any[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [broadcastToDelete, setBroadcastToDelete] = useState<any>(null);
 
   const fetchBroadcasts = async () => {
     try {
@@ -42,10 +45,13 @@ export default function BroadcastPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!broadcastToDelete) return;
     try {
-      await api.delete(`/api/superadmin/broadcasts/${id}`);
+      await api.delete(`/api/superadmin/broadcasts/${broadcastToDelete.id}`);
       fetchBroadcasts();
+      setIsDeleteModalOpen(false);
+      setBroadcastToDelete(null);
     } catch (error) {
       console.error('Failed to delete broadcast', error);
     }
@@ -151,7 +157,7 @@ export default function BroadcastPage() {
               {recentBroadcasts.map((item, i) => (
                 <div key={item.id || i} className="p-4 rounded-lg bg-[#1F1F1E] border border-[#3A3A38] space-y-2 relative group">
                   <button 
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => { setBroadcastToDelete(item); setIsDeleteModalOpen(true); }}
                     className="absolute top-3 right-3 text-[#5A5A58] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -177,6 +183,15 @@ export default function BroadcastPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Delete Broadcast"
+        description={`Are you sure you want to delete the broadcast "${broadcastToDelete?.title}"? This action cannot be undone.`}
+        requireSecret={false}
+      />
     </div>
   );
 }

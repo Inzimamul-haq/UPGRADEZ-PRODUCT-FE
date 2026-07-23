@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Home, Building2, Palette, Users, Activity, Megaphone, Download, ClipboardList } from 'lucide-react';
+import { Home, Building2, Palette, Users, Activity, Megaphone, ClipboardList } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 
 const superAdminNavItems = [
@@ -11,7 +11,7 @@ const superAdminNavItems = [
   { href: '/super-admin/health', icon: Activity, label: 'System Health' },
   { href: '/super-admin/broadcast', icon: Megaphone, label: 'Broadcast' },
   // { href: '/super-admin/export', icon: Download, label: 'Data Export' },
-  { href: '/super-admin/audit', icon: ClipboardList, label: 'Audit Logs' },
+  { href: '/super-admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
   { href: '/super-admin/themes', icon: Palette, label: 'Themes' },
 
 ];
