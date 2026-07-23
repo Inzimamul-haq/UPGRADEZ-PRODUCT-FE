@@ -16,7 +16,9 @@ export default function LoginPage() {
   const [collegeData, setCollegeData] = useState<{ collegeId: string; collegeName: string; bannerUrl?: string | null; logoUrl?: string | null } | null>(null);
 
   useEffect(() => {
-    if (searchParams?.get('error') === 'oauth_failed') {
+    if (searchParams?.get('error') === 'missing_access_code') {
+      setError('Please provide an access code to sign up. Once you have an access code, sign up first.');
+    } else if (searchParams?.get('error') === 'oauth_failed') {
       setError('Google authentication failed. Please try again or use your email.');
     }
 

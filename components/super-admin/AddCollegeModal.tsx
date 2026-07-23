@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
+import { Trash2 } from "lucide-react";
 
 interface AddCollegeModalProps {
   onClose: () => void;
@@ -151,23 +152,37 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 College Logo
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
+                />
+                {logoFile && (
+                  <button type="button" onClick={() => setLogoFile(null)} className="p-1.5 text-[#B0B0AE] hover:text-red-400" title="Remove selected file">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 College Banner
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none"
+                />
+                {bannerFile && (
+                  <button type="button" onClick={() => setBannerFile(null)} className="p-1.5 text-[#B0B0AE] hover:text-red-400" title="Remove selected file">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/hooks/useAuth';
+import { AddProfileModal } from '@/components/admin/AddProfileModal';
 
 import { BRANCH_OPTIONS } from '@/lib/constants';
 
@@ -35,6 +36,7 @@ export default function AdminStudentsPage() {
   const [bulkBranch, setBulkBranch] = useState('');
   const [bulkDepartment, setBulkDepartment] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
   
   const selectedDept = departments.find(d => d.id === departmentFilter);
   const maxYears = selectedDept?.durationYears || 4;
@@ -168,6 +170,12 @@ export default function AdminStudentsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Students</h1>
         <div className="flex gap-2">
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+          >
+            Add Student
+          </button>
           <button 
             onClick={handleDownloadCSV}
             className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
@@ -454,6 +462,14 @@ export default function AdminStudentsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddModal && (
+        <AddProfileModal 
+          defaultRole="student" 
+          onClose={() => setShowAddModal(false)} 
+          onSuccess={() => { setShowAddModal(false); fetchStudents(); }} 
+        />
       )}
     </div>
   );

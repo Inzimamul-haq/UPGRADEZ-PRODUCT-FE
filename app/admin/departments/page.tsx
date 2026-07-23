@@ -39,10 +39,8 @@ export default function AdminDepartmentsPage() {
   const fetchDepartments = async () => {
     try {
       setIsLoading(true);
-      const params = branchFilter ? { branch: branchFilter } : undefined;
       const { data } = await api.get<{ departments: Department[] }>(
-        "/api/departments",
-        { params }
+        "/api/departments"
       );
       setDepartments(data.departments ?? []);
     } catch {
@@ -54,9 +52,12 @@ export default function AdminDepartmentsPage() {
 
   useEffect(() => {
     fetchDepartments();
-  }, [branchFilter]);
+  }, []);
+
+  const availableBranches = Array.from(new Set(departments.map(d => d.branch))).sort();
 
   const filtered = departments.filter((d) => {
+    if (branchFilter && d.branch !== branchFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -182,7 +183,7 @@ export default function AdminDepartmentsPage() {
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
           <option value="">All Branches</option>
-          {BRANCH_OPTIONS.map((opt) => (
+          {availableBranches.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
             </option>

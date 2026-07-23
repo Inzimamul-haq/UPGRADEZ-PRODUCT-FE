@@ -21,7 +21,9 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams?.get('error') === 'oauth_failed') {
+    if (searchParams?.get('error') === 'missing_access_code') {
+      setError('Access code is required. Please verify your college access code first, then sign in with Google.');
+    } else if (searchParams?.get('error') === 'oauth_failed') {
       setError('Google authentication failed. Please try again or use your email.');
     }
   }, [searchParams]);

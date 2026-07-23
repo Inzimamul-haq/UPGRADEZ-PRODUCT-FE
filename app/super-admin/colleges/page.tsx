@@ -14,6 +14,7 @@ type College = {
   accessCode: string;
   isActive: boolean;
   hasGeminiApiKey?: boolean;
+  geminiApiKey?: string;
   tokenLimit?: string;
   logoUrl?: string | null;
   bannerUrl?: string | null;
@@ -26,6 +27,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
   const [shortName, setShortName] = useState((college as any).shortName || "");
   const [accessCode, setAccessCode] = useState(college.accessCode);
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [editingKey, setEditingKey] = useState(!college.geminiApiKey);
   const [tokenLimit, setTokenLimit] = useState(college.tokenLimit || "");
   const [isActive, setIsActive] = useState(college.isActive);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -42,7 +44,8 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
       if (name.trim() !== college.name) formData.append("name", name.trim());
       if (shortName.trim() !== (college as any).shortName) formData.append("shortName", shortName.trim());
       if (accessCode.trim() !== college.accessCode) formData.append("accessCode", accessCode.trim());
-      if (geminiApiKey.trim() !== "") formData.append("geminiApiKey", geminiApiKey.trim());
+      if (editingKey && geminiApiKey !== "") formData.append("geminiApiKey", geminiApiKey.trim());
+      else if (editingKey && geminiApiKey === "") formData.append("geminiApiKey", "");
       if (tokenLimit.toString().trim() !== (college.tokenLimit || "")) formData.append("tokenLimit", tokenLimit.toString().trim());
       formData.append("isActive", isActive.toString());
       if (logoFile) formData.append("logo", logoFile);
@@ -80,7 +83,25 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
           </div>
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">Gemini API Key (Optional)</label>
-            <input value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} type="password" placeholder="Leave blank to use default" className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
+            {!editingKey && college.geminiApiKey ? (
+              <div className="flex items-center gap-3">
+                <span className="flex-1 rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] font-mono" style={{ userSelect: 'none' }}>
+                  {college.geminiApiKey}
+                </span>
+                <button type="button" onClick={() => setEditingKey(true)} className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] hover:bg-[#333331]">
+                  Replace Key
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input value={geminiApiKey} onChange={(e) => setGeminiApiKey(e.target.value)} type="password" placeholder="Leave blank to use default" className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none" />
+                {college.geminiApiKey && (
+                  <button type="button" onClick={() => { setEditingKey(false); setGeminiApiKey(""); }} className="rounded-md border border-[#4A4A48] px-3 py-1.5 text-[12px] text-[#B0B0AE] hover:bg-[#2C2C2A]">
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">Token Limit</label>
@@ -99,11 +120,25 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">College Logo</label>
-              <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+              <div className="flex items-center gap-2">
+                <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+                {logoFile && (
+                  <button type="button" onClick={() => setLogoFile(null)} className="p-1.5 text-[#B0B0AE] hover:text-red-400" title="Remove selected file">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">College Banner</label>
-              <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+              <div className="flex items-center gap-2">
+                <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] file:mr-3 file:rounded file:border-0 file:bg-[#3A3A38] file:px-2 file:py-1 file:text-[11px] file:text-[#ECECEA] hover:file:bg-[#4A4A48] focus:border-[#4A4A48] focus:outline-none" />
+                {bannerFile && (
+                  <button type="button" onClick={() => setBannerFile(null)} className="p-1.5 text-[#B0B0AE] hover:text-red-400" title="Remove selected file">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

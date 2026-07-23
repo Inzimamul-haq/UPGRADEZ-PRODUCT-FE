@@ -7,6 +7,7 @@ import { TableShell } from '@/components/ui/TableShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
+import { AddProfileModal } from '@/components/admin/AddProfileModal';
 
 type DepartmentOption = {
   id: string;
@@ -22,6 +23,7 @@ export default function AdminFacultyPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<any>(null);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
@@ -108,7 +110,15 @@ export default function AdminFacultyPage() {
 
   return (
     <div className="px-6 py-6 w-full relative">
-      <h1 className="text-[16px] font-medium text-[#ECECEA]">Faculty</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-[16px] font-medium text-[#ECECEA]">Faculty & Admin</h1>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+        >
+          Add Faculty / Admin
+        </button>
+      </div>
 
       <div className="mt-4 mb-4 flex flex-wrap gap-3">
         <div className="relative">
@@ -226,6 +236,14 @@ export default function AdminFacultyPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddModal && (
+        <AddProfileModal 
+          defaultRole="faculty" 
+          onClose={() => setShowAddModal(false)} 
+          onSuccess={() => { setShowAddModal(false); fetchFaculty(); }} 
+        />
       )}
     </div>
   );

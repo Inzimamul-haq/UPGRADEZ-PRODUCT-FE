@@ -26,6 +26,7 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
     departmentId: student.departmentId ?? '',
     section: student.section === '-' ? '' : (student.section || ''),
     role: student.role || 'student',
+    rollNo: student.rollNo || '',
   });
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         departmentId: form.departmentId || null,
         section: form.section.trim() || undefined,
         role: form.role,
+        rollNo: form.rollNo.trim() || null,
       });
       setShowEditModal(false);
       onPromoteSuccess();
@@ -149,6 +151,16 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
                   type="email"
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] placeholder:text-[#5A5A58]"
                   placeholder="Email address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Roll Number</label>
+                <input
+                  value={form.rollNo}
+                  onChange={e => handleChange('rollNo', e.target.value)}
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] placeholder:text-[#5A5A58]"
+                  placeholder="e.g. 21CS01"
                 />
               </div>
 

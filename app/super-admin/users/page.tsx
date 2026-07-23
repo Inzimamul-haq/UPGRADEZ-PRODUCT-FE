@@ -41,7 +41,7 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState("20");
+  const [limit, setLimit] = useState("10");
 
   // Modals state
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);

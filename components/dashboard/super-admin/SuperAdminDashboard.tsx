@@ -56,7 +56,7 @@ export const SuperAdminDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+        if (!data) setLoading(true);
         // We handle simple fallbacks if backend routes are not fully ready yet
         const [statsRes, tokenRes, reqRes] = await Promise.all([
           api.get('/api/super-admin/dashboard/stats'),
