@@ -21,7 +21,7 @@ export const ActiveBroadcastBanner = () => {
 
     const fetchActive = async () => {
       try {
-        const res = await api.get('/api/broadcasts/active');
+        const res = await api.get('/api/superadmin/broadcasts/active');
         const data = res.data?.data || res.data || [];
         if (Array.isArray(data)) {
           setBroadcasts(data);
