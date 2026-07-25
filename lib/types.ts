@@ -40,6 +40,7 @@ export interface Department {
   name: string;
   branch: string;
   sections?: string[];
+  durationYears?: number;
 }
 
 export interface Subject {
@@ -192,6 +193,7 @@ export interface EditExamDateModalProps {
 export interface College {
   id: string;
   name: string;
+  shortName?: string | null;
   status: 'active' | 'suspended' | 'expired';
   studentsCount: number;
   tokenUsed: number;
@@ -335,5 +337,33 @@ export interface EmptyStateProps {
   subtext?: string;
   action?: ReactNode;
   description?: string;
+}
 
+export interface FacultyDashboardStats {
+  subjectsAssigned: { count: number; byRegulation: { regulation: string; count: number }[] };
+  papersGenerated: { count: number };
+  aiConversations: { count: number };
+  papersThisMonth: { count: number };
+}
+
+export interface StudentDashboardStats {
+  degreeCompletion: {
+    percent: number;
+    currentYear: number;
+    totalYears: number;
+  };
+  subjectsEnrolled: number;
+  aiConversations: number;
+  newPapers: number;
+}
+
+export interface ChatSearchParams {
+  paperId?: string;
+  role?: string;
+  year?: string;
+  branch?: string;
+  subjectId?: string;
+  subjectName?: string;
+  subjectCode?: string;
+  examType?: string;
 }

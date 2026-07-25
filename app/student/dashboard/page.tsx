@@ -3,20 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { Notification } from '@/lib/types';
+import { Notification, StudentDashboardStats as DashboardStats } from '@/lib/types';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-
-interface DashboardStats {
-  degreeCompletion: {
-    percent: number;
-    currentYear: number;
-    totalYears: number;
-  };
-  subjectsEnrolled: number;
-  aiConversations: number;
-  newPapers: number;
-}
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();

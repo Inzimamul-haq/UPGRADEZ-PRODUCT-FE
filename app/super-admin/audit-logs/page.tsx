@@ -5,12 +5,7 @@ import { ShieldAlert, Search, Trash2, Key, UserMinus, Calendar, ChevronDown } fr
 import { TableShell, ColumnDef } from '@/components/ui/TableShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
-
-interface College {
-  id: string;
-  name: string;
-  shortName: string | null;
-}
+import { College } from '@/lib/types';
 
 const ACTION_OPTIONS = [
   'SUBJECT_CREATE', 'SUBJECT_EDIT', 'SUBJECT_DELETE',

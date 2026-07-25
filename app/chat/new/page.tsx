@@ -1,18 +1,8 @@
 import React from 'react';
 import { ChatContainer } from '@/components/chat/ChatContainer';
+import { ChatSearchParams } from '@/lib/types';
 
-interface SearchParams {
-  paperId?: string;
-  role?: string;
-  year?: string;
-  branch?: string;
-  subjectId?: string;
-  subjectName?: string;
-  subjectCode?: string;
-  examType?: string;
-}
-
-export default async function NewChatPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function NewChatPage({ searchParams }: { searchParams: Promise<ChatSearchParams> }) {
   const params = await searchParams;
 
   return (

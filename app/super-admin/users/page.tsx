@@ -7,20 +7,7 @@ import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { UserModal } from '@/components/super-admin/UserModal';
 import { ConfirmDeleteModal } from '@/components/super-admin/ConfirmDeleteModal';
-
-interface College {
-  id: string;
-  name: string;
-  shortName: string | null;
-}
-
-interface Department {
-  id: string;
-  name: string;
-  branch: string;
-  durationYears: number;
-  sections: string[];
-}
+import { College, Department } from '@/lib/types';
 
 export default function UsersPage() {
   const [role, setRole] = useState<'student' | 'staff'>('student');

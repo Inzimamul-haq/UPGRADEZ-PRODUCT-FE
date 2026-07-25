@@ -8,14 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { departmentSchema } from "@/Schema/validations";
 import { BRANCH_OPTIONS } from "@/lib/constants";
-
-type Department = {
-  id: string;
-  name: string;
-  branch: string;
-  sections?: string[];
-  durationYears?: number;
-};
+import { Department } from "@/lib/types";
 
 export default function AdminDepartmentsPage() {
   const toast = useToast();

@@ -5,6 +5,7 @@ import { X, Upload, FileText, CheckCircle, AlertTriangle, ChevronRight, Loader2 
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/hooks/useAuth';
+import { REGEX_PATTERNS } from '@/lib/utils';
 
 type ExamType = 'CAT1' | 'CAT2' | 'CAT3' | 'MODEL' | 'UNIVERSITY';
 type PaperKind = 'EXAM_PAPER' | 'IMPORTANT_QUESTIONS';
@@ -164,7 +165,7 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   const handleProceedToUpload = () => {
     if (!selectedSubject) { toast.error('Please select a subject'); return; }
     if (!departmentId) { toast.error('Please select a department'); return; }
-    if (!academicYear.match(/^\d{4}-\d{2}$/)) { toast.error('Academic year must be YYYY-YY (e.g. 2025-26)'); return; }
+    if (!REGEX_PATTERNS.ACADEMIC_YEAR.test(academicYear)) { toast.error('Academic year must be YYYY-YY (e.g. 2025-26)'); return; }
 
     if (isUniversityExamPaper && academicYear === currentAcYear()) {
       if (!examDate) {

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Building2, GraduationCap, ChevronLeft } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
+import { validateBatchYear, validateRollNo, REGEX_PATTERNS } from '@/lib/utils';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -31,28 +32,7 @@ export default function OnboardingPage() {
   const selectedDept = departments.find(d => d.id === formData.departmentId);
   const maxYears = selectedDept?.durationYears || 4;
 
-  const validateBatchYear = (val: string) => {
-    if (!val) return 'Required';
-    const match = val.match(/^(\d{4})\s*-\s*(\d{4})$/);
-    if (!match) return 'Format should be YYYY-YYYY (e.g. 2022-2026)';
-    const start = parseInt(match[1]);
-    const end = parseInt(match[2]);
-    if (start >= end) return 'End year must be greater than start year';
-    if (end - start > maxYears + 2) return `Duration cannot exceed ${maxYears + 2} years`;
-    if (start < 2000 || start > 2050) return 'Invalid start year';
-    // Validate exact expected duration if needed? For now just max.
-    return '';
-  };
 
-  const validateRollNo = (val: string) => {
-    if (!val) return 'Required';
-    if (!/^[A-Za-z0-9]+$/.test(val)) return 'Must contain only letters and numbers';
-    const letterCount = (val.match(/[A-Za-z]/g) || []).length;
-    if (letterCount > 2) return 'Can contain at most 2 letters';
-    if (/^([A-Za-z0-9])\1+$/.test(val)) return 'Invalid repetitive pattern (e.g. 1111)';
-    if (val.length < 4) return 'Roll number too short';
-    return '';
-  };
 
   useEffect(() => {
     api.get('/api/departments').then(res => setDepartments(res.data.departments || []));
@@ -104,7 +84,7 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (step === 3) {
-      const err = validateBatchYear(formData.batchYear);
+      const err = validateBatchYear(formData.batchYear, maxYears);
       if (err) {
         setBatchError(err);
         return;
@@ -129,7 +109,7 @@ export default function OnboardingPage() {
 
   const getComputedYear = () => {
     if (!formData.batchYear) return 0;
-    const match = formData.batchYear.match(/^(\d{4})\s*-\s*(\d{4})$/);
+    const match = formData.batchYear.match(REGEX_PATTERNS.BATCH_YEAR);
     if (!match) return 0;
     const start = parseInt(match[1]);
     const currentYear = new Date().getFullYear();

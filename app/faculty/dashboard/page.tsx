@@ -3,17 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
-import { Notification } from '@/lib/types';
+import { Notification, FacultyDashboardStats as DashboardStats } from '@/lib/types';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-
-interface DashboardStats {
-  subjectsAssigned: { count: number; byRegulation: { regulation: string; count: number }[] };
-  papersGenerated: { count: number };
-  aiConversations: { count: number };
-  papersThisMonth: { count: number };
-}
-
 
 
 export default function FacultyDashboardPage() {

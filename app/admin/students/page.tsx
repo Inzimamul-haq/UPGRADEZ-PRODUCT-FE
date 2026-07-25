@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AddProfileModal } from '@/components/admin/AddProfileModal';
 
 import { BRANCH_OPTIONS } from '@/lib/constants';
+import { extractNumber } from '@/lib/utils';
 
 export default function AdminStudentsPage() {
   const { user } = useAuth();
@@ -57,7 +58,7 @@ export default function AdminStudentsPage() {
         limit: rowsPerPage
       };
       if (yearFilter !== 'All') {
-        params.year = parseInt(yearFilter.replace(/\D/g, ''), 10);
+        params.year = parseInt(extractNumber(yearFilter), 10);
       }
       if (batchYearFilter !== 'All') {
         params.batchYear = batchYearFilter;

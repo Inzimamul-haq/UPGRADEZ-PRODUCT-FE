@@ -3,17 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { z } from 'zod';
-
-const secretSchema = z.object({
-  secret: z.string().min(1, "Secret is required"),
-});
-
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().min(1, "Email is required").email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+import { secretSchema, superAdminRegisterSchema } from '@/Schema/validations';
 
 export default function SuperAdminRegisterPage() {
   const router = useRouter();
@@ -57,7 +47,7 @@ export default function SuperAdminRegisterPage() {
     setError('');
     setLoading(true);
 
-    const parsed = registerSchema.safeParse({ name, email, password });
+    const parsed = superAdminRegisterSchema.safeParse({ name, email, password });
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
       setLoading(false);
