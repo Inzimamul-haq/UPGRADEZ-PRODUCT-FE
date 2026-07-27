@@ -148,9 +148,9 @@ useEffect(() => {
           mapped = chat.messages.map((m: any) => {
             if (m.role === 'assistant') {
               const parsed = parseActionSentinel(m.content as string);
-              return { id: m.id, role: m.role, ...parsed };
+              return { id: m.id, role: m.role, ...parsed, figures: m.figures };
             }
-            return { id: m.id, role: m.role, content: m.content };
+            return { id: m.id, role: m.role, content: m.content, figures: m.figures };
           });
 
           // For faculty: if the last assistant message looks like a generated
