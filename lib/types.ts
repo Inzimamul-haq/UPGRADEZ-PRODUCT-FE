@@ -94,6 +94,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   rag_used?: boolean;
+  figures?: { pageNumber: number; caption: string; url: string; }[];
   actions?: {
     id: string;
     label: string;

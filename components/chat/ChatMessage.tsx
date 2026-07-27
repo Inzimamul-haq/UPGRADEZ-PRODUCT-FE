@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
+import { DiagramCard } from './DiagramCard';
 
 export function ChatMessage({ message, onAction }: ChatMessageProps) {
   const isUser = message.role === 'user';
@@ -120,6 +121,19 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
             {processedContent}
           </ReactMarkdown>
         </div>
+
+        {message.figures && message.figures.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3">
+            {message.figures.map((fig, idx) => (
+              <DiagramCard 
+                key={idx} 
+                diagramName={fig.caption} 
+                pageNumber={fig.pageNumber} 
+                url={fig.url} 
+              />
+            ))}
+          </div>
+        )}
         
         {message.actions && message.actions.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3 mb-2">

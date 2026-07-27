@@ -595,8 +595,10 @@ useEffect(() => {
           && responseText.length > 300
           && (responseText.includes('Part A') || responseText.includes('Section A') || responseText.includes('Marks'));
 
+        const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
+
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: responseText,
+          id: crypto.randomUUID(), role: 'assistant', content: responseText, figures: responseFigures,
           ...((isIQList || isExamPaper) && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
       } else if (initialPaperId) {
@@ -622,7 +624,7 @@ useEffect(() => {
         }
         const parsedStudyPaper = parseActionSentinel(data.data as string);
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', ...parsedStudyPaper,
+          id: crypto.randomUUID(), role: 'assistant', ...parsedStudyPaper, figures: data.figures
         }]);
       } else {
         // ── Standard student Q&A ──────────────────────────────────────────
@@ -636,7 +638,7 @@ useEffect(() => {
           setSessionLocked(true);
           const parsedLocked = parseActionSentinel(data.data as string);
           setMessages(prev => [...prev, {
-            id: crypto.randomUUID(), role: 'assistant', ...parsedLocked
+            id: crypto.randomUUID(), role: 'assistant', ...parsedLocked, figures: data.figures
           }]);
           return;
         }
@@ -648,7 +650,7 @@ useEffect(() => {
         }
         const parsedGeneral = parseActionSentinel(data.data as string);
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', ...parsedGeneral,
+          id: crypto.randomUUID(), role: 'assistant', ...parsedGeneral, figures: data.figures
         }]);
       }
     } catch {
