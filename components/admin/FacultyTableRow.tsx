@@ -70,8 +70,9 @@ export function FacultyTableRow({
 
       {confirmAction && (
         <ConfirmDeleteModal
-          name={faculty.name}
-          entityLabel="Faculty"
+          isOpen={true}
+          title="Delete Faculty"
+          description={`Delete ${faculty.name}? This cannot be undone.`}
           onClose={() => setConfirmAction(null)}
           onConfirm={handleConfirm}
         />

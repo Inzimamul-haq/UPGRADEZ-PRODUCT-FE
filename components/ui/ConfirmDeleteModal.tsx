@@ -1,52 +1,82 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 
 interface ConfirmDeleteModalProps {
-  name: string;
-  entityLabel?: string; // e.g. "Student", "Faculty"
-  onConfirm: () => void;
+  isOpen: boolean;
   onClose: () => void;
+  onConfirm: (secret?: string) => void;
+  title: string;
+  description: string;
   loading?: boolean;
+  requireSecret?: boolean;
 }
 
 export function ConfirmDeleteModal({
-  name,
-  entityLabel = "item",
-  onConfirm,
+  isOpen,
   onClose,
+  onConfirm,
+  title,
+  description,
   loading = false,
+  requireSecret = false,
 }: ConfirmDeleteModalProps) {
+  const [secret, setSecret] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    onConfirm(requireSecret ? secret : undefined);
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-        <h2 className="mb-2 text-[14px] font-medium text-[#ECECEA]">
-          Delete {entityLabel}
-        </h2>
-        <p className="text-[13px] text-[#8C8C8A]">
-          Delete <span className="text-[#ECECEA]">{name}</span>? This cannot be
-          undone.
-        </p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="text-[13px] text-[#8C8C8A] hover:text-white transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-          >
-            {loading ? "Deleting..." : "Delete"}
-          </button>
+      <div className="w-full max-w-md overflow-hidden rounded-xl bg-[#2C2C2A] shadow-2xl">
+        <div className="p-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+            <AlertTriangle className="h-6 w-6 text-red-500" />
+          </div>
+          
+          <h2 className="mb-2 text-xl font-bold text-[#ECECEA]">{title}</h2>
+          <p className="mb-6 text-sm text-[#8C8C8A]">{description}</p>
+          
+          {requireSecret && (
+            <div className="mb-6 text-left">
+              <label className="mb-2 block text-sm font-medium text-[#ECECEA]">
+                Super Admin Secret
+              </label>
+              <input
+                type="password"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                placeholder="Enter secret to confirm"
+                className="w-full rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-3 text-[#ECECEA] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 rounded-lg bg-[#3A3A38] py-3 text-sm font-medium text-[#ECECEA] transition-colors hover:bg-[#4A4A48] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={loading || (requireSecret && !secret)}
+              className="flex-1 rounded-lg bg-red-500 py-3 text-sm font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+            >
+              {loading ? "Deleting..." : "Delete"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

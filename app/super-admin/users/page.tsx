@@ -6,7 +6,7 @@ import { TableShell, ColumnDef } from '@/components/ui/TableShell';
 import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { UserModal } from '@/components/super-admin/UserModal';
-import { ConfirmDeleteModal } from '@/components/super-admin/ConfirmDeleteModal';
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { College, Department } from '@/lib/types';
 
 export default function UsersPage() {

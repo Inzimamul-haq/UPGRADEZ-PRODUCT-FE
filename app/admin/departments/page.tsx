@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
-import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { departmentSchema } from "@/Schema/validations";
@@ -331,13 +331,13 @@ export default function AdminDepartmentsPage() {
         </div>
       )}
 
-      <DeleteConfirmModal
-        open={!!deleteTarget}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
         title={`Delete "${deleteTarget?.branch} · ${deleteTarget?.name}"?`}
         description="Subject links to this department will be removed. Profiles assigned to this department must be reassigned first."
-        isDeleting={isDeleting}
+        loading={isDeleting}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );

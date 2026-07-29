@@ -6,6 +6,7 @@ import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { AddCollegeModal } from "@/components/super-admin/AddCollegeModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { useRouter } from "next/navigation";
 
 type College = {
@@ -152,20 +153,7 @@ function EditCollegeModal({ college, onClose, onSuccess }: { college: College; o
   );
 }
 
-function ConfirmDeleteModal({ name, onClose, onConfirm, loading }: { name: string; onClose: () => void; onConfirm: () => void; loading: boolean }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
-      <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-        <h2 className="mb-2 text-[16px] font-medium text-[#ECECEA]">Delete College</h2>
-        <p className="text-[13px] text-[#8C8C8A]">Are you sure you want to delete <span className="text-[#ECECEA] font-medium">{name}</span>? This action cannot be undone and will remove all associated data.</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} disabled={loading} className="rounded-md border border-[#3A3A38] px-4 py-2 text-[13px] text-[#B0B0AE] hover:bg-[#2C2C2A] disabled:opacity-40">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className="rounded-md bg-red-500/20 border border-red-500/40 px-4 py-2 text-[13px] text-red-400 hover:bg-red-500/30 disabled:opacity-50">{loading ? "Deleting..." : "Delete"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 export default function SuperAdminCollegesPage() {
   const router = useRouter();
@@ -301,7 +289,7 @@ export default function SuperAdminCollegesPage() {
 
       {showAddModal && <AddCollegeModal onClose={() => setShowAddModal(false)} onSuccess={() => { setShowAddModal(false); fetchColleges(); }} />}
       {editCollege && <EditCollegeModal college={editCollege} onClose={() => setEditCollege(null)} onSuccess={() => { setEditCollege(null); fetchColleges(); }} />}
-      {deleteCollege && <ConfirmDeleteModal name={deleteCollege.name} onClose={() => setDeleteCollege(null)} onConfirm={handleDelete} loading={deleteLoading} />}
+      {deleteCollege && <ConfirmDeleteModal isOpen={true} title="Delete College" description={`Are you sure you want to delete ${deleteCollege.name}? This action cannot be undone and will remove all associated data.`} onClose={() => setDeleteCollege(null)} onConfirm={handleDelete} loading={deleteLoading} />}
       {secretPromptCollege && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">

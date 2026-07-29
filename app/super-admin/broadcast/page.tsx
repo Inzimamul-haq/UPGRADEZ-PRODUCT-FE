@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { Megaphone, Send, Users, Shield, GraduationCap, Clock, AlertCircle, Trash2 } from 'lucide-react';
-import { ConfirmDeleteModal } from '@/components/super-admin/ConfirmDeleteModal';
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 export default function BroadcastPage() {
   const [message, setMessage] = useState('');

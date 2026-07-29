@@ -11,7 +11,7 @@ import {
   Ban,
   RefreshCw,
 } from "lucide-react";
-import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/context/ToastContext";
 import api from "@/lib/api";
@@ -308,13 +308,13 @@ export function SubjectAccordion({
       </div>
 
       {/* Delete Confirm Modal — rendered outside the accordion via fragment */}
-      <DeleteConfirmModal
-        open={showDeleteModal}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
         title={`Delete "${subject.name}"?`}
         description="This will permanently remove the subject, its syllabus file, and all associated embeddings. This action cannot be undone."
-        isDeleting={isDeleting}
+        loading={isDeleting}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setShowDeleteModal(false)}
+        onClose={() => setShowDeleteModal(false)}
       />
 
       {/* Stop Publish Modal */}

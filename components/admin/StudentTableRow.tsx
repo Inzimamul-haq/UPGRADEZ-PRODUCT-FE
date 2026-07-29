@@ -112,8 +112,9 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
 
       {showDeleteModal && (
         <ConfirmDeleteModal
-          name={student.name}
-          entityLabel="Student"
+          isOpen={true}
+          title="Delete Student"
+          description={`Delete ${student.name}? This cannot be undone.`}
           onClose={() => setShowDeleteModal(false)}
           onConfirm={() => { onDelete(student.id); setShowDeleteModal(false); }}
         />
