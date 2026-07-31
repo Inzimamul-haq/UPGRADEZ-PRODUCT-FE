@@ -123,7 +123,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         </div>
 
         {message.figures && message.figures.length > 0 && (
-          <div className="mt-4 flex flex-col gap-3">
+          <div className="mt-6 mb-4 flex flex-col gap-4 items-center w-full">
             {message.figures.map((fig, idx) => (
               <DiagramCard 
                 key={idx} 

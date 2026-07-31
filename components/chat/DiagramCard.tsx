@@ -4,7 +4,7 @@ import { DiagramCardProps } from '@/lib/types';
 
 export function DiagramCard({ diagramName, pageNumber, url }: DiagramCardProps) {
   return (
-    <div className="flex flex-col mt-3 bg-[#1C1C1B] border border-[#333331] rounded-lg overflow-hidden w-full max-w-xl">
+    <div className="flex flex-col mt-4 mb-4 mx-auto bg-[#1C1C1B] border border-[#333331] rounded-lg overflow-hidden w-full max-w-xl self-center">
       <div className="px-3 py-2 bg-[#252523] border-b border-[#333331] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ImageIcon size={14} className="text-[#8C8C8A]" />
