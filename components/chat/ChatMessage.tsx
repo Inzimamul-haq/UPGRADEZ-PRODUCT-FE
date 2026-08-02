@@ -116,6 +116,22 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
               h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-5 mb-2 text-white" {...props} />,
               h3: ({ node, ...props }) => <h3 className="text-md font-bold mt-4 mb-2 text-white" {...props} />,
               blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
+              img: ({ node, ...props }) => {
+                if (props.src) {
+                  const pageNumMatch = props.title?.match(/(\d+)/);
+                  const pageNumber = pageNumMatch ? parseInt(pageNumMatch[1]) : 0;
+                  return (
+                    <div className="my-6 w-full flex justify-center">
+                      <DiagramCard 
+                        diagramName={props.alt || ''} 
+                        pageNumber={pageNumber} 
+                        url={props.src as string} 
+                      />
+                    </div>
+                  );
+                }
+                return <img {...props} />;
+              },
             }}
           >
             {processedContent}
@@ -124,14 +140,24 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
 
         {message.figures && message.figures.length > 0 && (
           <div className="mt-6 mb-4 flex flex-col gap-4 items-center w-full">
-            {message.figures.map((fig, idx) => (
-              <DiagramCard 
-                key={idx} 
-                diagramName={fig.caption} 
-                pageNumber={fig.pageNumber} 
-                url={fig.url} 
-              />
-            ))}
+            {message.figures.map((fig, idx) => {
+              // If the URL is already in the markdown content (inline diagram), don't render it again at the bottom
+              if (fig.url && message.content.includes(fig.url)) {
+                return null;
+              }
+              // If url is missing (e.g. faculty side when includeUrl is false), don't render an empty broken image
+              if (!fig.url) {
+                return null;
+              }
+              return (
+                <DiagramCard 
+                  key={idx} 
+                  diagramName={fig.caption} 
+                  pageNumber={fig.pageNumber} 
+                  url={fig.url as string} 
+                />
+              );
+            })}
           </div>
         )}
         

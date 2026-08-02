@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { loginSchema } from '@/Schema/validations';
+import { extractErrorMessage } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function LoginPage() {
       // Let AuthContext handle redirect based on role
       router.push('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Login failed');
+      setError(extractErrorMessage(err, 'Login failed'));
     } finally {
       setLoading(false);
     }

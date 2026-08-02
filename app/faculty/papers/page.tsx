@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, Upload, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, Upload, X, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
@@ -9,6 +9,8 @@ import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
 import { UploadQPModal } from '@/components/chat/UploadQPModal';
 import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { useAuth } from '@/context/AuthContext';
+import { extractErrorMessage } from '@/lib/utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 
@@ -76,6 +78,10 @@ export default function PapersPage() {
     paperId: string; currentDate: string | null; subjectName: string; examType: string;
   } | null>(null);
 
+  // Delete Q/P modal
+  const [deleteModal, setDeleteModal] = useState<{ paperId: string; kind: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Upload Q/P modal
   const [showUploadModal, setShowUploadModal] = useState(false);
 
@@ -115,10 +121,25 @@ export default function PapersPage() {
       setLoadingQuestions(true);
       const res = await api.get(`/api/question-papers/${paperId}/questions`);
       setQuestionModal(res.data.paper);
-    } catch {
-      toast.error('Failed to load questions');
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to load questions'));
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  const handleDeletePaper = async () => {
+    if (!deleteModal) return;
+    try {
+      setIsDeleting(true);
+      await api.delete(`/api/question-papers/${deleteModal.paperId}`);
+      setPapers(prev => prev.filter(p => p.id !== deleteModal.paperId));
+      toast.success('Paper deleted successfully');
+      setDeleteModal(null);
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to delete paper'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,8 +162,8 @@ export default function PapersPage() {
       } else {
         generateQuestionPaperPDF(pdfParams);
       }
-    } catch {
-      toast.error('Failed to generate PDF');
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to generate PDF'));
     }
   };
 
@@ -341,6 +362,14 @@ export default function PapersPage() {
                     <Download size={12} /> Download PDF
                   </button>
                 )}
+
+                {/* Delete Paper Button */}
+                <button
+                  onClick={() => setDeleteModal({ paperId: paper.id, kind: paper.kind })}
+                  className="flex items-center gap-1.5 text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5 hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
               </div>
             </div>
           ))
@@ -407,6 +436,22 @@ export default function PapersPage() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteModal}
+        title="Delete Paper"
+        message={
+          deleteModal?.kind === 'IMPORTANT_QUESTIONS'
+            ? "Warning: Deleting this Important Questions paper will also delete its linked Exam Paper if one was generated. This action cannot be undone."
+            : "Are you sure you want to delete this Exam Paper? This action cannot be undone, but the Important Questions used to generate it will remain intact."
+        }
+        confirmText="Delete"
+        isDestructive
+        isLoading={isDeleting}
+        onClose={() => setDeleteModal(null)}
+        onConfirm={handleDeletePaper}
+      />
     </div>
   );
 }

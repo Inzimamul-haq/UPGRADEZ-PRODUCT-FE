@@ -9,6 +9,7 @@ import { Building2, Pencil, Trash2 } from "lucide-react";
 import { departmentSchema } from "@/Schema/validations";
 import { BRANCH_OPTIONS } from "@/lib/constants";
 import { Department } from "@/lib/types";
+import { extractErrorMessage } from "@/lib/utils";
 
 export default function AdminDepartmentsPage() {
   const toast = useToast();
@@ -123,10 +124,7 @@ export default function AdminDepartmentsPage() {
       setShowFormModal(false);
       fetchDepartments();
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ??
-        err.message ??
-        "Failed to save department";
+      const msg = extractErrorMessage(err, "Failed to save department");
       setFormError(msg);
       toast.error(msg);
     } finally {
@@ -143,9 +141,7 @@ export default function AdminDepartmentsPage() {
       toast.success(`"${deleteTarget.branch} · ${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ?? err.message ?? "Failed to delete department"
-      );
+      toast.error(extractErrorMessage(err, "Failed to delete department"));
     } finally {
       setIsDeleting(false);
     }

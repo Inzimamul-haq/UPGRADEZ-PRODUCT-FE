@@ -15,6 +15,7 @@ import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/context/ToastContext";
 import api from "@/lib/api";
+import { extractErrorMessage } from "@/lib/utils";
 
 export type Subject = {
   id: string;
@@ -78,11 +79,7 @@ export function SubjectAccordion({
 
     toast.success("Retry queued successfully");
   } catch (err: any) {
-    toast.error(
-      err.response?.data?.error ??
-      err.message ??
-      "Failed to retry subject"
-    );
+    toast.error(extractErrorMessage(err, "Failed to retry subject"));
   } finally {
     setIsRetrying(false);
   }

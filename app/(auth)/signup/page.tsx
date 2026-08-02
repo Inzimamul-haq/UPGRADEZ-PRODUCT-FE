@@ -5,18 +5,19 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { signupSchema, accessCodeSchema } from '@/Schema/validations';
+import { extractErrorMessage } from '@/lib/utils';
 
 export default function SignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [collegeData, setCollegeData] = useState<{ collegeId: string; collegeName: string; bannerUrl?: string | null; logoUrl?: string | null } | null>(null);
   const [accessCode, setAccessCode] = useState('');
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +52,7 @@ export default function SignupPage() {
         logoUrl: data.logoUrl
       }));
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Verification failed');
+      setError(extractErrorMessage(err, 'Verification failed'));
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ export default function SignupPage() {
       });
       router.push('/');
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Signup failed');
+      setError(extractErrorMessage(err, 'Signup failed'));
     } finally {
       setLoading(false);
     }
