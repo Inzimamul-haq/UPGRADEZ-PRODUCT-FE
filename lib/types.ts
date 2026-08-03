@@ -269,7 +269,8 @@ export type SubjectFormValues = {
   departmentIds: string[];
   year: string;
   regulation: string;
-  files: File[];
+  syllabusFile?: File | null;
+  materialFiles?: File[];
   pdfUrl?: string | null;
   uploadMode?: "replace" | "append";
 };

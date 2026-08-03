@@ -276,6 +276,7 @@ export default function AdminSyllabusPage() {
     setIsSubmitting(true);
 
     try {
+      // 1. Create subject text data
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
@@ -283,13 +284,30 @@ export default function AdminSyllabusPage() {
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
-      if (values.files && values.files.length > 0) {
-        values.files.forEach(file => formData.append("pdfs", file));
-      }
-
       const { data } = await api.post("/api/subjects", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      const subjectId = data.subject.id;
+
+      // 2. Upload Syllabus
+      if (values.syllabusFile) {
+        const syllabusData = new FormData();
+        syllabusData.append("pdfs", values.syllabusFile);
+        syllabusData.append("fileType", "SYLLABUS");
+        await api.post(`/api/subjects/${subjectId}/pdf`, syllabusData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      // 3. Upload Materials
+      if (values.materialFiles && values.materialFiles.length > 0) {
+        const materialData = new FormData();
+        values.materialFiles.forEach((file) => materialData.append("pdfs", file));
+        materialData.append("fileType", "MATERIAL");
+        await api.post(`/api/subjects/${subjectId}/pdf`, materialData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
       // supports either {subject} or {subject, upload}
       const rawSubject = data?.subject
@@ -339,8 +357,8 @@ export default function AdminSyllabusPage() {
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
 
-      if (values.files && values.files.length > 0) {
-        values.files.forEach(file => formData.append("pdfs", file));
+      if (values.materialFiles && values.materialFiles.length > 0) {
+        values.materialFiles.forEach(file => formData.append("pdfs", file));
       }
       if (values.uploadMode) {
         formData.append("uploadMode", values.uploadMode);
@@ -391,7 +409,7 @@ export default function AdminSyllabusPage() {
       setShowEditModal(false);
       setEditingSubject(null);
 
-      const pdfMsg = (values.files && values.files.length > 0)
+      const pdfMsg = (values.materialFiles && values.materialFiles.length > 0)
         ? " Old embeddings removed and new PDF(s) queued."
         : "";
       toast.success(`"${values.name.trim()}" updated.${pdfMsg}`);

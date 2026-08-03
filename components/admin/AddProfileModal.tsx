@@ -245,9 +245,9 @@ export function AddProfileModal({ onClose, onSuccess, defaultRole }: AddProfileM
             </>
           )}
 
-          {error && (
+          {/* {error && (
             <p className="text-[12px] text-red-400">{error}</p>
-          )}
+          )} */}
         </div>
 
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#2E2E2C]">

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { subjectSchema } from "@/Schema/validations";
-import { BRANCH_OPTIONS } from "@/lib/constants";
 import api from "@/lib/api";
 import { DepartmentOption, SubjectFormModalProps } from "@/lib/types";
 
@@ -23,7 +22,8 @@ export default function SubjectFormModal({
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
-  const [files, setFiles] = useState<File[]>([]);
+  const [syllabusFile, setSyllabusFile] = useState<File | null>(null);
+  const [materialFiles, setMaterialFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
 
@@ -35,7 +35,8 @@ export default function SubjectFormModal({
     setDepartmentIds(initialValues?.departmentIds ?? []);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
-    setFiles([]);
+    setSyllabusFile(null);
+    setMaterialFiles([]);
     setUploadMode("append");
     setLocalError("");
   }, [open, initialValues]);
@@ -86,8 +87,8 @@ export default function SubjectFormModal({
       return;
     }
 
-    if (mode === "add" && files.length === 0) {
-      setLocalError("At least one PDF syllabus file is required");
+    if (mode === "add" && !syllabusFile) {
+      setLocalError("An Official Syllabus PDF is required");
       return;
     }
 
@@ -98,7 +99,8 @@ export default function SubjectFormModal({
         departmentIds,
         year,
         regulation,
-        files,
+        syllabusFile,
+        materialFiles,
         uploadMode,
       });
     } catch (err: any) {
@@ -217,14 +219,53 @@ export default function SubjectFormModal({
           </div>
           {mode === 'edit' && (
             <p className="-mt-2 text-[11px] text-[#5A5A58]">
-              Year and Regulation cannot be changed after creation. Delete and re-add the subject to change these.
+              Year, Regulation, and Syllabus PDF cannot be changed after creation. Delete and re-add the subject to change these.
             </p>
           )}
 
+          {/* Syllabus Upload */}
+          <div>
+            <label className="block text-[12px] text-[#8C8C8A] mb-2">
+              Syllabus index pdf or image {mode === 'add' && "(Required)"}
+            </label>
+            <div className={`flex flex-col gap-2 ${mode === 'edit' ? 'opacity-50 pointer-events-none' : ''}`}>
+              {syllabusFile && (
+                <div className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5">
+                  <span className="truncate text-[12px] text-[#ECECEA]">{syllabusFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSyllabusFile(null)}
+                    className="text-[12px] text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              {!syllabusFile && (
+                <label className={`inline-flex items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors ${mode === 'edit' ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-[#2C2C2A]'}`}>
+                  {mode === 'edit' ? 'Syllabus Cannot Be Changed' : 'Select Syllabus pdf or image'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={mode === 'edit'}
+                    accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setSyllabusFile(e.target.files[0]);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
+          {/* Materials Upload */}
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-[12px] text-[#8C8C8A]">
-                {mode === "add" ? "Upload PDF" : "Update PDF (Optional)"}
+                {mode === "add" ? "Textbooks pdf" : "Update Textbooks pdf"}
               </label>
             </div>
 
@@ -276,12 +317,12 @@ export default function SubjectFormModal({
                     </label>
                   </div>
                 </div>
-                {uploadMode === "replace" && files.length > 0 && (
+                {uploadMode === "replace" && materialFiles.length > 0 && (
                   <span className="w-fit rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">
                     Warning: Old files and embeddings will be deleted
                   </span>
                 )}
-                {uploadMode === "append" && files.length > 0 && (
+                {uploadMode === "append" && materialFiles.length > 0 && (
                   <span className="w-fit rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
                     New files will be embedded alongside existing ones
                   </span>
@@ -297,7 +338,7 @@ export default function SubjectFormModal({
             )}
 
             <div className="flex flex-col gap-2">
-              {files.map((f, idx) => (
+              {materialFiles.map((f, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5"
@@ -305,7 +346,7 @@ export default function SubjectFormModal({
                   <span className="truncate text-[12px] text-[#ECECEA]">{f.name}</span>
                   <button
                     type="button"
-                    onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                    onClick={() => setMaterialFiles(materialFiles.filter((_, i) => i !== idx))}
                     className="text-[12px] text-red-400 hover:text-red-300"
                   >
                     Remove
@@ -313,14 +354,14 @@ export default function SubjectFormModal({
                 </div>
               ))}
               <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#2C2C2A]">
-                {files.length === 0 ? "Select File" : "+ Add another file"}
+                {materialFiles.length === 0 ? "Select textbooks" : "+ Add another textbook"}
                 <input
                   type="file"
                   className="hidden"
-                  accept=".pdf,application/pdf"
+                  accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
-                      setFiles([...files, e.target.files[0]]);
+                      setMaterialFiles([...materialFiles, e.target.files[0]]);
                       e.target.value = "";
                     }
                   }}
