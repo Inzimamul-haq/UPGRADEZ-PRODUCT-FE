@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
+import { extractErrorMessage } from "@/lib/utils";
 import { AddCollegeModal } from "@/components/super-admin/AddCollegeModal";
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { useRouter } from "next/navigation";
@@ -199,7 +200,7 @@ export default function SuperAdminCollegesPage() {
       setDeleteSecret("");
       fetchColleges();
     } catch (err: any) {
-      toast.error(err.response?.data?.error ?? "Failed to delete");
+      toast.error(extractErrorMessage(err, "Failed to delete"));
     } finally {
       setDeleteLoading(false);
     }

@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/SubjectAccordion";
 import { useToast } from "@/context/ToastContext";
 import { SubjectFormValues } from "@/lib/types";
+import { extractErrorMessage } from "@/lib/utils";
 
 type SubjectApiRow = {
   id: string;
@@ -327,9 +328,7 @@ export default function AdminSyllabusPage() {
       setShowAddModal(false);
       toast.success(`"${values.name.trim()}" added. PDF queued for embedding.`);
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ?? err.message ?? "Failed to add subject";
-      toast.error(msg);
+      toast.error(extractErrorMessage(err, "Failed to add subject"));
       // re-throw so the modal can also show inline error
       throw err;
     } finally {
@@ -414,9 +413,7 @@ export default function AdminSyllabusPage() {
         : "";
       toast.success(`"${values.name.trim()}" updated.${pdfMsg}`);
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ?? err.message ?? "Failed to update subject";
-      toast.error(msg);
+      toast.error(extractErrorMessage(err, "Failed to update subject"));
       throw err;
     } finally {
       setIsSubmitting(false);
@@ -433,9 +430,7 @@ export default function AdminSyllabusPage() {
       setSubjects((prev) => prev.filter((s) => s.id !== id));
       toast.success(`"${subject?.name ?? 'Subject'}" deleted successfully.`);
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ?? err.message ?? "Failed to delete subject";
-      toast.error(msg);
+      toast.error(extractErrorMessage(err, "Failed to delete subject"));
       throw err; // let the modal know it failed
     }
   };
@@ -463,9 +458,7 @@ export default function AdminSyllabusPage() {
         isActive ? 'Subject republished.' : `Publishing stopped for ${academicYear}.`
       );
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ?? err.message ?? 'Failed to update publish status';
-      toast.error(msg);
+      toast.error(extractErrorMessage(err, "Failed to update publish status"));
     }
   };
 

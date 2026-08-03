@@ -89,6 +89,9 @@ export function removeFileExtension(filename: string): string {
 }
 
 export function extractErrorMessage(error: any, defaultMessage: string = 'An unexpected error occurred'): string {
+  if (error?.response?.data?.error) {
+    return error.response.data.error;
+  }
   if (error?.response?.data?.message) {
     return error.response.data.message;
   }
