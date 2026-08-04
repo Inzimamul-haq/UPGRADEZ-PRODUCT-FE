@@ -1,18 +1,28 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from 'sonner';
+import { PWA_CONFIG } from "@/config/pwa";
 
 const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500"],
 });
 
+export const viewport: Viewport = {
+  themeColor: PWA_CONFIG.THEME_COLOR,
+};
+
 export const metadata: Metadata = {
-  title: "AI Exam Prep",
-  description: "Platform for AI-assisted exam preparation",
+  title: PWA_CONFIG.APP_NAME,
+  description: PWA_CONFIG.APP_DESCRIPTION,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: PWA_CONFIG.APP_NAME,
+  },
 };
 
 export default function RootLayout({
