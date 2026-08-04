@@ -91,6 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [pathname, router]);
 
   const logout = async () => {
+    // Best-effort: unregister this device's FCM token before clearing session
+    try {
+      const { getToken } = await import('firebase/messaging');
+      const { messaging } = await import('@/lib/firebase');
+      if (messaging && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        const token = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY });
+        if (token) {
+          await api.delete('/api/notifications/fcm-token', { data: { token } });
+        }
+      }
+    } catch (_) { /* best-effort — never block logout */ }
+
     try {
       await api.post('/api/auth/logout');
     } catch (e) {}
