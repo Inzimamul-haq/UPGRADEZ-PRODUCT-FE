@@ -109,10 +109,10 @@ export default function SystemHealthPage() {
 
   const overallBadgeClasses = isOperational
     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-    : isWarning 
+    : isWarning
       ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
       : 'bg-red-500/10 text-red-400 border-red-500/20';
-  
+
   const pingColorClasses = isOperational
     ? 'bg-emerald-400'
     : isWarning
@@ -143,7 +143,7 @@ export default function SystemHealthPage() {
             )}
           </h1>
         </div>
-        <button 
+        <button
           onClick={fetchHealth}
           disabled={loading}
           className="inline-flex items-center justify-center rounded-lg bg-[#2C2C2A] border border-[#3A3A38] px-3.5 py-1.5 text-xs font-medium text-text-primary hover:bg-[#3A3A38] focus:outline-none transition-all disabled:opacity-50"
@@ -162,33 +162,33 @@ export default function SystemHealthPage() {
         <>
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <MetricCard 
-              title="API Latency" 
-              value={data?.metrics?.latency || '0ms'} 
-              icon={Network} 
-              status="good" 
+            <MetricCard
+              title="API Latency"
+              value={data?.metrics?.latency || '0ms'}
+              icon={Network}
+              status="good"
             />
-            <MetricCard 
-              title="Redis Memory" 
-              value={data?.metrics?.redisMemory || '0B'} 
-              icon={Database} 
-              status={data?.metrics?.redisMemory ? 'good' : 'warning'} 
+            <MetricCard
+              title="Redis Memory"
+              value={data?.metrics?.redis?.used || '0 B'}
+              icon={Database}
+              status={data?.metrics?.redis?.usedBytes > 0 ? 'good' : 'warning'}
             />
-            <MetricCard 
-              title="Failure Rate" 
+            <MetricCard
+              title="Failure Rate"
               value={
-                data?.queues?.length 
-                  ? (data.queues.reduce((acc: number, q: any) => acc + parseFloat(q.failureRate || "0"), 0) / data.queues.length).toFixed(1) + '%' 
+                data?.queues?.length
+                  ? (data.queues.reduce((acc: number, q: any) => acc + parseFloat(q.failureRate || "0"), 0) / data.queues.length).toFixed(1) + '%'
                   : '0%'
-              } 
-              icon={Activity} 
-              status="good" 
+              }
+              icon={Activity}
+              status="good"
             />
-            <MetricCard 
-              title="Waiting Jobs" 
-              value={data?.queues?.reduce((acc: number, q: any) => acc + (q.waiting || 0), 0) || 0} 
-              icon={Layers} 
-              status="good" 
+            <MetricCard
+              title="Waiting Jobs"
+              value={data?.queues?.reduce((acc: number, q: any) => acc + (q.waiting || 0), 0) || 0}
+              icon={Layers}
+              status="good"
             />
           </div>
 
@@ -228,7 +228,7 @@ export default function SystemHealthPage() {
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider">BullMQ Queues</h3>
               </div>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="text-[10px] text-text-muted uppercase border-b border-[#2E2E2C]">

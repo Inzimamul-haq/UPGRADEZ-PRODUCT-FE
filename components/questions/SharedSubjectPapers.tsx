@@ -53,7 +53,8 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
   }, [subjectId, departmentId]);
 
   // Exam type is stored as CAT1, CAT2, MODEL, UNIVERSITY in DB
-  const formattedTab = activeTab.replace(/\s+/g, '').toUpperCase();
+  const backendTab = activeTab.replace('CIA', 'CAT');
+  const formattedTab = backendTab.replace(/\s+/g, '').toUpperCase();
   const filtered = papers.filter((p: any) => p.examType === formattedTab);
 
   return (
