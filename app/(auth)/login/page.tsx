@@ -23,14 +23,33 @@ export default function LoginPage() {
       setError('Google authentication failed. Please try again or use your email.');
     }
 
-    try {
-      const stored = localStorage.getItem('studymate_last_college');
-      if (stored) {
-        setCollegeData(JSON.parse(stored));
+    const fetchContext = async () => {
+      try {
+        const res = await api.get('/api/colleges/context');
+        if (res.data?.success && res.data.data) {
+          const c = res.data.data;
+          setCollegeData({
+            collegeId: c.id,
+            collegeName: c.name,
+            logoUrl: c.logoUrl,
+            bannerUrl: c.bannerUrl
+          });
+        } else {
+          // Fallback to local storage if not on a tenant domain
+          const stored = localStorage.getItem('studymate_last_college');
+          if (stored) {
+            setCollegeData(JSON.parse(stored));
+          }
+        }
+      } catch (err) {
+        // Fallback to local storage
+        const stored = localStorage.getItem('studymate_last_college');
+        if (stored) {
+          setCollegeData(JSON.parse(stored));
+        }
       }
-    } catch (err) {
-      // ignore parsing errors
-    }
+    };
+    fetchContext();
   }, [searchParams]);
 
   const handleGoogleAuth = () => {
