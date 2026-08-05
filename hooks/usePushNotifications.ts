@@ -6,9 +6,9 @@ import { messaging } from '@/lib/firebase';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
-const VAPID_KEY       = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!;
-const SW_PATH         = '/firebase-messaging-sw.js';
-const STORAGE_KEY     = 'push_registered'; // fast client-side hint; Notification.permission is ground truth
+const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!;
+const SW_PATH = '/firebase-messaging-sw.js';
+const STORAGE_KEY = 'push_registered'; // fast client-side hint; Notification.permission is ground truth
 
 export type PushStatus = 'granted' | 'denied' | 'default' | 'unsupported';
 
@@ -26,7 +26,7 @@ interface UsePushNotificationsReturn {
  *   - toggle OFF → get token → DELETE /api/notifications/fcm-token → deleteToken()
  */
 export function usePushNotifications(): UsePushNotificationsReturn {
-  const [status, setStatus]     = useState<PushStatus>('default');
+  const [status, setStatus] = useState<PushStatus>('default');
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +35,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     if (!messaging) return null;
     try {
       const swRegistration = await navigator.serviceWorker.register(SW_PATH);
-      const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swRegistration });
+      await navigator.serviceWorker.ready;
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: swRegistration,
+      });
       return token || null;
     } catch (err) {
       console.error('[usePushNotifications] getToken error:', err);
@@ -52,7 +56,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     const perm = Notification.permission as PushStatus;
     setStatus(perm);
-    
+
     const checkBackendStatus = async () => {
       if (perm !== 'granted') {
         setIsEnabled(false);
@@ -77,7 +81,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     if (messaging) {
       const unsub = onMessage(messaging, (payload) => {
         const title = payload.notification?.title || 'StudyMate';
-        const body  = payload.notification?.body  || '';
+        const body = payload.notification?.body || '';
         // Show an in-app toast instead of a native OS notification
         if (Notification.permission === 'granted') {
           toast(title, {
