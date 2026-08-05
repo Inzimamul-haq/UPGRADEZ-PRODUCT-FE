@@ -12,9 +12,9 @@ const studentNavItems = [
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell role="student" navItems={studentNavItems}>
-      <ActiveBroadcastBanner />
-      {children}
-    </AppShell>
+      <AppShell role="student" navItems={studentNavItems}>
+        <ActiveBroadcastBanner />
+        {children}
+      </AppShell>
   );
 }

@@ -42,7 +42,7 @@ export default function OnboardingPage() {
     if (formData.departmentId) {
       api.get(`/api/departments/${formData.departmentId}/config`)
       .then(res => {
-        setRegulations(res.data.availableRegulations || []);
+        setRegulations((res.data.availableRegulations || []).filter((r: string) => r && r.trim().length > 0));
       })
       .catch(() => setRegulations([]));
     }
@@ -187,8 +187,8 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Branch —</option>
-                    {BRANCH_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {Array.from(new Set(departments.map(d => d.branch))).map(opt => (
+                      <option key={opt as string} value={opt as string}>{opt as string}</option>
                     ))}
                   </select>
                 </div>

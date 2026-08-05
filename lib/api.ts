@@ -6,6 +6,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
+if (typeof window !== 'undefined') {
+  const slug = window.location.hostname.split('.')[0];
+  api.defaults.headers.common['X-College-Slug'] = slug;
+}
+
 api.interceptors.request.use((config) => {
   if (typeof document !== 'undefined') {
     const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));

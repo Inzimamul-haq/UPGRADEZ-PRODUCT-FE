@@ -272,9 +272,9 @@ export default function AdminSyllabusPage() {
 
   const visibleDepartmentOptions = departmentOptions;
 
-  // add subject
   const handleAddSubject = async (values: SubjectFormValues) => {
     setIsSubmitting(true);
+    let createdSubjectId: string | null = null;
 
     try {
       // 1. Create subject text data
@@ -288,14 +288,14 @@ export default function AdminSyllabusPage() {
       const { data } = await api.post("/api/subjects", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const subjectId = data.subject.id;
+      createdSubjectId = data.subject.id;
 
       // 2. Upload Syllabus
       if (values.syllabusFile) {
         const syllabusData = new FormData();
         syllabusData.append("pdfs", values.syllabusFile);
         syllabusData.append("fileType", "SYLLABUS");
-        await api.post(`/api/subjects/${subjectId}/pdf`, syllabusData, {
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, syllabusData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -305,7 +305,7 @@ export default function AdminSyllabusPage() {
         const materialData = new FormData();
         values.materialFiles.forEach((file) => materialData.append("pdfs", file));
         materialData.append("fileType", "MATERIAL");
-        await api.post(`/api/subjects/${subjectId}/pdf`, materialData, {
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, materialData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -328,6 +328,13 @@ export default function AdminSyllabusPage() {
       setShowAddModal(false);
       toast.success(`"${values.name.trim()}" added. PDF queued for embedding.`);
     } catch (err: any) {
+      if (createdSubjectId) {
+        try {
+          await api.delete(`/api/subjects/${createdSubjectId}`);
+        } catch (cleanupErr) {
+          console.error("Failed to cleanup orphaned subject:", cleanupErr);
+        }
+      }
       toast.error(extractErrorMessage(err, "Failed to add subject"));
       // re-throw so the modal can also show inline error
       throw err;

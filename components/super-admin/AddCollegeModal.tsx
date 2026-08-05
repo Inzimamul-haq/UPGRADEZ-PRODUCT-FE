@@ -14,7 +14,9 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
   const toast = useToast();
   const [name, setName] = useState("");
   const [shortName, setShortName] = useState("");
+  const [slug, setSlug] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [vpsShard, setVpsShard] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [tokenLimit, setTokenLimit] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -25,16 +27,23 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
     setName(newName);
-    if (!accessCode || accessCode === generateSlug(name)) {
-      setAccessCode(generateSlug(newName));
+    if (!slug || slug === generateCleanSlug(name)) {
+      setSlug(generateCleanSlug(newName));
+    }
+    if (!accessCode || accessCode === generateAccessCode(name)) {
+      setAccessCode(generateAccessCode(newName));
     }
   };
 
-  const generateSlug = (text: string) => {
+  const generateCleanSlug = (text: string) => {
     return text
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') + '-' + Math.random().toString(36).substring(2, 7);
+      .replace(/(^-|-$)+/g, '');
+  };
+
+  const generateAccessCode = (text: string) => {
+    return generateCleanSlug(text) + '-' + Math.random().toString(36).substring(2, 7);
   };
 
   const handleSubmit = async () => {
@@ -47,13 +56,19 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
       setError("Short name is required");
       return;
     }
+    if (!slug.trim()) {
+      setError("Slug is required");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append("name", name.trim());
       formData.append("shortName", shortName.trim());
+      if (slug.trim()) formData.append("slug", slug.trim());
       if (accessCode.trim()) formData.append("accessCode", accessCode.trim());
+      if (vpsShard.trim()) formData.append("vpsShard", vpsShard.trim());
       if (geminiApiKey.trim()) formData.append("geminiApiKey", geminiApiKey.trim());
       if (tokenLimit.trim()) formData.append("tokenLimit", tokenLimit.trim());
       if (logoFile) formData.append("logo", logoFile);
@@ -110,6 +125,19 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
 
           <div>
             <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Slug *
+            </label>
+            <input
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="e.g. cahcet"
+              className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] font-mono placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+            />
+            <p className="mt-1 text-[11px] text-[#5A5A58]">Used for public URLs (e.g., {slug || 'cahcet'}.studymate.app).</p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
               Access Code
             </label>
             <input
@@ -119,6 +147,22 @@ export function AddCollegeModal({ onClose, onSuccess }: AddCollegeModalProps) {
               className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] font-mono placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
             />
             <p className="mt-1 text-[11px] text-[#5A5A58]">Students will use this code during signup.</p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              VPS Shard (Optional)
+            </label>
+            <select
+              value={vpsShard}
+              onChange={(e) => setVpsShard(e.target.value)}
+              className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+            >
+              <option value="">Default (Unassigned)</option>
+              <option value="VPS1">VPS1</option>
+              <option value="VPS2">VPS2</option>
+            </select>
+            <p className="mt-1 text-[11px] text-[#5A5A58]">Informational: which server hosts this college.</p>
           </div>
 
           <div>

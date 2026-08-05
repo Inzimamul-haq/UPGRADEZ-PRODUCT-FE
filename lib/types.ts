@@ -13,6 +13,7 @@ export interface User {
   section?: string | null;
   regulation?: string | null;
   batchYear?: string | null;
+  rollNo?: string | null;
   collegeId?: string | null;
   college?: { id: string; name: string; shortName: string | null } | null;
   department?: { id: string; name: string; branch: string } | null;

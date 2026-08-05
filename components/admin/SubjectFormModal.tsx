@@ -20,6 +20,7 @@ export default function SubjectFormModal({
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
+  const [regulations, setRegulations] = useState<string[]>([]);
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
   const [syllabusFile, setSyllabusFile] = useState<File | null>(null);
@@ -44,21 +45,23 @@ export default function SubjectFormModal({
   useEffect(() => {
     if (!open) return;
 
-    const loadDepartments = async () => {
+    const loadData = async () => {
       try {
         setLoadingDepartments(true);
-        const { data } = await api.get<{ departments: DepartmentOption[] }>(
-          "/api/departments"
-        );
-        setDepartments(data.departments ?? []);
+        const [deptRes, regRes] = await Promise.all([
+          api.get<{ departments: DepartmentOption[] }>("/api/departments").catch(() => ({ data: { departments: [] } })),
+          api.get("/subjects/regulations").catch(() => ({ data: { data: [] } }))
+        ]);
+        setDepartments(deptRes.data.departments ?? []);
+        setRegulations(regRes.data.data ?? []);
       } catch {
-        setLocalError("Failed to load departments");
+        setLocalError("Failed to load form data");
       } finally {
         setLoadingDepartments(false);
       }
     };
 
-    loadDepartments();
+    loadData();
   }, [open]);
 
   const filteredDepartments = departments;
@@ -88,8 +91,30 @@ export default function SubjectFormModal({
     }
 
     if (mode === "add" && !syllabusFile) {
-      setLocalError("An Official Syllabus PDF is required");
+      setLocalError("An Official Syllabus PDF or Image is required");
       return;
+    }
+
+    // Pre-validate syllabus
+    if (syllabusFile) {
+      const isPdf = syllabusFile.type.includes("pdf") || syllabusFile.name.endsWith(".pdf");
+      const isImage = syllabusFile.type.includes("image/") || syllabusFile.name.endsWith(".png") || syllabusFile.name.endsWith(".jpg") || syllabusFile.name.endsWith(".jpeg");
+      if (!isPdf && !isImage) {
+        setLocalError("Syllabus must be a PDF or Image.");
+        return;
+      }
+    }
+
+    // Pre-validate materials
+    if (materialFiles.length > 0) {
+      for (const file of materialFiles) {
+        const isPdf = file.type.includes("pdf") || file.name.endsWith(".pdf");
+        const isWord = file.type.includes("word") || file.name.endsWith(".docx") || file.name.endsWith(".doc");
+        if (!isPdf && !isWord) {
+          setLocalError("Image files are not supported for textbooks. Please upload a PDF or DOCX.");
+          return;
+        }
+      }
     }
 
     try {

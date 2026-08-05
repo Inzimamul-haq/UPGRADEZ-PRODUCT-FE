@@ -6,6 +6,8 @@ import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { Notification, StudentDashboardStats as DashboardStats } from '@/lib/types';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import OnboardingPage from '@/app/onboarding/page';
+import { isStudentProfileReadyForSubjects } from '@/lib/profile';
 
 export default function StudentDashboardPage() {
   const { user } = useAuth();
@@ -34,6 +36,10 @@ export default function StudentDashboardPage() {
 
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  if (user && !isStudentProfileReadyForSubjects(user as any)) {
+    return <OnboardingPage />;
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">

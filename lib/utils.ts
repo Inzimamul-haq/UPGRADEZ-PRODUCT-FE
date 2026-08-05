@@ -64,7 +64,7 @@ export function validateBatchYear(val: string, maxYears: number): string {
   const start = parseInt(match[1]);
   const end = parseInt(match[2]);
   if (start >= end) return 'End year must be greater than start year';
-  if (end - start > maxYears + 2) return `Duration cannot exceed ${maxYears + 2} years`;
+  if (end - start !== maxYears) return `Duration must be exactly ${maxYears} years (e.g. ${start}-${start + maxYears})`;
   if (start < 2000 || start > 2050) return 'Invalid start year';
   return '';
 }

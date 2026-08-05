@@ -175,6 +175,8 @@ export default function FacultySyllabusPage() {
 
   const handleAddSubject = async (values: SubjectFormValues) => {
     setIsSubmitting(true);
+    let createdSubjectId: string | null = null;
+
     try {
       // 1. Create subject text data
       const formData = new FormData();
@@ -187,14 +189,14 @@ export default function FacultySyllabusPage() {
       const { data } = await api.post("/api/subjects", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      const subjectId = data.subject.id;
+      createdSubjectId = data.subject.id;
 
       // 2. Upload Syllabus
       if (values.syllabusFile) {
         const syllabusData = new FormData();
         syllabusData.append("pdfs", values.syllabusFile);
         syllabusData.append("fileType", "SYLLABUS");
-        await api.post(`/api/subjects/${subjectId}/pdf`, syllabusData, {
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, syllabusData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -204,7 +206,7 @@ export default function FacultySyllabusPage() {
         const materialData = new FormData();
         values.materialFiles.forEach((file) => materialData.append("pdfs", file));
         materialData.append("fileType", "MATERIAL");
-        await api.post(`/api/subjects/${subjectId}/pdf`, materialData, {
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, materialData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       }
@@ -213,6 +215,13 @@ export default function FacultySyllabusPage() {
       setShowAddModal(false);
       toast.success(`"${values.name.trim()}" added.`);
     } catch (err: any) {
+      if (createdSubjectId) {
+        try {
+          await api.delete(`/api/subjects/${createdSubjectId}`);
+        } catch (cleanupErr) {
+          console.error("Failed to cleanup orphaned subject:", cleanupErr);
+        }
+      }
       const msg = err.response?.data?.error ?? err.message ?? "Failed to add subject";
       toast.error(msg);
       throw err;
