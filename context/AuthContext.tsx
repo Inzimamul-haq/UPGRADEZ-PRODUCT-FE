@@ -51,7 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (isPublicRoute) {
-          router.push(`/${data.user.role}/dashboard`);
+          const userPrefix = roleToRoute(data.user.role);
+          router.push(`/${userPrefix}/dashboard`);
         } else if (
           // Faculty without department: always redirect to onboarding (no skip)
           (data.user?.role === 'faculty' && !data.user?.department?.id && !pathname?.startsWith('/onboarding')) ||
