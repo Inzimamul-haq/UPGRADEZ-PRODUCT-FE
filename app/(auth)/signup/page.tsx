@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { signupSchema, accessCodeSchema } from '@/Schema/validations';
 import { extractErrorMessage } from '@/lib/utils';
+import TurnstileWidget, { TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -17,9 +18,20 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string>('');
+
+  const turnstileRef = React.useRef<TurnstileWidgetHandle>(null);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Reset turnstile if user modifies fields after token is generated
+  useEffect(() => {
+    if (captchaToken) {
+      setCaptchaToken('');
+      turnstileRef.current?.reset();
+    }
+  }, [email, password, name]);
 
   useEffect(() => {
     if (searchParams?.get('error') === 'missing_access_code') {
@@ -79,11 +91,13 @@ export default function SignupPage() {
 
     try {
       await api.post('/api/auth/register', {
-        name, email, password, collegeId: collegeData.collegeId
+        name, email, password, collegeId: collegeData.collegeId, captchaToken
       });
       router.push('/');
     } catch (err: any) {
       setError(extractErrorMessage(err, 'Signup failed'));
+      turnstileRef.current?.reset();
+      setCaptchaToken('');
     } finally {
       setLoading(false);
     }
@@ -219,7 +233,14 @@ export default function SignupPage() {
               disabled={loading}
             />
           </div>
-          <button disabled={loading} type="submit" className="w-full bg-[#ECECEA] text-[#1C1C1B] rounded-xl py-3 px-4 font-medium hover:bg-white transition-colors mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
+          <div className="flex justify-center my-4">
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken('')}
+            />
+          </div>
+          <button disabled={loading || !captchaToken} type="submit" className="w-full bg-[#ECECEA] text-[#1C1C1B] rounded-xl py-3 px-4 font-medium hover:bg-white transition-colors mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
