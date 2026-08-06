@@ -11,13 +11,53 @@ if (typeof window !== 'undefined') {
   api.defaults.headers.common['X-College-Slug'] = slug;
 }
 
-api.interceptors.request.use((config) => {
+let cachedCsrfToken: string | null = null;
+let csrfTokenPromise: Promise<string> | null = null;
+
+api.interceptors.request.use(async (config) => {
+  // ==========================================================================
+  // Option 2: Fetch CSRF token from API (Required for Vercel/Render cross-origin)
+  // ==========================================================================
+  if (config.url !== '/api/auth/csrf-token') {
+    const method = config.method?.toUpperCase();
+    // CSRF is only needed for mutating requests
+    if (method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+      if (!cachedCsrfToken) {
+        if (!csrfTokenPromise) {
+          csrfTokenPromise = api.get('/api/auth/csrf-token').then(res => {
+            cachedCsrfToken = res.data.csrfToken;
+            return cachedCsrfToken as string;
+          }).catch(err => {
+            console.error("Failed to fetch CSRF token", err);
+            return '';
+          }).finally(() => {
+            csrfTokenPromise = null;
+          });
+        }
+        await csrfTokenPromise;
+      }
+      if (cachedCsrfToken) {
+        config.headers['x-csrf-token'] = cachedCsrfToken;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // Option 1: PRODUCTION CUSTOM DOMAIN SETUP (When you buy studymate.app)
+  // ==========================================================================
+  // 1. Delete all the "Option 2" code block above.
+  // 2. Uncomment the code block below.
+  // 3. In Render, set COOKIE_DOMAIN=.studymate.app
+  // ==========================================================================
+  /*
   if (typeof document !== 'undefined') {
     const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
     if (match) {
       config.headers['x-csrf-token'] = decodeURIComponent(match[3]);
     }
   }
+  */
+
   return config;
 });
 
