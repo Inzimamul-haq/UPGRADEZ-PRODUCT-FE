@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Download, Eye, FileText, Pencil, Upload, X, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
-import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
+import { UploadQPModal } from '@/components/chat/UploadQPModal';
+import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
+import { useAuth } from '@/context/AuthContext';
+import { extractErrorMessage } from '@/lib/utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 
@@ -56,6 +60,8 @@ const examLabel: Record<string, string> = {
 
 export default function PapersPage() {
   const toast = useToast();
+  const { role, user } = useAuth();
+  const currentRole = role ?? 'faculty';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -72,7 +78,12 @@ export default function PapersPage() {
     paperId: string; currentDate: string | null; subjectName: string; examType: string;
   } | null>(null);
 
-  const currentRole = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : 'faculty';
+  // Delete Q/P modal
+  const [deleteModal, setDeleteModal] = useState<{ paperId: string; kind: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Upload Q/P modal
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -110,10 +121,25 @@ export default function PapersPage() {
       setLoadingQuestions(true);
       const res = await api.get(`/api/question-papers/${paperId}/questions`);
       setQuestionModal(res.data.paper);
-    } catch {
-      toast.error('Failed to load questions');
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to load questions'));
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  const handleDeletePaper = async () => {
+    if (!deleteModal) return;
+    try {
+      setIsDeleting(true);
+      await api.delete(`/api/question-papers/${deleteModal.paperId}`);
+      setPapers(prev => prev.filter(p => p.id !== deleteModal.paperId));
+      toast.success('Paper deleted successfully');
+      setDeleteModal(null);
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to delete paper'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -121,14 +147,23 @@ export default function PapersPage() {
     try {
       const res = await api.get(`/api/question-papers/${paper.id}/questions`);
       const detail: PaperDetail = res.data.paper;
-      generateQuestionPaperPDF({
+      const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
+      const pdfParams = {
         paper: { id: paper.id, examType: paper.examType, academicYear: paper.academicYear, subjectId: selectedSubject?.id || '' },
         assignment: { assignedToYear: null, assignedToBranch: null, assignedToSection: null },
         questions: detail.questions.map(q => ({ text: q.questionText })),
         subject: selectedSubject ? { name: selectedSubject.name, code: selectedSubject.code } : undefined,
-      });
-    } catch {
-      toast.error('Failed to generate PDF');
+        college: user?.college,
+        department: user?.department,
+      };
+      
+      if (isModelOrSemester) {
+        generateModelSemesterPaperPDF(pdfParams);
+      } else {
+        generateQuestionPaperPDF(pdfParams);
+      }
+    } catch (error: any) {
+      toast.error(extractErrorMessage(error, 'Failed to generate PDF'));
     }
   };
 
@@ -136,56 +171,82 @@ export default function PapersPage() {
     setPapers(prev => prev.map(p => p.id === paperId ? { ...p, examDate: newDate } : p));
   };
 
-  const filtered = papers.filter(p => p.examType === activeTab);
+  const filtered = papers
+    .filter(p => p.examType === activeTab)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // ─── Subject list ──────────────────────────────────────────────────────────
   if (!selectedSubject) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
-            <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
+      <>
+        <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
+              <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 bg-[#2C2C2A] border border-[#3A3A38] text-[#ECECEA] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#333331] transition-colors"
+              >
+                <Upload size={14} /> Upload Q/P
+              </button>
+              <Link
+                href={`/chat/new?role=${currentRole}`}
+                className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
+              >
+                <FileText size={14} /> Generate
+              </Link>
+            </div>
           </div>
-          <Link
-            href={`/chat/new?role=${currentRole}`}
-            className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
-          >
-            <FileText size={14} /> Generate
-          </Link>
+
+          <div className="mt-6 flex flex-col gap-2">
+            {loadingSubjects ? (
+              <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
+            ) : subjects.length === 0 ? (
+              <div className="flex flex-col items-center py-14">
+                <FileText size={28} className="text-[#3A3A38] mb-3" />
+                <p className="text-[14px] text-[#5A5A58]">No papers generated yet</p>
+                <p className="text-[12px] text-[#3A3A38] mt-1">Use Generate to create your first paper</p>
+              </div>
+            ) : (
+              subjects.map(subject => (
+                <button
+                  key={subject.id}
+                  onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
+                  className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
+                >
+                  <div>
+                    <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
+                    <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
+                    <p className="text-[12px] text-[#5A5A58] mt-1">
+                      {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors" />
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-2">
-          {loadingSubjects ? (
-            <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
-          ) : subjects.length === 0 ? (
-            <div className="flex flex-col items-center py-14">
-              <FileText size={28} className="text-[#3A3A38] mb-3" />
-              <p className="text-[14px] text-[#5A5A58]">No papers generated yet</p>
-              <p className="text-[12px] text-[#3A3A38] mt-1">Use Generate to create your first paper</p>
-            </div>
-          ) : (
-            subjects.map(subject => (
-              <button
-                key={subject.id}
-                onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
-                className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
-              >
-                <div>
-                  <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
-                  <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
-                  <p className="text-[12px] text-[#5A5A58] mt-1">
-                    {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors" />
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+        {/* Upload Q/P Modal */}
+        {showUploadModal && (
+          <UploadQPModal
+            onClose={() => setShowUploadModal(false)}
+            onSuccess={async () => {
+              try {
+                const res = await api.get('/api/question-papers');
+                setSubjects(res.data.subjects || []);
+              } catch {}
+            }}
+          />
+        )}
+      </>
     );
   }
+
 
   // ─── Papers list ───────────────────────────────────────────────────────────
   return (
@@ -301,6 +362,14 @@ export default function PapersPage() {
                     <Download size={12} /> Download PDF
                   </button>
                 )}
+
+                {/* Delete Paper Button */}
+                <button
+                  onClick={() => setDeleteModal({ paperId: paper.id, kind: paper.kind })}
+                  className="flex items-center gap-1.5 text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5 hover:bg-red-500/20 transition-colors"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
               </div>
             </div>
           ))
@@ -367,6 +436,22 @@ export default function PapersPage() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteModal}
+        title="Delete Paper"
+        message={
+          deleteModal?.kind === 'IMPORTANT_QUESTIONS'
+            ? "Warning: Deleting this Important Questions paper will also delete its linked Exam Paper if one was generated. This action cannot be undone."
+            : "Are you sure you want to delete this Exam Paper? This action cannot be undone, but the Important Questions used to generate it will remain intact."
+        }
+        confirmText="Delete"
+        isDestructive
+        isLoading={isDeleting}
+        onClose={() => setDeleteModal(null)}
+        onConfirm={handleDeletePaper}
+      />
     </div>
   );
 }

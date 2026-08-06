@@ -13,6 +13,9 @@ export interface User {
   section?: string | null;
   regulation?: string | null;
   batchYear?: string | null;
+  rollNo?: string | null;
+  collegeId?: string | null;
+  college?: { id: string; name: string; shortName: string | null } | null;
   department?: { id: string; name: string; branch: string } | null;
 }
 
@@ -37,6 +40,8 @@ export interface Department {
   id: string;
   name: string;
   branch: string;
+  sections?: string[];
+  durationYears?: number;
 }
 
 export interface Subject {
@@ -65,14 +70,16 @@ export interface ChatInputProps {
 export interface ChatHeaderProps {
   subjectName: string;
   examType: string;
-  questionsToday: number;
-} 
+  paperResolved: boolean;
+  onOpenQuestions: () => void;
+}
 
 export interface Question {
   id: string;
   paper_id: string;
   question_text: string;
   mark_type: string;
+  marks: number;
 }
 
 export interface ChatSession {
@@ -88,10 +95,13 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   rag_used?: boolean;
+  figures?: { pageNumber: number; caption: string; url: string; }[];
   actions?: {
     id: string;
     label: string;
     icon?: string;
+    subjectId?: string;
+    examType?: string;
   }[];
 }
 
@@ -124,9 +134,11 @@ export interface SessionData {
 
   linkedIQAssignment?: {
     assignedToYear: number | null;
-    assignedToBranch: string | null;
-    assignedToSection: string |null;
+    assignedToDepartmentId: string | null;
+    assignedToSection: string | null;
   };
+
+  hasLinkedExamPaper?: boolean;
 }
 
 export interface ChatContainerProps {
@@ -148,7 +160,16 @@ export interface ChatMessagesProps {
 
 export interface ChatStepOverlayProps {
   role?: string;
-  onComplete: (data: { year?: string; branch?: string; department?: string; section?: string; subject: Subject; examType: string }) => void;
+  onComplete: (data: { 
+    year?: string; 
+    branch?: string; 
+    department?: string; 
+    departmentId?: string; 
+    section?: string; 
+    subject: Subject; 
+    examType: string;
+    paperKind?: PaperKind;
+  }) => void;
 }
 
 export interface DiagramCardProps {
@@ -174,6 +195,7 @@ export interface EditExamDateModalProps {
 export interface College {
   id: string;
   name: string;
+  shortName?: string | null;
   status: 'active' | 'suspended' | 'expired';
   studentsCount: number;
   tokenUsed: number;
@@ -205,7 +227,7 @@ export interface Faculty {
   email: string;
   branch: string;
   department: string;
-  joined: string;
+  role: string;
 }
 
 export interface FacultyTableRowProps {
@@ -231,6 +253,8 @@ export interface Student {
   section?: string;
   joined: string;
   role?: string;
+  batchYear?: string;
+  rollNo?: string;
 }
 
 export interface StudentTableRowProps {
@@ -246,7 +270,8 @@ export type SubjectFormValues = {
   departmentIds: string[];
   year: string;
   regulation: string;
-  files: File[];
+  syllabusFile?: File | null;
+  materialFiles?: File[];
   pdfUrl?: string | null;
   uploadMode?: "replace" | "append";
 };
@@ -314,4 +339,34 @@ export interface EmptyStateProps {
   heading: string;
   subtext?: string;
   action?: ReactNode;
+  description?: string;
+}
+
+export interface FacultyDashboardStats {
+  subjectsAssigned: { count: number; byRegulation: { regulation: string; count: number }[] };
+  papersGenerated: { count: number };
+  aiConversations: { count: number };
+  papersThisMonth: { count: number };
+}
+
+export interface StudentDashboardStats {
+  degreeCompletion: {
+    percent: number;
+    currentYear: number;
+    totalYears: number;
+  };
+  subjectsEnrolled: number;
+  aiConversations: number;
+  newPapers: number;
+}
+
+export interface ChatSearchParams {
+  paperId?: string;
+  role?: string;
+  year?: string;
+  branch?: string;
+  subjectId?: string;
+  subjectName?: string;
+  subjectCode?: string;
+  examType?: string;
 }

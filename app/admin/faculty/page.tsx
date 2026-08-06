@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { FacultyTableRow } from '@/components/admin/FacultyTableRow';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { TableShell } from '@/components/ui/TableShell';
+import { TablePagination } from '@/components/ui/TablePagination';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
-import { BRANCH_OPTIONS } from '@/lib/constants';
+import { AddProfileModal } from '@/components/admin/AddProfileModal';
 
 type DepartmentOption = {
   id: string;
@@ -22,13 +23,13 @@ export default function AdminFacultyPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<any>(null);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [editBranch, setEditBranch] = useState('');
   const [editDepartmentId, setEditDepartmentId] = useState('');
   const [editRole, setEditRole] = useState('');
 
@@ -66,12 +67,6 @@ export default function AdminFacultyPage() {
     loadDepartments();
   }, [editModalOpen]);
 
-  const filteredDepartments = useMemo(() => {
-    if (!editBranch) return departments;
-    return departments.filter(
-      (d) => d.branch.toUpperCase() === editBranch.toUpperCase()
-    );
-  }, [departments, editBranch]);
 
   const handleEdit = (id: string) => {
     const fac = faculty.find(f => f.id === id);
@@ -79,7 +74,6 @@ export default function AdminFacultyPage() {
     setEditingFaculty(fac);
     setEditName(fac.name);
     setEditEmail(fac.email);
-    setEditBranch(fac.branch || '');
     setEditDepartmentId(fac.departmentId || fac.department?.id || '');
     setEditRole(fac.role);
     setEditModalOpen(true);
@@ -91,7 +85,6 @@ export default function AdminFacultyPage() {
       await api.put(`/api/profiles/faculty/${editingFaculty.id}`, {
         name: editName,
         email: editEmail,
-        branch: editBranch,
         departmentId: editDepartmentId || null,
         role: editRole
       });
@@ -117,7 +110,15 @@ export default function AdminFacultyPage() {
 
   return (
     <div className="px-6 py-6 w-full relative">
-      <h1 className="text-[16px] font-medium text-[#ECECEA]">Faculty</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-[16px] font-medium text-[#ECECEA]">Faculty & Admin</h1>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+        >
+          Add Faculty / Admin
+        </button>
+      </div>
 
       <div className="mt-4 mb-4 flex flex-wrap gap-3">
         <div className="relative">
@@ -133,90 +134,44 @@ export default function AdminFacultyPage() {
         </div>
       </div>
 
-      <div className="border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
-        <div className="min-w-[900px]">
-          <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">
-            <div className="w-[20%]">Name</div>
-            <div className="w-[26%]">Email</div>
-            <div className="w-[10%]">Branch</div>
-            <div className="w-[14%]">Department</div>
-            <div className="w-[10%]">Joined</div>
-            <div className="w-[20%] text-right">Action</div>
-          </div>
+      <TableShell
+        columns={[
+          { label: 'Name', width: '20%' },
+          { label: 'Email', width: '26%' },
+          { label: 'Department', width: '24%' },
+          { label: 'Role', width: '10%' },
+          { label: 'Action', width: '20%', align: 'right' },
+        ]}
+        isLoading={isLoading}
+        isEmpty={faculty.length === 0}
+        emptyIcon={GraduationCap}
+        emptyHeading="No faculty found"
+        minWidth="900px"
+      >
+        {faculty.map((f) => (
+          <FacultyTableRow
+            key={f.id}
+            faculty={{
+              id: f.id,
+              name: f.name,
+              email: f.email,
+              branch: f.branch || '',
+              department: f.department?.name || '-',
+              role: f.role,
+            }}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        ))}
+      </TableShell>
 
-          <div className="flex flex-col">
-            {isLoading ? (
-               <div className="py-8 text-center text-[#5A5A58] text-[13px]">Loading...</div>
-            ) : faculty.length === 0 ? (
-              <div className="py-8">
-                <EmptyState
-                  icon={GraduationCap}
-                  heading="No faculty found"
-                />
-              </div>
-            ) : (
-              faculty.map((f) => (
-                <FacultyTableRow
-                  key={f.id}
-                  faculty={{
-                    id: f.id,
-                    name: f.name,
-                    email: f.email,
-                    branch: f.branch || '-',
-                    department: f.department?.name || '-',
-                    joined: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : '-'
-                  }}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#2E2E2C] bg-[#1F1F1E]">
-          <div className="flex items-center gap-4">
-            <span className="text-[12px] text-[#8C8C8A]">
-              Showing {Math.min((page - 1) * parseInt(rowsPerPage) + 1, total)} to {Math.min(page * parseInt(rowsPerPage), total)} of {total} results
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] text-[#8C8C8A]">Rows per page:</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(e.target.value);
-                  setPage(1);
-                }}
-                className="bg-[#2C2C2A] border border-[#3A3A38] rounded text-[12px] text-[#ECECEA] px-1 py-0.5 focus:outline-none"
-              >
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-                <option value="70">70</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Previous
-            </button>
-            <button className="px-2 py-1 text-[12px] text-[#ECECEA] bg-[#2C2C2A] border border-[#4A4A48] rounded">
-              {page}
-            </button>
-            <button 
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-2 py-1 text-[12px] text-[#5A5A58] border border-[#2E2E2C] rounded disabled:cursor-not-allowed hover:bg-[#2C2C2A]"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
+      <TablePagination
+        page={page}
+        total={total}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setPage}
+        onRowsPerPageChange={(v) => { setRowsPerPage(v); setPage(1); }}
+      />
 
       {editModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -240,31 +195,14 @@ export default function AdminFacultyPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[12px] text-[#8C8C8A]">Branch</label>
-                <select
-                  value={editBranch}
-                  onChange={(e) => {
-                    setEditBranch(e.target.value);
-                    setEditDepartmentId('');
-                  }}
-                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-                >
-                  <option value="">— Select Branch —</option>
-                  {BRANCH_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="mb-1 block text-[12px] text-[#8C8C8A]">Department</label>
                 <select
                   value={editDepartmentId}
                   onChange={(e) => setEditDepartmentId(e.target.value)}
-                  disabled={!editBranch}
-                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none disabled:opacity-50"
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
                 >
                   <option value="">— Select Department —</option>
-                  {filteredDepartments.map((dept) => (
+                  {departments.map((dept) => (
                     <option key={dept.id} value={dept.id}>{dept.name}</option>
                   ))}
                 </select>
@@ -298,6 +236,14 @@ export default function AdminFacultyPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAddModal && (
+        <AddProfileModal 
+          defaultRole="faculty" 
+          onClose={() => setShowAddModal(false)} 
+          onSuccess={() => { setShowAddModal(false); fetchFaculty(); }} 
+        />
       )}
     </div>
   );

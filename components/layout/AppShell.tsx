@@ -1,21 +1,27 @@
 "use client";
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { LucideIcon, PanelLeft } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
-import { NavItem, AppShellProps } from '@/lib/types';
+import { AppShellProps } from '@/lib/types';
 
 
 
 function SearchModal() {
-  const { isSearchOpen, closeSearch, sessions } = useSidebar();
+  const { isSearchOpen, closeSearch, sessions, availableMonths, selectedMonth, setSelectedMonth } = useSidebar();
   const [query, setQuery] = useState('');
   const router = useRouter();
 
   if (!isSearchOpen) return null;
+
+  /** Format "YYYY-MM" → "Jul 2026" */
+  const formatMonthLabel = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
 
   const filtered = sessions.filter(s =>
     s.subject_name.toLowerCase().includes(query.toLowerCase()) ||
@@ -25,19 +31,71 @@ function SearchModal() {
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm" onClick={closeSearch}>
       <div className="w-full max-w-lg bg-[#2C2C2A] border border-[#3A3A38] rounded-2xl shadow-2xl overflow-hidden mx-4" onClick={e => e.stopPropagation()}>
+        {/* Search input row */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#3A3A38]">
           <Search size={16} className="text-[#5A5A58] flex-shrink-0" />
-          <input autoFocus type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Escape' && closeSearch()} placeholder="Search chats..." className="flex-1 bg-transparent text-[14px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none" />
+          <input
+            autoFocus
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Escape' && closeSearch()}
+            placeholder="Search chats..."
+            className="flex-1 bg-transparent text-[14px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none"
+          />
           <button onClick={closeSearch} className="text-[#5A5A58] hover:text-[#8C8C8A] transition-colors"><X size={16} /></button>
         </div>
-        <div className="max-h-[50vh] overflow-y-auto py-1">
-          {filtered.length === 0 && <p className="text-[13px] text-[#5A5A58] text-center py-8">No chats found</p>}
-          {filtered.map(session => (
-            <button key={session.id} onClick={() => { closeSearch(); router.push(`/chat/${session.id}`); }} className="w-full text-left px-4 py-3 hover:bg-[#333331] transition-colors">
-              <p className="text-[14px] text-[#ECECEA]">{session.subject_name}</p>
-              <p className="text-[12px] text-[#8C8C8A]">{session.exam_type}</p>
-            </button>
-          ))}
+
+        {/* Month filter chips */}
+        {availableMonths.length > 0 && (
+          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-[#3A3A38] overflow-x-auto scrollbar-hide">
+            <span className="text-[10px] text-[#5A5A58] uppercase tracking-wider flex-shrink-0 mr-1">Month</span>
+            {availableMonths.map(ym => {
+              const isActive = selectedMonth === ym;
+              return (
+                <button
+                  key={ym}
+                  onClick={() => setSelectedMonth(isActive ? null : ym)}
+                  className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[#ECECEA] text-[#1C1C1B] border-[#ECECEA]'
+                      : 'text-[#8C8C8A] border-[#3A3A38] hover:border-[#5A5A58] hover:text-[#ECECEA]'
+                  }`}
+                >
+                  {formatMonthLabel(ym)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Results */}
+        <div className="max-h-[42vh] overflow-y-auto py-1">
+          {filtered.length === 0 && (
+            <p className="text-[13px] text-[#5A5A58] text-center py-8">
+              {selectedMonth ? 'No chats in this month' : 'No chats found'}
+            </p>
+          )}
+          {filtered.map(session => {
+            const sessionMonth = session.created_at
+              ? new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+              : null;
+            return (
+              <button
+                key={session.id}
+                onClick={() => { closeSearch(); router.push(`/chat/${session.id}`); }}
+                className="w-full text-left px-4 py-3 hover:bg-[#333331] transition-colors"
+              >
+                <p className="text-[14px] text-[#ECECEA]">{session.subject_name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[12px] text-[#8C8C8A]">{session.exam_type}</p>
+                  {sessionMonth && (
+                    <span className="text-[10px] text-[#5A5A58]">· {sessionMonth}</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

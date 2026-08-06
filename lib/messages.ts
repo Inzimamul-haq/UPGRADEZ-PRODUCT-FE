@@ -36,9 +36,7 @@ If you have any concerns about the existing content, please reach out to them di
       creatorName ? ` — published by **${creatorName}**` : ""
     }.
 
-Would you like to generate the actual **Exam Paper** now?
-
-If you have any concerns about the existing questions, please reach out to them first.`,
+Would you like to generate the actual **Exam Paper** now? If you have any concerns about the existing questions, please reach out to them first.`,
 
 
   choosePaperFirst:

@@ -3,17 +3,13 @@
 import React, { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/context/ToastContext";
-import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Building2, Pencil, Trash2 } from "lucide-react";
 import { departmentSchema } from "@/Schema/validations";
 import { BRANCH_OPTIONS } from "@/lib/constants";
-
-type Department = {
-  id: string;
-  name: string;
-  branch: string;
-};
+import { Department } from "@/lib/types";
+import { extractErrorMessage } from "@/lib/utils";
 
 export default function AdminDepartmentsPage() {
   const toast = useToast();
@@ -26,6 +22,8 @@ export default function AdminDepartmentsPage() {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [name, setName] = useState("");
   const [branch, setBranch] = useState("");
+  const [sectionsCount, setSectionsCount] = useState(1);
+  const [durationYears, setDurationYears] = useState(4);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,10 +33,8 @@ export default function AdminDepartmentsPage() {
   const fetchDepartments = async () => {
     try {
       setIsLoading(true);
-      const params = branchFilter ? { branch: branchFilter } : undefined;
       const { data } = await api.get<{ departments: Department[] }>(
-        "/api/departments",
-        { params }
+        "/api/departments"
       );
       setDepartments(data.departments ?? []);
     } catch {
@@ -50,9 +46,12 @@ export default function AdminDepartmentsPage() {
 
   useEffect(() => {
     fetchDepartments();
-  }, [branchFilter]);
+  }, []);
+
+  const availableBranches = Array.from(new Set(departments.map(d => d.branch))).sort();
 
   const filtered = departments.filter((d) => {
+    if (branchFilter && d.branch !== branchFilter) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -65,6 +64,8 @@ export default function AdminDepartmentsPage() {
     setEditingDepartment(null);
     setName("");
     setBranch("");
+    setSectionsCount(1);
+    setDurationYears(4);
     setFormError("");
     setShowFormModal(true);
   };
@@ -73,6 +74,8 @@ export default function AdminDepartmentsPage() {
     setEditingDepartment(dept);
     setName(dept.name);
     setBranch(dept.branch);
+    setSectionsCount(dept.sections?.length || 1);
+    setDurationYears(dept.durationYears || 4);
     setFormError("");
     setShowFormModal(true);
   };
@@ -86,6 +89,7 @@ export default function AdminDepartmentsPage() {
     }
 
     setIsSubmitting(true);
+    const sections = Array.from({ length: sectionsCount }, (_, i) => String.fromCharCode(65 + i));
     try {
       if (editingDepartment) {
         const { data } = await api.put(
@@ -93,6 +97,8 @@ export default function AdminDepartmentsPage() {
           {
             name: parsed.data.name.trim(),
             branch: parsed.data.branch.trim(),
+            sections,
+            durationYears,
           }
         );
         setDepartments((prev) =>
@@ -105,6 +111,8 @@ export default function AdminDepartmentsPage() {
         const { data } = await api.post("/api/departments", {
           name: parsed.data.name.trim(),
           branch: parsed.data.branch.trim(),
+          sections,
+          durationYears,
         });
         setDepartments((prev) =>
           [...prev, data.department].sort((a, b) =>
@@ -116,10 +124,7 @@ export default function AdminDepartmentsPage() {
       setShowFormModal(false);
       fetchDepartments();
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error ??
-        err.message ??
-        "Failed to save department";
+      const msg = extractErrorMessage(err, "Failed to save department");
       setFormError(msg);
       toast.error(msg);
     } finally {
@@ -136,9 +141,7 @@ export default function AdminDepartmentsPage() {
       toast.success(`"${deleteTarget.branch} · ${deleteTarget.name}" deleted`);
       setDeleteTarget(null);
     } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ?? err.message ?? "Failed to delete department"
-      );
+      toast.error(extractErrorMessage(err, "Failed to delete department"));
     } finally {
       setIsDeleting(false);
     }
@@ -169,7 +172,7 @@ export default function AdminDepartmentsPage() {
           className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
         >
           <option value="">All Branches</option>
-          {BRANCH_OPTIONS.map((opt) => (
+          {availableBranches.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
             </option>
@@ -181,6 +184,8 @@ export default function AdminDepartmentsPage() {
         <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
           <div className="w-28">Branch</div>
           <div className="flex-1">Department</div>
+          <div className="w-32">Duration</div>
+          <div className="w-48">Sections</div>
           <div className="w-24 text-right">Actions</div>
         </div>
 
@@ -209,6 +214,8 @@ export default function AdminDepartmentsPage() {
             >
               <span className="w-28 text-[13px] text-[#8C8C8A]">{dept.branch}</span>
               <span className="flex-1 text-[14px] text-[#ECECEA]">{dept.name}</span>
+              <span className="w-32 text-[13px] text-[#8C8C8A]">{dept.durationYears || 4} Years</span>
+              <span className="w-48 text-[13px] text-[#8C8C8A]">{dept.sections?.join(', ') || '-'}</span>
               <div className="flex w-24 items-center justify-end gap-3">
                 <Pencil
                   size={14}
@@ -266,6 +273,36 @@ export default function AdminDepartmentsPage() {
               className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
             />
 
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Sections Count
+            </label>
+            <select
+              value={sectionsCount}
+              onChange={(e) => setSectionsCount(parseInt(e.target.value, 10))}
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <option key={num} value={num}>
+                  {num} ({Array.from({ length: num }, (_, i) => String.fromCharCode(65 + i)).join(', ')})
+                </option>
+              ))}
+            </select>
+
+            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              Duration (Years)
+            </label>
+            <select
+              value={durationYears}
+              onChange={(e) => setDurationYears(parseInt(e.target.value, 10))}
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+            >
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <option key={num} value={num}>
+                  {num} {num === 1 ? 'Year' : 'Years'}
+                </option>
+              ))}
+            </select>
+
             {formError && (
               <p className="mb-3 text-[12px] text-red-400">{formError}</p>
             )}
@@ -290,13 +327,13 @@ export default function AdminDepartmentsPage() {
         </div>
       )}
 
-      <DeleteConfirmModal
-        open={!!deleteTarget}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
         title={`Delete "${deleteTarget?.branch} · ${deleteTarget?.name}"?`}
         description="Subject links to this department will be removed. Profiles assigned to this department must be reassigned first."
-        isDeleting={isDeleting}
+        loading={isDeleting}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );

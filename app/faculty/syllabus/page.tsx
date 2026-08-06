@@ -3,13 +3,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/api";
 import SubjectFormModal, {
-  SubjectFormValues,
 } from "@/components/admin/SubjectFormModal";
 import {
   SubjectAccordion,
   Subject,
 } from "@/components/admin/SubjectAccordion";
 import { useToast } from "@/context/ToastContext";
+import { SubjectFormValues } from "@/lib/types";
 
 type SubjectApiRow = {
   id: string;
@@ -31,7 +31,8 @@ type SubjectApiRow = {
   embedding_status?: string;
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
-  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number }[];
+  tocPlan?: any;
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number; fileType?: string }[];
 };
 
 type DepartmentOption = { id: string; name: string; branch: string };
@@ -53,6 +54,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
   embeddingStatus: (s.embeddingStatus ??
     s.embedding_status ??
     (s.pdfUrl || s.pdf_url ? 'completed' : 'queued')) as Subject['embeddingStatus'],
+  tocPlan: s.tocPlan,
   files: s.files,
 });
 
@@ -173,25 +175,53 @@ export default function FacultySyllabusPage() {
 
   const handleAddSubject = async (values: SubjectFormValues) => {
     setIsSubmitting(true);
+    let createdSubjectId: string | null = null;
+
     try {
+      // 1. Create subject text data
       const formData = new FormData();
       formData.append("name", values.name.trim());
       formData.append("code", values.code.trim());
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
-      if (values.files && values.files.length > 0) {
-        values.files.forEach((file) => formData.append("pdfs", file));
-      }
 
-      await api.post("/api/subjects", formData, {
+      const { data } = await api.post("/api/subjects", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      createdSubjectId = data.subject.id;
+
+      // 2. Upload Syllabus
+      if (values.syllabusFile) {
+        const syllabusData = new FormData();
+        syllabusData.append("pdfs", values.syllabusFile);
+        syllabusData.append("fileType", "SYLLABUS");
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, syllabusData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      // 3. Upload Materials
+      if (values.materialFiles && values.materialFiles.length > 0) {
+        const materialData = new FormData();
+        values.materialFiles.forEach((file) => materialData.append("pdfs", file));
+        materialData.append("fileType", "MATERIAL");
+        await api.post(`/api/subjects/${createdSubjectId}/pdf`, materialData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
       await fetchSubjects();
       setShowAddModal(false);
       toast.success(`"${values.name.trim()}" added.`);
     } catch (err: any) {
+      if (createdSubjectId) {
+        try {
+          await api.delete(`/api/subjects/${createdSubjectId}`);
+        } catch (cleanupErr) {
+          console.error("Failed to cleanup orphaned subject:", cleanupErr);
+        }
+      }
       const msg = err.response?.data?.error ?? err.message ?? "Failed to add subject";
       toast.error(msg);
       throw err;
@@ -210,8 +240,8 @@ export default function FacultySyllabusPage() {
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
-      if (values.files && values.files.length > 0) {
-        values.files.forEach((file) => formData.append("pdfs", file));
+      if (values.materialFiles && values.materialFiles.length > 0) {
+        values.materialFiles.forEach((file) => formData.append("pdfs", file));
       }
       if (values.uploadMode) formData.append("uploadMode", values.uploadMode);
 
@@ -291,7 +321,7 @@ export default function FacultySyllabusPage() {
         >
           <option value="">All Departments</option>
           {departmentOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.branch} · {opt.name}</option>
+            <option key={opt.id} value={opt.id}>{opt.branch}/{opt.name}</option>
           ))}
         </select>
 

@@ -6,6 +6,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
+if (typeof window !== 'undefined') {
+  const slug = window.location.hostname.split('.')[0];
+  api.defaults.headers.common['X-College-Slug'] = slug;
+}
+
 api.interceptors.request.use((config) => {
   if (typeof document !== 'undefined') {
     const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
@@ -16,19 +21,76 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   res => res,
   async err => {
     const originalRequest = err.config;
-    if (err.response?.status === 401 && !originalRequest._retry) {
+    const url = originalRequest.url || "";
+    const isAuthEndpoint =
+      url.includes("/api/auth/login") ||
+      url.includes("/api/auth/register") ||
+      url.includes("/api/auth/refresh") ||
+      url.includes("/api/auth/logout");
+
+    const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+
+    if (
+      err.response?.status === 401 && 
+      !originalRequest._retry &&
+      !isAuthEndpoint &&
+      !isLoginPage
+    ) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return api(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         await refreshAccessToken();
+        processQueue(null);
         return api(originalRequest);
-      } catch (refreshErr) {
+      } catch (refreshErr: any) {
+        processQueue(refreshErr, null);
+        if (refreshErr.response?.data) {
+          refreshErr.response.data.error = "Session expired. Please log in again.";
+        } else {
+          refreshErr.message = "Session expired. Please log in again.";
+        }
         return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
+    
+    // Inject clean error message into err.message for unhandled cases
+    if (err.response?.data?.error) {
+      err.message = err.response.data.error;
+    } else if (err.response?.data?.message) {
+      err.message = err.response.data.message;
+    }
+    
     return Promise.reject(err);
   }
 );

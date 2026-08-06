@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Subject, Department, ChatStepOverlayProps } from '@/lib/types';
+import { Subject, Department, ChatStepOverlayProps, PaperKind } from '@/lib/types';
 import { SubjectCard } from '@/components/dashboard/SubjectCard';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
-const SECTIONS = ['A', 'B', 'C', 'D'];
 
 const mapYearToNumber = (y: string) => {
   if (y.startsWith('1')) return 1;
@@ -26,9 +25,11 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const [year, setYear] = useState('');
   const [branch, setBranch] = useState('');
   const [department, setDepartment] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [examType, setExamType] = useState('');
   const [section, setSection] = useState('');
+  const [paperKind, setPaperKind] = useState<PaperKind | null>(null);
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
@@ -51,23 +52,21 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       setLoadingSubjects(true);
       const fetchSubjects = async () => {
         try {
-          const params = new URLSearchParams();
-          if (isFaculty && year) {
-            const y = mapYearToNumber(year);
-            if (y) params.append('year', y.toString());
+          if (isFaculty) {
+            // Faculty: hit general /api/subjects with year + departmentId filters
+            const { data } = await api.get('/api/subjects', {
+              params: {
+                ...(year ? { year: mapYearToNumber(year) } : {}),
+                ...(departmentId ? { departmentId } : {}),
+              },
+            });
+            setSubjects(data.subjects ?? []);
+          } else {
+            // Student: use scoped endpoint — only returns subjects for the
+            // student's own year, department and regulation (current year only)
+            const { data } = await api.get('/api/subjects/for-student');
+            setSubjects(data.subjects ?? []);
           }
-          if (isFaculty && department) {
-            params.append('department', department);
-          }
-
-          const { data } = await api.get('/api/subjects', {
-            params: {
-              ...(isFaculty && year ? { year: mapYearToNumber(year) } : {}),
-              ...(isFaculty && department ? { department } : {}),
-            },
-          });
-
-          setSubjects(data.subjects ?? []);
         } catch (err) {
           console.error('Failed to fetch subjects', err);
           setSubjects([]);
@@ -80,21 +79,42 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   }, [step, year, department, isFaculty]);
 
   const goBack = () => {
-    if (step > initialStep) setStep(step - 1);
+    if (step === 4.5) setStep(4);
+    else if (step === 5 && isFaculty && examType.toUpperCase().includes('UNIVERSITY')) setStep(4.5);
+    else if (step > initialStep) setStep(step - 1);
   };
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };
-  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setStep(3); };
+  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setDepartmentId(d.id); setStep(3); };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => { 
     setExamType(type); 
-    if (isFaculty) setStep(5);
-    else if (selectedSubject) onComplete({ year, branch, department, subject: selectedSubject, examType: type });
+    if (isFaculty) {
+      if (type.toUpperCase().includes('UNIVERSITY')) {
+        setStep(4.5); // New step for University
+      } else {
+        setStep(5);
+      }
+    }
+    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: type });
   };
+
+  const handleSelectPaperKind = (kind: PaperKind) => {
+    setPaperKind(kind);
+    if (kind === 'IMPORTANT_QUESTIONS') {
+      setStep(5); // Proceed to section
+    } else {
+      // University Exam Paper -> Skip section
+      if (selectedSubject) {
+        onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType, paperKind: kind });
+      }
+    }
+  };
+
   const handleSelectSection = (s: string) => {
     setSection(s);
     if (selectedSubject) {
-      onComplete({ year, branch, department, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType });
+      onComplete({ year, branch, department, departmentId, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType, paperKind: paperKind || undefined });
     }
   };
 
@@ -189,12 +209,33 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         </div>
       )}
 
+      {step === 4.5 && isFaculty && (
+        <div className="w-full max-w-md text-center">
+          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Paper Type</h2>
+          <p className="text-[13px] text-[#8C8C8A] mb-8">Important Questions or Direct Exam Paper?</p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => handleSelectPaperKind('IMPORTANT_QUESTIONS')}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+            >
+              Important Questions (per section)
+            </button>
+            <button
+              onClick={() => handleSelectPaperKind('EXAM_PAPER')}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+            >
+              Direct Exam Paper (Common for Dept)
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === 5 && isFaculty && (
         <div className="w-full max-w-md text-center">
           <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Section</h2>
           <p className="text-[13px] text-[#8C8C8A] mb-8">Select the section for the exam paper</p>
           <div className="grid grid-cols-2 gap-3">
-            {SECTIONS.map(s => (
+            {(departmentsList.find(d => d.id === departmentId)?.sections || ['A']).map(s => (
               <button
                 key={s}
                 onClick={() => handleSelectSection(s)}

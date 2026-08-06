@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Building2, GraduationCap, ChevronLeft } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
+import { validateBatchYear, validateRollNo, REGEX_PATTERNS } from '@/lib/utils';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [departments, setDepartments] = useState<any[]>([]);
+  const [regulations, setRegulations] = useState<string[]>([]);
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -21,12 +23,30 @@ export default function OnboardingPage() {
     section: '',
     departmentId: '',
     regulation: '',
-    batchYear: ''
+    batchYear: '',
+    rollNo: ''
   });
+  const [batchError, setBatchError] = useState('');
+  const [rollError, setRollError] = useState('');
+
+  const selectedDept = departments.find(d => d.id === formData.departmentId);
+  const maxYears = selectedDept?.durationYears || 4;
+
+
 
   useEffect(() => {
     api.get('/api/departments').then(res => setDepartments(res.data.departments || []));
   }, []);
+
+  useEffect(() => {
+    if (formData.departmentId) {
+      api.get(`/api/departments/${formData.departmentId}/config`)
+      .then(res => {
+        setRegulations((res.data.availableRegulations || []).filter((r: string) => r && r.trim().length > 0));
+      })
+      .catch(() => setRegulations([]));
+    }
+  }, [formData.departmentId]);
 
   const handleSkip = () => {
     localStorage.setItem('onboardingSkipped', 'true');
@@ -44,7 +64,8 @@ export default function OnboardingPage() {
           departmentId: formData.departmentId,
           section: formData.section,
           regulation: formData.regulation,
-          batchYear: formData.batchYear
+          batchYear: formData.batchYear,
+          rollNo: formData.rollNo
         } : {
           departmentId: formData.departmentId
         })
@@ -62,17 +83,40 @@ export default function OnboardingPage() {
   };
 
   const handleNext = () => {
+    if (step === 3) {
+      const err = validateBatchYear(formData.batchYear, maxYears);
+      if (err) {
+        setBatchError(err);
+        return;
+      }
+      setBatchError('');
+    }
     setStep(s => s + 1);
   };
 
   const canProceed = () => {
     if (step === 1) return !!formData.branch;
     if (step === 2) return !!formData.departmentId;
-    if (step === 3) return !!formData.year;
-    if (step === 4) return !!formData.regulation;
-    if (step === 5) return !!formData.batchYear;
+    if (step === 3) return !!formData.batchYear;
+    if (step === 4) return !!formData.year;
+    if (step === 5) return !!formData.regulation;
     if (step === 6) return !!formData.section;
+    if (step === 7) {
+      return !!formData.rollNo && !validateRollNo(formData.rollNo);
+    }
     return false;
+  };
+
+  const getComputedYear = () => {
+    if (!formData.batchYear) return 0;
+    const match = formData.batchYear.match(REGEX_PATTERNS.BATCH_YEAR);
+    if (!match) return 0;
+    const start = parseInt(match[1]);
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    let diff = currentYear - start;
+    if (currentMonth >= 6) diff += 1; // July onwards is next academic year
+    return Math.max(1, Math.min(maxYears, diff));
   };
 
   return (
@@ -103,7 +147,7 @@ export default function OnboardingPage() {
           <p className="text-sm text-[#8C8C8A]">
             {role === 'faculty'
               ? 'Select your department to get started. This is required to personalise your experience.'
-              : `Step ${step} of 6`}
+              : `Step ${step} of 7`}
           </p>
         </div>
 
@@ -143,8 +187,8 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Branch —</option>
-                    {BRANCH_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {Array.from(new Set(departments.map(d => d.branch))).map(opt => (
+                      <option key={opt as string} value={opt as string}>{opt as string}</option>
                     ))}
                   </select>
                 </div>
@@ -170,6 +214,23 @@ export default function OnboardingPage() {
 
               {step === 3 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <label className="block text-sm text-[#ECECEA] mb-1.5">Admission / Batch Year</label>
+                  <input
+                    type="text"
+                    value={formData.batchYear}
+                    onChange={(e) => {
+                      setFormData({...formData, batchYear: e.target.value, year: ''});
+                      setBatchError('');
+                    }}
+                    placeholder={`e.g. 2022-${2022 + maxYears}`}
+                    className={`w-full bg-[#1F1F1E] border ${batchError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
+                  />
+                  {batchError && <p className="text-red-500 text-xs mt-1.5">{batchError}</p>}
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What year are you in?</label>
                   <select
                     value={formData.year}
@@ -177,12 +238,20 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Year —</option>
-                    {[1,2,3,4].map(y => <option key={y} value={y}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>)}
+                    {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => {
+                      const compYear = getComputedYear();
+                      const disabled = compYear > 0 && y !== compYear;
+                      return (
+                        <option key={y} value={y} disabled={disabled}>
+                          {y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}
 
-              {step === 4 && (
+              {step === 5 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What is your regulation?</label>
                   <select
@@ -191,36 +260,51 @@ export default function OnboardingPage() {
                     className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
                   >
                     <option value="">— Select Regulation —</option>
-                    {['R17', 'R19', 'R20', 'R21', 'R22', 'R23', 'R2021', 'R2017'].map(r => <option key={r} value={r}>{r}</option>)}
+                    {regulations.length > 0 ? (
+                      regulations.map(r => <option key={r} value={r}>{r}</option>)
+                    ) : (
+                      <option value="" disabled>No regulations found for this department & year</option>
+                    )}
                   </select>
-                </div>
-              )}
-
-              {step === 5 && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <label className="block text-sm text-[#ECECEA] mb-1.5">Admission / Batch Year</label>
-                  <select
-                    value={formData.batchYear}
-                    onChange={(e) => setFormData({...formData, batchYear: e.target.value})}
-                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
-                  >
-                    <option value="">— Select Batch Year —</option>
-                    {[2020, 2021, 2022, 2023, 2024, 2025].map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  {regulations.length === 0 && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      Please ask your faculty to upload syllabus with regulations first, or contact admin.
+                    </p>
+                  )}
                 </div>
               )}
 
               {step === 6 && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <label className="block text-sm text-[#ECECEA] mb-1.5">What is your section?</label>
+                  <select
+                    value={formData.section}
+                    onChange={(e) => setFormData({...formData, section: e.target.value})}
+                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
+                  >
+                    <option value="">— Select Section —</option>
+                    {(departments.find(d => d.id === formData.departmentId)?.sections || []).map((s: string) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {step === 7 && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <label className="block text-sm text-[#ECECEA] mb-1.5">What is your Roll Number?</label>
                   <input
                     type="text"
-                    value={formData.section}
-                    onChange={(e) => setFormData({...formData, section: e.target.value.toUpperCase()})}
-                    className="w-full bg-[#1F1F1E] border border-[#3A3A38] rounded-xl px-4 py-2.5 text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[var(--theme-color)] transition-colors"
-                    placeholder="e.g. A"
-                    maxLength={2}
+                    value={formData.rollNo}
+                    onChange={(e) => {
+                      setFormData({...formData, rollNo: e.target.value.toUpperCase()});
+                      setRollError(validateRollNo(e.target.value.toUpperCase()));
+                    }}
+                    placeholder="e.g. 21X15A0501"
+                    className={`w-full bg-[#1F1F1E] border ${rollError ? 'border-red-500' : 'border-[#3A3A38]'} rounded-xl px-4 py-2.5 text-[#ECECEA] focus:outline-none focus:border-[var(--theme-color)] transition-colors`}
+                    required
                   />
+                  {rollError && <p className="text-red-500 text-xs mt-1.5">{rollError}</p>}
                 </div>
               )}
             </div>
@@ -229,11 +313,11 @@ export default function OnboardingPage() {
           <div className="pt-4 flex flex-col gap-3">
             {role === 'student' ? (
               <button 
-                type={step === 6 ? "submit" : "button"} 
-                onClick={step < 6 ? () => handleNext() : undefined}
+                type={step === 7 ? "submit" : "button"} 
+                onClick={step < 7 ? () => handleNext() : undefined}
                 disabled={loading || !canProceed()} 
                 className="w-full bg-[var(--theme-color)] text-white rounded-xl py-3 px-4 font-medium hover:opacity-90 transition-opacity disabled:opacity-70 disabled:cursor-not-allowed">
-                {step < 6 ? 'Next' : (loading ? 'Finish Setup' : 'Finish Setup')}
+                {step < 7 ? 'Next' : (loading ? 'Finish Setup' : 'Finish Setup')}
               </button>
             ) : (
               <button 

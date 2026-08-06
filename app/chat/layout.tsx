@@ -13,7 +13,9 @@ const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> 
   faculty: [
     { href: '/faculty/dashboard', icon: Home, label: 'Dashboard' },
     { href: '/faculty/papers', icon: FileText, label: 'My Papers' },
-    { href: '/faculty/questions', icon: BookOpen, label: 'Questions' },
+    { href: '/faculty/questions', icon: HelpCircle, label: 'Questions' },
+    { href: '/faculty/syllabus', icon: BookOpen, label: 'Syllabus' },
+
   ],
   admin: [
     { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },

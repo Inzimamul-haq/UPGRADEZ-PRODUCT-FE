@@ -11,10 +11,11 @@ import {
   Ban,
   RefreshCw,
 } from "lucide-react";
-import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/context/ToastContext";
 import api from "@/lib/api";
+import { extractErrorMessage } from "@/lib/utils";
 
 export type Subject = {
   id: string;
@@ -30,7 +31,8 @@ export type Subject = {
   isPublished?: boolean;
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   stoppedAcademicYear?: string | null;
-  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number }[];
+  tocPlan?: any;
+  files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number; fileType?: string }[];
 };
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -63,7 +65,32 @@ export function SubjectAccordion({
   const [stopAcademicYear, setStopAcademicYear] = useState("2023-2027");
   const [isRetrying, setIsRetrying] = useState(false);
 
- const handleRetry = async (e: React.MouseEvent) => {
+  const [isUploadingSyllabus, setIsUploadingSyllabus] = useState(false);
+
+  const handleUploadSyllabus = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingSyllabus(true);
+    try {
+      const formData = new FormData();
+      formData.append("pdfs", file);
+      formData.append("fileType", "SYLLABUS");
+      
+      await api.post(`/api/subjects/${subject.id}/pdf`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success("Official Syllabus uploaded and parsed successfully");
+      await onRefresh?.();
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, "Failed to upload syllabus"));
+    } finally {
+      setIsUploadingSyllabus(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRetry = async (e: React.MouseEvent) => {
   e.stopPropagation();
 
   if (isRetrying) return;
@@ -78,11 +105,7 @@ export function SubjectAccordion({
 
     toast.success("Retry queued successfully");
   } catch (err: any) {
-    toast.error(
-      err.response?.data?.error ??
-      err.message ??
-      "Failed to retry subject"
-    );
+    toast.error(extractErrorMessage(err, "Failed to retry subject"));
   } finally {
     setIsRetrying(false);
   }
@@ -116,7 +139,7 @@ export function SubjectAccordion({
             <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
             <span className="ml-2 text-[12px] text-[#5A5A58]">
               {subject.departments && subject.departments.length > 0 && (
-                <>{subject.departments.map((d) => d.branch ? `${d.branch} · ${d.name}` : d.name).join(", ")}</>
+                <>{subject.departments.map((d) => d.branch ? `${d.branch}/${d.name}` : d.name).join(" , ")}</>
               )}
             </span>
 
@@ -251,9 +274,56 @@ export function SubjectAccordion({
               );
             })()}
 
-            {subject.files && subject.files.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {subject.files.map((file, index) => (
+            {/* Official Syllabus Section */}
+            {/* <div className="mb-4 rounded border border-[#3A3A38] bg-[#2C2C2A] p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[13px] font-medium text-[#ECECEA]">
+                  Official Syllabus
+                </span>
+                <label className={`inline-flex cursor-pointer items-center justify-center rounded-md border border-[#4A4A48] bg-[#1F1F1E] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] ${isUploadingSyllabus ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {isUploadingSyllabus ? "Processing..." : "Upload Syllabus (PDF/PNG)"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,application/pdf,.png,image/png"
+                    onChange={handleUploadSyllabus}
+                    disabled={isUploadingSyllabus}
+                  />
+                </label>
+              </div>
+
+              {subject.tocPlan?.type === 'official' && subject.tocPlan.entries?.length > 0 ? (
+                <div className="mt-3 bg-[#1F1F1E] p-3 rounded border border-[#3A3A38]">
+                  <p className="text-[12px] text-[#8C8C8A] mb-2">Parsed Units/Chapters:</p>
+                  <ul className="text-[12px] text-[#ECECEA] space-y-1 pl-4 list-disc">
+                    {subject.tocPlan.entries.map((entry: any, i: number) => (
+                      <li key={i}>
+                        <span className="font-medium">Ch {entry.chapter}:</span> {entry.title}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] text-blue-400 mt-2">
+                    Material uploads will now be matched against this official list.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[12px] text-[#8C8C8A] mt-2">
+                  No official syllabus uploaded. The system will attempt to guess units from the materials.
+                </p>
+              )}
+            </div> */}
+
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[13px] font-medium text-[#ECECEA]">
+                Materials & Textbooks
+              </span>
+            </div>
+
+            {(() => {
+              const materialFiles = (subject.files ?? []).filter(f => f.fileType !== 'SYLLABUS');
+              return materialFiles.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {materialFiles.map((file, index) => (
                   <div key={file.id} className="flex items-center justify-between border-b border-[#3A3A38]/50 pb-3 last:border-0 last:pb-0">
                     <div>
                       <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
@@ -273,48 +343,49 @@ export function SubjectAccordion({
                       Download
                     </a>
                   </div>
-                ))}
-              </div>
-            ) : subject.pdfUrl ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
-                    Current File
-                  </p>
-                  <p className="text-[12px] text-[#8C8C8A]">
-                    {subject.pdfName || "Syllabus file"}
-                    {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
-                  </p>
+                  ))}
                 </div>
+              ) : subject.pdfUrl ? (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
+                      Current File
+                    </p>
+                    <p className="text-[12px] text-[#8C8C8A]">
+                      {subject.pdfName || "Syllabus file"}
+                      {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
+                    </p>
+                  </div>
 
-                <a
-                  href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
-                  download
-                  className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
-                >
-                  <Download size={14} />
-                  Download
-                </a>
-              </div>
-            ) : (
-              <EmptyState
-                icon={FileText}
-                heading="No file uploaded"
-                action={null}
-              />
-            )}
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
+                    download
+                    className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+                  >
+                    <Download size={14} />
+                    Download
+                  </a>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={FileText}
+                  heading="No file uploaded"
+                  action={null}
+                />
+              )
+            })()}
           </div>
         )}
       </div>
 
       {/* Delete Confirm Modal — rendered outside the accordion via fragment */}
-      <DeleteConfirmModal
-        open={showDeleteModal}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
         title={`Delete "${subject.name}"?`}
         description="This will permanently remove the subject, its syllabus file, and all associated embeddings. This action cannot be undone."
-        isDeleting={isDeleting}
+        loading={isDeleting}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setShowDeleteModal(false)}
+        onClose={() => setShowDeleteModal(false)}
       />
 
       {/* Stop Publish Modal */}

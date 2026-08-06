@@ -2,18 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { generateQuestionPaperPDF } from '@/lib/pdfGenerator';
+import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
+import { parseQPStructure } from '@/lib/qpParser';
 
-export function AssignModal({ sessionData, rawText, onClose, onSuccess }: AssignModalProps) {
-  // Flow 2B gate state
-  const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId;
+import { useAuth } from '@/context/AuthContext';
 
-  const defaultBranch = isFlow2B && sessionData.linkedIQAssignment?.assignedToBranch
-    ? sessionData.linkedIQAssignment.assignedToBranch
-    : sessionData.branch || '';
+export interface AssignModalExtendedProps extends AssignModalProps {
+  chatId?: string;
+}
+
+export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }: AssignModalExtendedProps) {
+  const { user } = useAuth();
+  
+  const isUniversity = sessionData.examType.toUpperCase().includes('UNIVERSITY');
+  
+  // Flow 2B gate state (force false for University Exam Papers)
+  const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId && !isUniversity;
+
+  const defaultBranch = sessionData.branch || '';
 
   const defaultYear = isFlow2B && sessionData.linkedIQAssignment?.assignedToYear
     ? sessionData.linkedIQAssignment.assignedToYear.toString()
@@ -56,71 +65,33 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
     }
   };
 
-  // Save exam date (from gate popup) — silent, no notification
+  // Set exam date (from gate popup) — do not patch the IQ, just continue
   const handleSaveExamDate = async () => {
     if (!examDateInput || !sessionData.linkedIQPaperId) return;
-    setSavingDate(true);
-    try {
-      await api.patch(`/api/question-papers/${sessionData.linkedIQPaperId}/exam-date`, {
-        examDate: examDateInput,
-        notify: false,
-      });
-      evaluateGate(examDateInput);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to set exam date';
-      toast.error(msg);
-    } finally {
-      setSavingDate(false);
-    }
+    evaluateGate(examDateInput);
   };
 
-  // Extract questions from raw AI text
-  const extractQuestions = (text: string) => {
-    const questions: { text: string; part?: string; marks?: number }[] = [];
-    const lines = text.split('\n');
-    let currentQ = '';
-    let currentPart = '';
-    let currentMarks = 0;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      const partMatch = trimmed.match(/\*\*Part\s+([A-Z])\*\*/i);
-      if (partMatch) {
-        currentPart = partMatch[1].toUpperCase();
-        continue;
-      }
-
-      const marksMatch = trimmed.match(/(\d+)\s*Marks/i);
-      if (marksMatch && !/^\s*\d+\.\s+/.test(trimmed)) {
-        currentMarks = parseInt(marksMatch[1], 10);
-      }
-
-      // Strip other instructional lines
-      if (/^\s*\**Section\s+[A-Z]\**/i.test(trimmed) ||
-          /answer\s+(all|any|the\s+following)/i.test(trimmed) ||
-          /^Note:/i.test(trimmed) ||
-          /^Marks:/i.test(trimmed)) {
-        continue;
-      }
-      
-      const match = trimmed.match(/^\s*\d+\.\s+(.*)/);
-      if (match) {
-        if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-        currentQ = match[1];
-      } else if (currentQ && trimmed) {
-        currentQ += '\n' + trimmed;
-      }
-    }
-    if (currentQ) questions.push({ text: currentQ.trim(), part: currentPart || undefined, marks: currentMarks || undefined });
-
-    return questions;
-  };
 
   const handleSubmit = async () => {
+    if (needsDirectDate) {
+      if (!directExamDate) {
+        toast.error('Please select an exam date.');
+        return;
+      }
+      const selected = new Date(directExamDate);
+      selected.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selected.getTime() !== today.getTime()) {
+        toast.error('Direct exam papers can only be assigned on the current date.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const questions = extractQuestions(rawText);
+      // parseQPStructure is the single authoritative parser — called once at save time
+      const questions = parseQPStructure(rawText);
       const currentYear = new Date().getFullYear();
       const acYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
 
@@ -129,14 +100,15 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
         examType: sessionData.examType,
         academicYear: acYear,
         assignedToYear: defaultYear ? parseInt(defaultYear) : 2,
-        assignedToBranch: branch,
+        assignedToDepartmentId: sessionData.departmentId || null,
         assignedToSection: section || null,
         rawQuestions: questions,
         kind: sessionData.paperKind || 'EXAM_PAPER',
-        linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ
+        linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !isUniversity
           ? sessionData.linkedIQPaperId || null
           : null,
-        examDate: needsDirectDate ? directExamDate : null,
+        examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
+        chatId: chatId || undefined,
       };
 
       const res = await api.post('/api/question-papers/save-and-assign', payload);
@@ -144,7 +116,21 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
 
       // Download PDF for exam papers
       if (sessionData.paperKind === 'EXAM_PAPER') {
-        generateQuestionPaperPDF({ paper, assignment, questions: savedQ, subject: sessionData.subject });
+        const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
+        const pdfParams = { 
+          paper, 
+          assignment: { ...assignment, assignedToBranch: branch }, 
+          questions: savedQ, 
+          subject: sessionData.subject,
+          college: user?.college,
+          department: user?.department
+        };
+        
+        if (isModelOrSemester) {
+          generateModelSemesterPaperPDF(pdfParams);
+        } else {
+          generateQuestionPaperPDF(pdfParams);
+        }
       }
 
       const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
@@ -161,8 +147,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
       } else if (code === 'EXAM_DATE_LOCKED') {
         setLockedUntil(err?.response?.data?.lockedUntil ?? null);
         setGateState('locked');
-      } else if (code === 'ALREADY_LINKED') {
-        toast.error(`An exam paper is already assigned for ${section || 'this cohort'}. Please verify before reassigning.`);
+      } else if (code === 'ALREADY_LINKED' || code === 'IQ_ALREADY_ASSIGNED') {
+        onClose();
+        setTimeout(() => toast.error(message), 100);
       } else {
         toast.error(message);
       }
@@ -250,13 +237,21 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
               </button>
               <button
                 onClick={() => {
-                  const questions = extractQuestions(rawText);
-                  generateQuestionPaperPDF({
+                  const questions = parseQPStructure(rawText);
+                  const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
+                  const pdfParams = {
                     paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}` },
                     assignment: { assignedToYear: defaultYear || '2', assignedToBranch: branch || 'All', assignedToSection: section || 'All' },
                     questions,
-                    subject: sessionData.subject
-                  });
+                    subject: sessionData.subject,
+                    college: user?.college,
+                    department: user?.department
+                  };
+                  if (isModelOrSemester) {
+                    generateModelSemesterPaperPDF(pdfParams);
+                  } else {
+                    generateQuestionPaperPDF(pdfParams);
+                  }
                 }}
                 className="flex-1 border border-blue-500/30 text-blue-400 bg-blue-500/10 rounded-xl py-2 text-[13px] hover:bg-blue-500/20 transition-colors flex justify-center items-center gap-1.5"
               >
@@ -299,11 +294,17 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess }: Assign
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
-                  <input
-                    readOnly
-                    value={section || 'All Sections'}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
-                  />
+                  {isUniversity && sessionData.paperKind === 'EXAM_PAPER' ? (
+                     <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                       All Sections (Common Paper)
+                     </div>
+                  ) : (
+                    <input
+                      readOnly
+                      value={section || 'All Sections'}
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
+                    />
+                  )}
                 </div>
                 {needsDirectDate && (
                   <div className="flex items-center gap-3">

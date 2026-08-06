@@ -23,7 +23,7 @@ export function ActivityFeedItem({ item }: ActivityFeedItemProps) {
         <p className="text-[11.5px] text-[#8C8C8A] mt-0.5">Across your college and subjects</p>
       </div>
       <span className="text-[11px] text-[#5A5A58] whitespace-nowrap flex-shrink-0 ml-2">
-        {relativeTime(item.created_at)}
+        {relativeTime((item as any).createdAt || item.created_at)}
       </span>
     </div>
   );

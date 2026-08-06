@@ -5,6 +5,7 @@ import { Pencil, Trash2, X } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
 import { DepartmentOption, StudentTableRowProps } from '@/lib/types';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const ROLE_OPTIONS = ['student', 'faculty', 'admin'];
 
@@ -25,6 +26,7 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
     departmentId: student.departmentId ?? '',
     section: student.section === '-' ? '' : (student.section || ''),
     role: student.role || 'student',
+    rollNo: student.rollNo || '',
   });
 
   useEffect(() => {
@@ -68,6 +70,7 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
         departmentId: form.departmentId || null,
         section: form.section.trim() || undefined,
         role: form.role,
+        rollNo: form.rollNo.trim() || null,
       });
       setShowEditModal(false);
       onPromoteSuccess();
@@ -80,14 +83,15 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[900px]">
-        <div className="w-[16%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
-        <div className="w-[22%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
-        <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.year}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
-        <div className="w-[14%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
+      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[1000px]">
+        <div className="w-[12%] text-[13px] text-[#ECECEA] truncate pr-2">{student.rollNo || '-'}</div>
+        <div className="w-[14%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
+        <div className="w-[18%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
+        <div className="w-[6%] text-[13px] text-[#8C8C8A]">{student.year}</div>
+        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.batchYear || '-'}</div>
+        <div className="w-[8%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
+        <div className="w-[12%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
         <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.joined}</div>
         <div className="w-[12%] flex justify-end items-center gap-2">
           <button
             onClick={() => { setShowEditModal(true); setEditError(''); }}
@@ -107,28 +111,13 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
-            <h2 className="text-[14px] font-medium text-[#ECECEA] mb-2">Delete Student</h2>
-            <p className="text-[13px] text-[#8C8C8A] mb-6">
-              Are you sure you want to delete <span className="text-[#ECECEA]">{student.name}</span>? This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="text-[13px] text-[#8C8C8A] hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { onDelete(student.id); setShowDeleteModal(false); }}
-                className="rounded-md border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 px-4 py-2 text-[13px] transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDeleteModal
+          isOpen={true}
+          title="Delete Student"
+          description={`Delete ${student.name}? This cannot be undone.`}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => { onDelete(student.id); setShowDeleteModal(false); }}
+        />
       )}
 
       {showEditModal && (
@@ -163,6 +152,16 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
                   type="email"
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] placeholder:text-[#5A5A58]"
                   placeholder="Email address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-[#8C8C8A] mb-1.5 uppercase tracking-wide">Roll Number</label>
+                <input
+                  value={form.rollNo}
+                  onChange={e => handleChange('rollNo', e.target.value)}
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] placeholder:text-[#5A5A58]"
+                  placeholder="e.g. 21CS01"
                 />
               </div>
 

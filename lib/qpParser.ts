@@ -1,0 +1,231 @@
+/**
+ * qpParser.ts — Frontend parser for AI-generated question paper raw text.
+ *
+ * This is the single authoritative place where structure (part, OR-pairing,
+ * sub-labels, question numbering) is derived from the AI's raw output.
+ * It runs once at save-time (in AssignModal) and the result is sent to the
+ * backend where it is encoded as a [[qp:...]] prefix in questionText.
+ *
+ * Consumers (pdfGenerator, SharedPaperQuestions, ChatContainer) all call
+ * decodeQPPrefix / stripQPPrefix — they never re-parse raw text.
+ */
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface StructuredQuestion {
+  /** Clean question text, no numbering prefix, no trailing marks string. */
+  text: string;
+  /** 'A' | 'B' | 'C' */
+  part: string;
+  /**
+   * 1-based group index within the part.
+   * Part A: each question gets its own group (1, 2, 3…).
+   * Part B/C: an OR-pair (a + b) shares one group index.
+   */
+  groupIndex: number;
+  /** 'a' | 'b' | '' (empty for Part A and standalone Part B/C questions) */
+  subLabel: string;
+  /** Marks extracted from trailing "(N Marks)" pattern, or undefined. */
+  marks?: number;
+}
+
+// ─── Prefix codec ─────────────────────────────────────────────────────────────
+
+const QP_PREFIX_RE = /^\[\[qp:([A-C]),g:(\d+),sub:([ab]*)\]\]/;
+
+export interface DecodedQPPrefix {
+  text: string;
+  part: string;
+  groupIndex: number;
+  subLabel: string;
+}
+
+/**
+ * Strips the [[qp:...]] prefix from a stored questionText.
+ * Safe to call on strings that have no prefix (returns as-is).
+ */
+export function stripQPPrefix(raw: string): string {
+  return raw.replace(QP_PREFIX_RE, '').trim();
+}
+
+/**
+ * Parses the [[qp:...]] prefix from a stored questionText.
+ * Returns null if the string has no prefix (legacy / PDF-uploaded questions).
+ */
+export function decodeQPPrefix(raw: string): DecodedQPPrefix | null {
+  const m = raw.match(QP_PREFIX_RE);
+  if (!m) return null;
+  return {
+    text: raw.replace(QP_PREFIX_RE, '').trim(),
+    part: m[1],
+    groupIndex: Number(m[2]),
+    subLabel: m[3],
+  };
+}
+
+/**
+ * Encodes a StructuredQuestion's metadata as a [[qp:...]] prefix
+ * prepended to the clean question text. Used by the backend when saving.
+ */
+export function encodeQPPrefix(q: StructuredQuestion): string {
+  return `[[qp:${q.part},g:${q.groupIndex},sub:${q.subLabel}]]${q.text}`;
+}
+
+// ─── Parser ───────────────────────────────────────────────────────────────────
+
+/** Extracts a marks value from trailing "(N Marks)" or "(N)" patterns. */
+function extractMarks(text: string): { cleanText: string; marks: number | undefined } {
+  const m = text.match(/\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+  if (m) {
+    return { cleanText: text.slice(0, m.index).trim(), marks: parseInt(m[1], 10) };
+  }
+  return { cleanText: text, marks: undefined };
+}
+
+/**
+ * Parses the AI's raw question paper text into a flat array of
+ * StructuredQuestion objects, each carrying { text, part, groupIndex, subLabel, marks }.
+ *
+ * Handles:
+ *  - Part A / Part B / Part C headers (with or without mark totals in parentheses)
+ *  - Numbered lines: "1. text", "11. a) text", "b) text" (following an OR line)
+ *  - OR separators on their own line
+ *  - Multi-line question continuation
+ *  - Inline marks "(N Marks)" stripped from text but preserved in the marks field
+ *
+ * Called once at save-time; must never be called at render-time.
+ */
+export function parseQPStructure(rawText: string): StructuredQuestion[] {
+  const results: StructuredQuestion[] = [];
+
+  let currentPart = 'A';
+  let partAGroupCounter = 0;
+  let partBCGroupCounter = 0;
+
+  // Buffer for the current question being assembled
+  let bufferText = '';
+  let bufferPart = 'A';
+  let bufferGroupIndex = 0;
+  let bufferSubLabel = '';
+  let awaitingBSide = false; // true after an OR line, next question is subLabel 'b'
+  let lastBSideGroup = 0;    // groupIndex of the 'a' side, reused for 'b'
+
+  const flushBuffer = () => {
+    if (!bufferText.trim()) return;
+    const { cleanText, marks } = extractMarks(bufferText.trim());
+    if (cleanText) {
+      results.push({
+        text: cleanText,
+        part: bufferPart,
+        groupIndex: bufferGroupIndex,
+        subLabel: bufferSubLabel,
+        marks,
+      });
+    }
+    bufferText = '';
+  };
+
+  // Normalise: collapse Windows line-endings, split
+  const lines = rawText.replace(/\r\n/g, '\n').split('\n');
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    // ── Part header ──────────────────────────────────────────────────────────
+    // Matches: "Part A", "Part B (2 x 13 = 26)", "**Part C**", etc.
+    const partMatch = line.match(/^\*{0,2}Part\s+([ABC])(?:\s*[\(\-–].*)?$/i);
+    if (partMatch) {
+      flushBuffer();
+      currentPart = partMatch[1].toUpperCase();
+      awaitingBSide = false;
+      continue;
+    }
+
+    // ── Strip instructional noise lines ──────────────────────────────────────
+    if (
+      /^Section\s+[A-Z]/i.test(line) ||
+      /answer\s+(all|any|the\s+following)/i.test(line) ||
+      /^Note:/i.test(line) ||
+      /^Marks:/i.test(line) ||
+      /^={3,}/.test(line) ||
+      /^\*{3,}/.test(line)
+    ) {
+      continue;
+    }
+
+    // ── OR separator ─────────────────────────────────────────────────────────
+    if (/^OR$/i.test(line)) {
+      flushBuffer();
+      awaitingBSide = true;
+      lastBSideGroup = partBCGroupCounter; // will be reused for the 'b' question
+      continue;
+    }
+
+    // ── Numbered question line: "11. a) text" or "1. text" ───────────────────
+    // Regex: optional leading number + dot, then optional sub-label a) or b)
+    const numberedMatch = line.match(/^(\d+)\.\s*(?:(a|b)\)?\s*)?(.+)/i);
+    if (numberedMatch) {
+      flushBuffer();
+      awaitingBSide = false;
+      const subLabelRaw = (numberedMatch[2] || '').toLowerCase();
+
+      if (currentPart === 'A') {
+        partAGroupCounter++;
+        bufferPart = 'A';
+        bufferGroupIndex = partAGroupCounter;
+        bufferSubLabel = '';
+        bufferText = numberedMatch[3];
+      } else {
+        // Part B or C
+        if (subLabelRaw === 'a' || (!subLabelRaw && !awaitingBSide)) {
+          // Start of a new question group
+          partBCGroupCounter++;
+          bufferPart = currentPart;
+          bufferGroupIndex = partBCGroupCounter;
+          bufferSubLabel = subLabelRaw || '';
+          bufferText = numberedMatch[3];
+        } else if (subLabelRaw === 'b') {
+          // Inline b) — shares groupIndex with the preceding a)
+          bufferPart = currentPart;
+          bufferGroupIndex = partBCGroupCounter;
+          bufferSubLabel = 'b';
+          bufferText = numberedMatch[3];
+        } else {
+          // No sub-label, standalone
+          partBCGroupCounter++;
+          bufferPart = currentPart;
+          bufferGroupIndex = partBCGroupCounter;
+          bufferSubLabel = '';
+          bufferText = numberedMatch[3];
+        }
+      }
+      continue;
+    }
+
+    // ── Unlabelled "b)" continuation after OR ────────────────────────────────
+    // Matches: "b) text" at the start of a line (no leading number)
+    const bSideMatch = line.match(/^b\)\s*(.+)/i);
+    if (bSideMatch && awaitingBSide) {
+      flushBuffer();
+      bufferPart = currentPart;
+      bufferGroupIndex = lastBSideGroup;
+      bufferSubLabel = 'b';
+      bufferText = bSideMatch[1];
+      awaitingBSide = false;
+      continue;
+    }
+
+    // ── Continuation line ────────────────────────────────────────────────────
+    if (bufferText) {
+      bufferText += '\n' + line;
+    }
+    // (If bufferText is empty and nothing matched, the line is noise — skip it)
+  }
+
+  // Flush the final question
+  flushBuffer();
+
+  // Filter out empty entries
+  return results.filter(q => q.text.trim().length > 0);
+}

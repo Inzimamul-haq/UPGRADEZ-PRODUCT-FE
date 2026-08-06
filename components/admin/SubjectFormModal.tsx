@@ -2,12 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { subjectSchema } from "@/Schema/validations";
-import { BRANCH_OPTIONS } from "@/lib/constants";
 import api from "@/lib/api";
 import { DepartmentOption, SubjectFormModalProps } from "@/lib/types";
-
-
-const REGULATION_OPTIONS = ["R2021", "R2017"];
 
 export default function SubjectFormModal({
   open,
@@ -24,9 +20,11 @@ export default function SubjectFormModal({
   const [departmentIds, setDepartmentIds] = useState<string[]>([]);
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
+  const [regulations, setRegulations] = useState<string[]>([]);
   const [year, setYear] = useState("1");
   const [regulation, setRegulation] = useState("R2021");
-  const [files, setFiles] = useState<File[]>([]);
+  const [syllabusFile, setSyllabusFile] = useState<File | null>(null);
+  const [materialFiles, setMaterialFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
 
@@ -38,7 +36,8 @@ export default function SubjectFormModal({
     setDepartmentIds(initialValues?.departmentIds ?? []);
     setYear(initialValues?.year ?? "1");
     setRegulation(initialValues?.regulation ?? "R2021");
-    setFiles([]);
+    setSyllabusFile(null);
+    setMaterialFiles([]);
     setUploadMode("append");
     setLocalError("");
   }, [open, initialValues]);
@@ -46,21 +45,23 @@ export default function SubjectFormModal({
   useEffect(() => {
     if (!open) return;
 
-    const loadDepartments = async () => {
+    const loadData = async () => {
       try {
         setLoadingDepartments(true);
-        const { data } = await api.get<{ departments: DepartmentOption[] }>(
-          "/api/departments"
-        );
-        setDepartments(data.departments ?? []);
+        const [deptRes, regRes] = await Promise.all([
+          api.get<{ departments: DepartmentOption[] }>("/api/departments").catch(() => ({ data: { departments: [] } })),
+          api.get("/subjects/regulations").catch(() => ({ data: { data: [] } }))
+        ]);
+        setDepartments(deptRes.data.departments ?? []);
+        setRegulations(regRes.data.data ?? []);
       } catch {
-        setLocalError("Failed to load departments");
+        setLocalError("Failed to load form data");
       } finally {
         setLoadingDepartments(false);
       }
     };
 
-    loadDepartments();
+    loadData();
   }, [open]);
 
   const filteredDepartments = departments;
@@ -89,9 +90,31 @@ export default function SubjectFormModal({
       return;
     }
 
-    if (mode === "add" && files.length === 0) {
-      setLocalError("At least one PDF syllabus file is required");
+    if (mode === "add" && !syllabusFile) {
+      setLocalError("An Official Syllabus PDF or Image is required");
       return;
+    }
+
+    // Pre-validate syllabus
+    if (syllabusFile) {
+      const isPdf = syllabusFile.type.includes("pdf") || syllabusFile.name.endsWith(".pdf");
+      const isImage = syllabusFile.type.includes("image/") || syllabusFile.name.endsWith(".png") || syllabusFile.name.endsWith(".jpg") || syllabusFile.name.endsWith(".jpeg");
+      if (!isPdf && !isImage) {
+        setLocalError("Syllabus must be a PDF or Image.");
+        return;
+      }
+    }
+
+    // Pre-validate materials
+    if (materialFiles.length > 0) {
+      for (const file of materialFiles) {
+        const isPdf = file.type.includes("pdf") || file.name.endsWith(".pdf");
+        const isWord = file.type.includes("word") || file.name.endsWith(".docx") || file.name.endsWith(".doc");
+        if (!isPdf && !isWord) {
+          setLocalError("Image files are not supported for textbooks. Please upload a PDF or DOCX.");
+          return;
+        }
+      }
     }
 
     try {
@@ -101,7 +124,8 @@ export default function SubjectFormModal({
         departmentIds,
         year,
         regulation,
-        files,
+        syllabusFile,
+        materialFiles,
         uploadMode,
       });
     } catch (err: any) {
@@ -182,40 +206,91 @@ export default function SubjectFormModal({
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 Year
               </label>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-              >
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
+              {mode === 'edit' ? (
+                <div className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A]/50 px-3 py-2 text-[13px] text-[#8C8C8A] cursor-not-allowed">
+                  {year === '1' ? '1st' : year === '2' ? '2nd' : year === '3' ? '3rd' : `${year}th`} Year
+                </div>
+              ) : (
+                <select
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+                >
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              )}
             </div>
 
             <div>
               <label className="mb-1 block text-[12px] text-[#8C8C8A]">
                 Regulation
               </label>
-              <select
-                value={regulation}
-                onChange={(e) => setRegulation(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
-              >
-                {REGULATION_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              {mode === 'edit' ? (
+                <div className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A]/50 px-3 py-2 text-[13px] text-[#8C8C8A] cursor-not-allowed">
+                  {regulation || '—'}
+                </div>
+              ) : (
+                <input
+                  placeholder="e.g. R2021"
+                  value={regulation}
+                  onChange={(e) => setRegulation(e.target.value)}
+                  className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+                />
+              )}
+            </div>
+          </div>
+          {mode === 'edit' && (
+            <p className="-mt-2 text-[11px] text-[#5A5A58]">
+              Year, Regulation, and Syllabus PDF cannot be changed after creation. Delete and re-add the subject to change these.
+            </p>
+          )}
+
+          {/* Syllabus Upload */}
+          <div>
+            <label className="block text-[12px] text-[#8C8C8A] mb-2">
+              Syllabus index pdf or image {mode === 'add' && "(Required)"}
+            </label>
+            <div className={`flex flex-col gap-2 ${mode === 'edit' ? 'opacity-50 pointer-events-none' : ''}`}>
+              {syllabusFile && (
+                <div className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5">
+                  <span className="truncate text-[12px] text-[#ECECEA]">{syllabusFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSyllabusFile(null)}
+                    className="text-[12px] text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              {!syllabusFile && (
+                <label className={`inline-flex items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors ${mode === 'edit' ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-[#2C2C2A]'}`}>
+                  {mode === 'edit' ? 'Syllabus Cannot Be Changed' : 'Select Syllabus pdf or image'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={mode === 'edit'}
+                    accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setSyllabusFile(e.target.files[0]);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              )}
             </div>
           </div>
 
+          {/* Materials Upload */}
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-[12px] text-[#8C8C8A]">
-                {mode === "add" ? "Upload PDF" : "Update PDF (Optional)"}
+                {mode === "add" ? "Textbooks pdf" : "Update Textbooks pdf"}
               </label>
             </div>
 
@@ -223,35 +298,56 @@ export default function SubjectFormModal({
               <div className="mb-2 flex flex-col gap-2 rounded-lg border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
-                  <div className="flex items-center gap-3 text-[11px] text-[#ECECEA]">
-                    <label className="flex cursor-pointer items-center gap-1">
+                  <div className="flex items-center gap-3 text-[11px]">
+                    {/* Add More — white style */}
+                    <label className="flex cursor-pointer items-center gap-1.5 text-[#ECECEA]">
+                      <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
+                        uploadMode === 'append'
+                          ? 'border-white'
+                          : 'border-[#5A5A58]'
+                      }`}>
+                        {uploadMode === 'append' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        )}
+                      </span>
                       <input
                         type="radio"
                         name="uploadMode"
                         checked={uploadMode === "append"}
                         onChange={() => setUploadMode("append")}
-                        className="accent-[#ECECEA]"
+                        className="sr-only"
                       />
                       Add More
                     </label>
-                    <label className="flex cursor-pointer items-center gap-1">
+
+                    {/* Replace All — red style */}
+                    <label className="flex cursor-pointer items-center gap-1.5 text-red-400">
+                      <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
+                        uploadMode === 'replace'
+                          ? 'border-red-500'
+                          : 'border-[#5A5A58]'
+                      }`}>
+                        {uploadMode === 'replace' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                        )}
+                      </span>
                       <input
                         type="radio"
                         name="uploadMode"
                         checked={uploadMode === "replace"}
                         onChange={() => setUploadMode("replace")}
-                        className="accent-amber-500"
+                        className="sr-only"
                       />
                       Replace All
                     </label>
                   </div>
                 </div>
-                {uploadMode === "replace" && files.length > 0 && (
+                {uploadMode === "replace" && materialFiles.length > 0 && (
                   <span className="w-fit rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400">
                     Warning: Old files and embeddings will be deleted
                   </span>
                 )}
-                {uploadMode === "append" && files.length > 0 && (
+                {uploadMode === "append" && materialFiles.length > 0 && (
                   <span className="w-fit rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-400">
                     New files will be embedded alongside existing ones
                   </span>
@@ -267,7 +363,7 @@ export default function SubjectFormModal({
             )}
 
             <div className="flex flex-col gap-2">
-              {files.map((f, idx) => (
+              {materialFiles.map((f, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5"
@@ -275,7 +371,7 @@ export default function SubjectFormModal({
                   <span className="truncate text-[12px] text-[#ECECEA]">{f.name}</span>
                   <button
                     type="button"
-                    onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                    onClick={() => setMaterialFiles(materialFiles.filter((_, i) => i !== idx))}
                     className="text-[12px] text-red-400 hover:text-red-300"
                   >
                     Remove
@@ -283,14 +379,14 @@ export default function SubjectFormModal({
                 </div>
               ))}
               <label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#2C2C2A]">
-                {files.length === 0 ? "Select File" : "+ Add another file"}
+                {materialFiles.length === 0 ? "Select textbooks" : "+ Add another textbook"}
                 <input
                   type="file"
                   className="hidden"
-                  accept=".pdf,application/pdf"
+                  accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={(e) => {
                     if (e.target.files?.[0]) {
-                      setFiles([...files, e.target.files[0]]);
+                      setMaterialFiles([...materialFiles, e.target.files[0]]);
                       e.target.value = "";
                     }
                   }}

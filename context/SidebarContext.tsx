@@ -1,7 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ChatSession } from '@/lib/types';
+import api from '@/lib/api';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface SidebarContextValue {
   openSearch: () => void;
@@ -13,22 +15,67 @@ interface SidebarContextValue {
   cancelDelete: () => void;
   sessions: ChatSession[];
   removeSession: (id: string) => void;
+  refreshSessions: () => void;
+  /** Available months (YYYY-MM) derived from chat history */
+  availableMonths: string[];
+  /** Currently active month filter (YYYY-MM), null = no filter */
+  selectedMonth: string | null;
+  setSelectedMonth: (month: string | null) => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
 
-const DUMMY_SESSIONS: ChatSession[] = [
-  { id: 'chat1', subject_id: '1', subject_name: 'Data Structures', exam_type: 'CAT 1', created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'chat2', subject_id: '2', subject_name: 'Operating Systems', exam_type: 'Model', created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'chat3', subject_id: '3', subject_name: 'Computer Networks', exam_type: 'University', created_at: new Date(Date.now() - 172800000).toISOString() },
-];
-
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChatSession | null>(null);
-  const [sessions, setSessions] = useState<ChatSession[]>(DUMMY_SESSIONS);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonthState] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const removeSession = (id: string) => setSessions(prev => prev.filter(s => s.id !== id));
+  /** Fetch sessions, optionally filtered by YYYY-MM month string */
+  const fetchSessions = useCallback((month?: string | null) => {
+    const params = month ? `?month=${month}` : '';
+    api.get(`/api/chats${params}`).then(res => {
+      if (res.data.success) {
+        setSessions(res.data.data.map((c: any) => ({
+          id: c.id,
+          subject_name: c.subject?.name || c.title,
+          exam_type: c.examType,
+          created_at: c.createdAt,
+        })));
+      }
+    }).catch(console.error);
+  }, []);
+
+  /** Fetch distinct months from BE once on mount */
+  const fetchMonths = useCallback(() => {
+    api.get('/api/chats/months').then(res => {
+      if (res.data.success) setAvailableMonths(res.data.data);
+    }).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    fetchSessions(null);
+    fetchMonths();
+  }, []);
+
+  const setSelectedMonth = useCallback((month: string | null) => {
+    setSelectedMonthState(month);
+    fetchSessions(month);
+  }, [fetchSessions]);
+
+  const removeSession = async (id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+    if (pathname === `/chat/${id}`) router.push('/chat/new');
+    try {
+      await api.delete(`/api/chats/${id}`);
+      fetchMonths(); // refresh months in case last chat of a month was deleted
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const confirmDelete = () => {
     if (pendingDelete) removeSession(pendingDelete.id);
@@ -46,6 +93,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       cancelDelete: () => setPendingDelete(null),
       sessions,
       removeSession,
+      refreshSessions: () => { fetchSessions(selectedMonth); fetchMonths(); },
+      availableMonths,
+      selectedMonth,
+      setSelectedMonth,
     }}>
       {children}
     </SidebarContext.Provider>

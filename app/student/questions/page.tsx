@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { isStudentProfileReadyForSubjects } from '@/lib/profile';
 import { StudentSubject } from '@/lib/types';
 import api from '@/lib/api';
+import OnboardingPage from '@/app/onboarding/page';
 
 export default function StudentQuestionsPage() {
   const { user } = useAuth();
@@ -72,31 +73,7 @@ export default function StudentQuestionsPage() {
   };
 
   if (incompleteProfile) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-6 w-full">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[16px] font-medium text-[#ECECEA]">Questions</h1>
-            <p className="text-[12px] text-[#8C8C8A]">Browse by subject</p>
-          </div>
-        </div>
-        <div className="mt-6 py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
-          <EmptyState
-            icon={GraduationCap}
-            heading="Complete your profile to view subjects"
-            subtext="We need your branch, department, year, regulation, batch year, and section before we can show your subjects."
-            action={
-              <Link
-                href="/onboarding"
-                className="inline-block text-[13px] font-medium text-white bg-[var(--theme-color)] rounded-lg px-4 py-2 hover:opacity-90 transition-opacity"
-              >
-                Finish onboarding
-              </Link>
-            }
-          />
-        </div>
-      </div>
-    );
+    return <OnboardingPage />;
   }
 
   return (

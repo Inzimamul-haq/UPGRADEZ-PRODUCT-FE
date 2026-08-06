@@ -18,7 +18,7 @@ export async function refreshAccessToken() {
     });
     return res.data;
   } catch (error) {
-    if (typeof window !== 'undefined' && !['/login', '/signup'].includes(window.location.pathname)) {
+    if (typeof window !== 'undefined' && !['/login', '/signup', '/super-admin-register'].includes(window.location.pathname)) {
       window.location.href = '/login';
     }
     throw error;
@@ -36,7 +36,7 @@ export async function logoutUser() {
   } catch (error) {
     console.error('Logout failed', error);
   } finally {
-    if (typeof window !== 'undefined' && !['/login', '/signup'].includes(window.location.pathname)) {
+    if (typeof window !== 'undefined' && !['/login', '/signup', '/super-admin-register'].includes(window.location.pathname)) {
       window.location.href = '/login';
     }
   }
