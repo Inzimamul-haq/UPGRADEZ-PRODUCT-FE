@@ -21,6 +21,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   res => res,
   async err => {
@@ -40,17 +54,33 @@ api.interceptors.response.use(
       !isAuthEndpoint &&
       !isLoginPage
     ) {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return api(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
         await refreshAccessToken();
+        processQueue(null);
         return api(originalRequest);
       } catch (refreshErr: any) {
+        processQueue(refreshErr, null);
         if (refreshErr.response?.data) {
           refreshErr.response.data.error = "Session expired. Please log in again.";
         } else {
           refreshErr.message = "Session expired. Please log in again.";
         }
         return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
     
