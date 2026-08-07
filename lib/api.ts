@@ -46,15 +46,23 @@ api.interceptors.response.use(
       url.includes("/api/auth/login") ||
       url.includes("/api/auth/register") ||
       url.includes("/api/auth/refresh") ||
-      url.includes("/api/auth/logout");
+      url.includes("/api/auth/logout") ||
+      // Never silently refresh when checking session status — this is the
+      // call that determines IF the user is logged in. Refreshing here causes
+      // the redirect-after-logout bug: cleared accessToken → 401 → refresh
+      // fires → new accessToken issued → /me succeeds → pushed to dashboard.
+      url.includes("/api/auth/me");
 
-    const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+    const isPublicRoute = typeof window !== 'undefined' &&
+      (window.location.pathname === '/login' ||
+       window.location.pathname === '/signup' ||
+       window.location.pathname.startsWith('/super-admin-register'));
 
     if (
       err.response?.status === 401 && 
       !originalRequest._retry &&
       !isAuthEndpoint &&
-      !isLoginPage
+      !isPublicRoute
     ) {
       if (isRefreshing) {
         return new Promise(function(resolve, reject) {
