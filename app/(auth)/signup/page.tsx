@@ -135,7 +135,7 @@ export default function SignupPage() {
         <p className="text-center text-sm text-[#8C8C8A] mt-8">
           Already have an account?{' '}
           <Link href="/login" className="text-[var(--theme-color)] hover:underline">
-            Sign in
+            Login
           </Link>
         </p>
       </div>
@@ -245,11 +245,17 @@ export default function SignupPage() {
           </button>
         </form>
         
-        <p className="text-center text-sm text-[#8C8C8A] mt-8">
+        <div className="text-center text-sm text-[#8C8C8A] mt-8 flex flex-col gap-2">
+          <p>
+            Already have an account?{' '}
+            <Link href="/login" className="text-[var(--theme-color)] hover:underline">
+              Login
+            </Link>
+          </p>
           <button type="button" onClick={() => { setCollegeData(null); setError(''); }} className="text-[#ECECEA] hover:underline">
             Change College
           </button>
-        </p>
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { User } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import api from '@/lib/api';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isPublicRoute) {
           const userPrefix = roleToRoute(data.user.role);
-          router.push(`/${userPrefix}/dashboard`);
+          router.push(userPrefix === 'student' ? '/chat/new' : `/${userPrefix}/dashboard`);
         } else if (
           // Faculty without department: always redirect to onboarding (no skip)
           (data.user?.role === 'faculty' && !data.user?.department?.id && !pathname?.startsWith('/onboarding')) ||
@@ -78,11 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (topLevelRoute && ['student', 'faculty', 'admin', 'super-admin'].includes(topLevelRoute) && !isAllowed) {
-            router.push(`/${userPrefix}/dashboard`);
+            router.push(userPrefix === 'student' ? '/chat/new' : `/${userPrefix}/dashboard`);
           }
         }
-      } catch (err) {
-        if (!isPublicRoute) router.push('/login');
+      } catch (err: any) {
+        if (err?.response?.status === 429) {
+          toast.error('Too many requests. Please try again later.');
+        } else {
+          if (!isPublicRoute) router.push('/login');
+        }
       } finally {
         setLoading(false);
       }
@@ -108,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await api.post('/api/auth/logout');
     } catch (e) {}
     setUser(null);
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   const role = user?.role ?? null;
