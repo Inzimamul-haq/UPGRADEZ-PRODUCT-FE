@@ -39,12 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initAuth = async () => {
       const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register');
 
-      // If the user just logged out, skip the /me check entirely and stay on the public page.
-      // This prevents Cloudflare edge-cookie propagation delay from re-authenticating the user.
-      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('justLoggedOut')) {
-        sessionStorage.removeItem('justLoggedOut');
-        setLoading(false);
-        return;
+      // If the user just logged out, skip the /me check entirely for up to 30 seconds.
+      // Uses localStorage (not sessionStorage) so it survives hard refreshes.
+      // Primary fix is in api.ts (never refresh tokens for /me calls), but this
+      // adds a belt-and-suspenders defense for any edge cases.
+      if (typeof localStorage !== 'undefined') {
+        const logoutTs = localStorage.getItem('justLoggedOutAt');
+        if (logoutTs) {
+          const age = Date.now() - parseInt(logoutTs, 10);
+          if (age < 30_000) {
+            // Within 30s of logout — skip auth check, stay on public page
+            setLoading(false);
+            return;
+          } else {
+            // Expired — clean up
+            localStorage.removeItem('justLoggedOutAt');
+          }
+        }
       }
 
       try {
@@ -123,12 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {}
 
     setUser(null);
-    // Mark that we intentionally logged out so initAuth skips /me on the next
-    // page load. Without this, Cloudflare cookie propagation delay can cause
-    // /api/auth/me to still return 200, automatically pushing the user back
-    // to the dashboard right after logout.
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem('justLoggedOut', '1');
+    // Write a timestamped logout marker. initAuth checks this for 30s after logout
+    // so that even a hard page-refresh on /login won't trigger a silent re-auth.
+    // Primary fix: api.ts interceptor no longer retries /api/auth/me with a
+    // refreshed token, so the refresh-after-logout loop is broken at the source.
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('justLoggedOutAt', String(Date.now()));
     }
     window.location.href = '/login';
   };
