@@ -38,6 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register');
+
+      // If the user just logged out, skip the /me check entirely and stay on the public page.
+      // This prevents Cloudflare edge-cookie propagation delay from re-authenticating the user.
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('justLoggedOut')) {
+        sessionStorage.removeItem('justLoggedOut');
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await api.get('/api/auth/me');
 
@@ -112,7 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.post('/api/auth/logout');
     } catch (e) {}
+
     setUser(null);
+    // Mark that we intentionally logged out so initAuth skips /me on the next
+    // page load. Without this, Cloudflare cookie propagation delay can cause
+    // /api/auth/me to still return 200, automatically pushing the user back
+    // to the dashboard right after logout.
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('justLoggedOut', '1');
+    }
     window.location.href = '/login';
   };
 

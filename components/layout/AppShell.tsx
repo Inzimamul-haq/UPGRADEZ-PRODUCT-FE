@@ -7,6 +7,7 @@ import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { AppShellProps } from '@/lib/types';
+import api from '@/lib/api';
 
 
 
@@ -124,6 +125,16 @@ function DeleteModal() {
 
 function AppShellInner({ children, role, navItems }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Keep-alive ping: prevent backend from going cold between user sessions.
+  // Fires every 14 minutes while the user has the app open.
+  useEffect(() => {
+    const FOURTEEN_MIN = 14 * 60 * 1000;
+    const interval = setInterval(() => {
+      api.get('/health').catch(() => {}); // silent best-effort
+    }, FOURTEEN_MIN);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
