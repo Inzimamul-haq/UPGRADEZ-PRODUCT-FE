@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
@@ -124,6 +124,12 @@ function DeleteModal() {
 
 function AppShellInner({ children, role, navItems }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
 
   return (
     <div className="flex h-[100dvh] bg-[#1C1C1B] overflow-hidden">
