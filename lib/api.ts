@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { refreshAccessToken } from './auth';
 
-const api = axios.create({ 
+const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000',
   withCredentials: true,
 });
@@ -44,6 +44,9 @@ api.interceptors.response.use(
     const url = originalRequest.url || "";
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
+      url.includes("/api/auth/forgot-password") ||
+      url.includes("/api/auth/verify-otp") ||
+      url.includes("/api/auth/reset-password") ||
       url.includes("/api/auth/register") ||
       url.includes("/api/auth/refresh") ||
       url.includes("/api/auth/logout") ||
@@ -55,17 +58,18 @@ api.interceptors.response.use(
 
     const isPublicRoute = typeof window !== 'undefined' &&
       (window.location.pathname === '/login' ||
-       window.location.pathname === '/signup' ||
-       window.location.pathname.startsWith('/super-admin-register'));
+        window.location.pathname === '/signup' ||
+        window.location.pathname === '/forgot-password' ||
+        window.location.pathname.startsWith('/super-admin-register'));
 
     if (
-      err.response?.status === 401 && 
+      err.response?.status === 401 &&
       !originalRequest._retry &&
       !isAuthEndpoint &&
       !isPublicRoute
     ) {
       if (isRefreshing) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then(() => {
           return api(originalRequest);
@@ -93,14 +97,14 @@ api.interceptors.response.use(
         isRefreshing = false;
       }
     }
-    
+
     // Inject clean error message into err.message for unhandled cases
     if (err.response?.data?.error) {
       err.message = err.response.data.error;
     } else if (err.response?.data?.message) {
       err.message = err.response.data.message;
     }
-    
+
     return Promise.reject(err);
   }
 );
