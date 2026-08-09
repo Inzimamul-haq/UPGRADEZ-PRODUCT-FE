@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Building2, GraduationCap, ChevronLeft } from 'lucide-react';
 import api from '@/lib/api';
-import { BRANCH_OPTIONS } from '@/lib/constants';
-import { validateBatchYear, validateRollNo, REGEX_PATTERNS } from '@/lib/utils';
+import { validateBatchYear, validateRollNo, REGEX_PATTERNS, extractErrorMessage } from '@/lib/utils';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -76,7 +75,7 @@ export default function OnboardingPage() {
       router.push(`/${role === 'super_admin' ? 'super-admin' : role}/dashboard`);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to save. Please try again.');
+      setError(extractErrorMessage(err, 'Failed to save. Please try again.'));
     } finally {
       setLoading(false);
     }

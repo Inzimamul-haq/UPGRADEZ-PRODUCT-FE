@@ -1,15 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
+
+const STATES = [
+  "Thinking...",
+  "Pondering...",
+  "Contemplating...",
+  "Unraveling...",
+  "Deliberating...",
+];
 
 export function TypingIndicator() {
+  const [state, setState] = useState(STATES[0]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setState((current) => {
+        const availableStates = STATES.filter((s) => s !== current);
+        return availableStates[
+          Math.floor(Math.random() * availableStates.length)
+        ];
+      });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex items-center gap-1 px-1 py-2">
-      {[0, 1, 2].map(i => (
-        <div
-          key={i}
-          className="w-1.5 h-1.5 bg-[#5A5A58] rounded-full animate-bounce"
-          style={{ animationDelay: `${i * 150}ms` }}
-        />
-      ))}
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span>{state}</span>
     </div>
   );
 }

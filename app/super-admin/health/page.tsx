@@ -192,6 +192,82 @@ export default function SystemHealthPage() {
             />
           </div>
 
+          {/* Redis Cache Breakdown */}
+          {(data?.cacheBreakdown?.length > 0 || loading) && (
+            <div className="bg-[#1A1A19] rounded-xl border border-[#2E2E2C] p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <Database className="h-3.5 w-3.5 text-text-muted" />
+                  Redis Cache Details
+                </h3>
+                {data?.metrics?.redis && (
+                  <span className="text-[10px] text-text-muted">
+                    {data.metrics.redis.used} used
+                    {data.metrics.redis.maxBytes > 0 && ` / ${data.metrics.redis.max}`}
+                  </span>
+                )}
+              </div>
+
+              {/* Memory bar */}
+              {data?.metrics?.redis?.maxBytes > 0 && (
+                <div className="mb-3">
+                  <div className="w-full bg-[#2E2E2C] rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        data.metrics.redis.percent > 90
+                          ? 'bg-red-500'
+                          : data.metrics.redis.percent > 70
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${Math.min(data.metrics.redis.percent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-text-muted mt-1">{data.metrics.redis.percent}% of {data.metrics.redis.max} used</p>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="text-[10px] text-text-muted uppercase border-b border-[#2E2E2C]">
+                    <tr>
+                      <th className="pb-2 font-medium">Namespace / Prefix</th>
+                      <th className="pb-2 font-medium text-right">Key Count</th>
+                      <th className="pb-2 font-medium pl-4">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2E2E2C]">
+                    {loading ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <tr key={i}>
+                          <td colSpan={3} className="py-2">
+                            <div className="animate-pulse bg-[#2C2C2A] h-5 rounded" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      data?.cacheBreakdown?.map((ns: any) => (
+                        <tr key={ns.prefix} className="hover:bg-[#2C2C2A]/30 transition-colors">
+                          <td className="py-2 font-mono text-[10px] text-text-primary">{ns.prefix}*</td>
+                          <td className="py-2 text-right">
+                            {ns.count === -1 ? (
+                              <span className="text-[10px] text-amber-400 px-1.5 py-0.5 bg-amber-500/10 rounded">err</span>
+                            ) : (
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ns.count > 0 ? 'bg-blue-500/10 text-blue-400' : 'text-text-muted'}`}>
+                                {ns.count}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 pl-4 text-[10px] text-text-muted">{ns.description}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1">
             {/* Services Status */}
             <div className="lg:col-span-1 bg-[#1A1A19] rounded-xl border border-[#2E2E2C] p-4">

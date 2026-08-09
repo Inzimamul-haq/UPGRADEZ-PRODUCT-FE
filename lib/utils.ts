@@ -66,6 +66,12 @@ export function validateBatchYear(val: string, maxYears: number): string {
   if (start >= end) return 'End year must be greater than start year';
   if (end - start !== maxYears) return `Duration must be exactly ${maxYears} years (e.g. ${start}-${start + maxYears})`;
   if (start < 2000 || start > 2050) return 'Invalid start year';
+  
+  const currentYear = new Date().getFullYear();
+  if (end < currentYear) {
+    return 'Your academic period has already finished, so you are not allowed to register.';
+  }
+  
   return '';
 }
 
