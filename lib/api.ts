@@ -49,24 +49,18 @@ api.interceptors.response.use(
       url.includes("/api/auth/reset-password") ||
       url.includes("/api/auth/register") ||
       url.includes("/api/auth/refresh") ||
-      url.includes("/api/auth/logout") ||
-      // Never silently refresh when checking session status — this is the
-      // call that determines IF the user is logged in. Refreshing here causes
-      // the redirect-after-logout bug: cleared accessToken → 401 → refresh
-      // fires → new accessToken issued → /me succeeds → pushed to dashboard.
-      url.includes("/api/auth/me");
-
-    const isPublicRoute = typeof window !== 'undefined' &&
-      (window.location.pathname === '/login' ||
-        window.location.pathname === '/signup' ||
-        window.location.pathname === '/forgot-password' ||
-        window.location.pathname.startsWith('/super-admin-register'));
+      url.includes("/api/auth/logout");
+      // /api/auth/me intentionally excluded — it must be allowed to trigger
+      // a refresh. It's the first call that determines session validity, and
+      // if the access token expired the refresh token may still be valid.
 
     if (
       err.response?.status === 401 &&
       !originalRequest._retry &&
-      !isAuthEndpoint &&
-      !isPublicRoute
+      !isAuthEndpoint
+      // isPublicRoute gate removed — a public route with a valid refresh token
+      // must still silently refresh (e.g. user lands on /login or /signup with
+      // an expired access token but a still-valid session cookie).
     ) {
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {

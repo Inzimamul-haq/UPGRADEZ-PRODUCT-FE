@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -8,7 +8,7 @@ import { signupSchema, accessCodeSchema } from '@/Schema/validations';
 import { extractErrorMessage } from '@/lib/utils';
 import TurnstileWidget, { TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
-export default function SignupPage() {
+function SignupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -271,5 +271,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100dvh', backgroundColor: '#1C1C1B' }} />}>
+      <SignupPageInner />
+    </Suspense>
   );
 }

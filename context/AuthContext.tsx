@@ -73,6 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isPublicRoute) {
           const userPrefix = roleToRoute(data.user.role);
+          // Mark this as a fresh login so NotificationPrompt can show on landing
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('newLoginAt', String(Date.now()));
+            localStorage.removeItem('justLoggedOutAt');
+          }
           router.push(userPrefix === 'student' ? '/chat/new' : `/${userPrefix}/dashboard`);
         } else if (
           // Faculty without department: always redirect to onboarding (no skip)
@@ -174,7 +179,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, role, questionsToday, setUser, setQuestionsToday, logout, loading }}>
-      {!loading && children}
+      {loading ? (
+        // Dark placeholder during auth check — prevents white flash before CSS loads
+        <div style={{ minHeight: '100dvh', backgroundColor: '#1C1C1B' }} />
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }
