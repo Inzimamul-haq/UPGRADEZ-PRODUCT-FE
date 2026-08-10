@@ -33,6 +33,15 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/signup',
+        permanent: true,
+      },
+    ];
+  },
   /* config options here */
 };
 

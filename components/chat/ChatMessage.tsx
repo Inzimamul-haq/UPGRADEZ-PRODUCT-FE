@@ -113,7 +113,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
               tbody: ({ node, ...props }) => <tbody className="divide-y divide-[#3A3A38]" {...props} />,
               tr: ({ node, ...props }) => <tr className="hover:bg-[#252523] transition-colors" {...props} />,
               td: ({ node, ...props }) => <td className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed" {...props} />,
-              strong: ({ node, ...props }) => <strong className="font-[600] text-[#FDE047] bg-[#FDE047]/10 px-1 rounded mx-0.5" {...props} />,
+              strong: ({ node, ...props }) => <strong className="font-[600] text-[#BC676A] bg-[#1A1A19] border border-[#BC676A]/30 px-1.5 py-0.5 rounded mx-0.5" {...props} />,
               h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-6 mb-3 text-white" {...props} />,
               h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-5 mb-2 text-white" {...props} />,
               h3: ({ node, ...props }) => <h3 className="text-md font-bold mt-4 mb-2 text-white" {...props} />,
