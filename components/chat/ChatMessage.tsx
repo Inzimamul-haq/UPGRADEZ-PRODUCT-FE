@@ -44,7 +44,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[85%]">
+      <div className="max-w-full md:max-w-[85%]">
         <div className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkMath, remarkGfm]}
