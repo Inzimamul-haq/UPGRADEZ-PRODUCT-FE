@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -8,7 +8,7 @@ import { loginSchema } from '@/Schema/validations';
 import { extractErrorMessage } from '@/lib/utils';
 import TurnstileWidget, { TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -83,6 +83,10 @@ export default function LoginPage() {
       await api.post('/api/auth/login', {
         email, password, captchaToken
       });
+
+      // Mark this as a fresh login for NotificationPrompt detection
+      localStorage.setItem('newLoginAt', String(Date.now()));
+      localStorage.removeItem('justLoggedOutAt');
 
       // Let AuthContext handle redirect based on role
       router.push('/');
@@ -217,5 +221,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100dvh', backgroundColor: '#1C1C1B' }} />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

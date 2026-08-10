@@ -4,6 +4,7 @@ import React from 'react';
 import { Home, BookOpen, FileText, Users, GraduationCap, HelpCircle, CreditCard, Building2 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/context/AuthContext';
+import { NotificationPrompt } from '@/components/ui/NotificationPrompt';
 
 const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> = {
   student: [
@@ -55,6 +56,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <AppShell role={role ?? 'student'} navItems={navItems}>
       {children}
+      <NotificationPrompt />
     </AppShell>
   );
 }

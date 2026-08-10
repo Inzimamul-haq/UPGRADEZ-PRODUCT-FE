@@ -13,6 +13,7 @@ const inter = Inter({
 
 export const viewport: Viewport = {
   themeColor: PWA_CONFIG.THEME_COLOR,
+  colorScheme: 'dark',
 };
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   description: PWA_CONFIG.APP_DESCRIPTION,
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: PWA_CONFIG.APP_NAME,
   },
 };
@@ -32,7 +33,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-[#1C1C1B]" suppressHydrationWarning>
+      {/* Inline bg ensures body is dark before any CSS loads — eliminates white flash */}
+      <body className="min-h-full flex flex-col bg-[#1C1C1B]" style={{ backgroundColor: '#1C1C1B' }} suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>
             {children}
