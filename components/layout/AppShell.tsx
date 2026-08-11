@@ -158,12 +158,12 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
       )}
 
       {/* Main content — smoothly expands to full width when sidebar is closed */}
-      <main className={`flex-1 flex flex-col overflow-y-auto h-full relative w-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}>
+      <main className={`flex-1 flex flex-col overflow-y-auto h-full relative w-full transition-all duration-300 ease-in-out pt-[var(--safe-top)] ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}>
         {/* Open toggle — only visible when sidebar is closed */}
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed top-4 left-4 z-50 text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
+            className="fixed top-[calc(1rem+var(--safe-top))] left-4 z-50 text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
           >
             <PanelLeft size={20} />
           </button>

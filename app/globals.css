@@ -2,6 +2,8 @@
 
 :root {
   --theme-color: #ECECEA; /* Centralized theme color for easy code edits */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
 }
 
 @theme {

@@ -27,13 +27,14 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw] Background message received:', payload);
 
-  const title = payload.notification?.title || 'StudyMate';
-  const body  = payload.notification?.body  || 'You have a new notification.';
+  const title = payload.data?.title || 'UpGradez';
+  const body  = payload.data?.body  || 'You have a new notification.';
 
   self.registration.showNotification(title, {
     body,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
+    data: payload.data,
   });
 });
 
