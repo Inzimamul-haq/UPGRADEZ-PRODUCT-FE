@@ -14,6 +14,7 @@ const inter = Inter({
 export const viewport: Viewport = {
   themeColor: PWA_CONFIG.THEME_COLOR,
   colorScheme: 'dark',
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {

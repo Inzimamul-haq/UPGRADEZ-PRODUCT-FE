@@ -46,7 +46,7 @@ export const ActiveBroadcastBanner = () => {
   const visibleBroadcasts = broadcasts.filter(b => !dismissedIds.has(b.id));
 
   return (
-    <div className="fixed top-4 right-6 z-50 flex flex-col items-end">
+    <div className="fixed top-[calc(1rem+var(--safe-top))] right-6 z-50 flex flex-col items-end">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2.5 rounded-full bg-[#2C2C2A] border border-[#3A3A38] text-[#8C8C8A] hover:text-[#ECECEA] transition-colors shadow-lg"

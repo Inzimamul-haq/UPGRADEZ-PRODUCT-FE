@@ -12,7 +12,7 @@ export function MobileTabBar({ navItems }: MobileTabBarProps) {
   const pathname = usePathname();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#1F1F1E] border-t border-[#2E2E2C] flex items-center justify-around px-4 z-40">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(4rem+var(--safe-bottom))] pb-[var(--safe-bottom)] bg-[#1F1F1E] border-t border-[#2E2E2C] flex items-center justify-around px-4 z-40">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname.startsWith(item.href) && (item.href !== '/' || pathname === '/');
