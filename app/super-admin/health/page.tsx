@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Activity, Server, Database, Network, CheckCircle2, AlertTriangle, RotateCw, Layers, Clock, Cpu, XCircle, HelpCircle } from 'lucide-react';
+import { Activity, Server, Database, Network, CheckCircle2, AlertTriangle, RotateCw, Layers, Clock, Cpu, XCircle, HelpCircle, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function SystemHealthPage() {
@@ -29,6 +29,16 @@ export default function SystemHealthPage() {
   useEffect(() => {
     fetchHealth();
   }, [fetchHealth]);
+
+  const handleDeleteCache = async (prefix: string) => {
+    if (!confirm(`Are you sure you want to delete all keys starting with ${prefix}?`)) return;
+    try {
+      await api.delete(`/api/superadmin/systemhealth/cache/${prefix}`);
+      fetchHealth();
+    } catch (err) {
+      alert('Failed to delete cache namespace');
+    }
+  };
 
   const MetricCard = ({ title, value, icon: Icon, status = 'Running' }: any) => {
     const getStatusColors = (s: string) => {
@@ -234,6 +244,7 @@ export default function SystemHealthPage() {
                       <th className="pb-2 font-medium">Namespace / Prefix</th>
                       <th className="pb-2 font-medium text-right">Key Count</th>
                       <th className="pb-2 font-medium pl-4">Description</th>
+                      <th className="pb-2 font-medium text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#2E2E2C]">
@@ -259,6 +270,15 @@ export default function SystemHealthPage() {
                             )}
                           </td>
                           <td className="py-2 pl-4 text-[10px] text-text-muted">{ns.description}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              onClick={() => handleDeleteCache(ns.prefix)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1.5 rounded transition-colors"
+                              title="Clear Cache Namespace"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
                         </tr>
                       ))
                     )}

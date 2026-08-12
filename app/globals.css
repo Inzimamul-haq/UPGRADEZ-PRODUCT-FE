@@ -6,13 +6,12 @@
   --safe-bottom: env(safe-area-inset-bottom);
 }
 
-html {
-  background-color: #1C1C1B;
-}
-
-body {
-  background-color: #1C1C1B;
-  color: var(--theme-color);
+html, body {
+  height: 100%;
+  /* kill pull-down-to-refresh elastic bounce */
+  overscroll-behavior: none; 
+  -webkit-overflow-scrolling: touch;
+  /* prevents the white background flash on iPhone when elastic scrolling */
 }
 
 @theme {
