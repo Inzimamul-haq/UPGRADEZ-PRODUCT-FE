@@ -8,6 +8,8 @@
 
 html, body {
   height: 100%;
+  background-color: #1C1C1B;
+  color: var(--theme-color);
   /* kill pull-down-to-refresh elastic bounce */
   overscroll-behavior: none; 
   -webkit-overflow-scrolling: touch;
@@ -15,8 +17,6 @@ html, body {
 }
 
 body {
-  background-color: #1C1C1B;
-  color: var(--theme-color);
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
@@ -37,10 +37,7 @@ body {
   --color-text-destructive: #f87171; /* text-red-400 */
 }
 
-body {
-  background-color: #1C1C1B;
-  color: var(--theme-color);
-}
+
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {

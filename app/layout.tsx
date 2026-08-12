@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.className} h-full antialiased bg-[#1C1C1B]`} style={{ backgroundColor: '#1C1C1B' }} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#1C1C1B" />
       </head>
