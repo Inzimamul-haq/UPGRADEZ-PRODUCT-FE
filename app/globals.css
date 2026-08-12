@@ -6,6 +6,15 @@
   --safe-bottom: env(safe-area-inset-bottom);
 }
 
+html {
+  background-color: #1C1C1B;
+}
+
+body {
+  background-color: #1C1C1B;
+  color: var(--theme-color);
+}
+
 @theme {
   --color-page-bg: #1C1C1B;
   --color-panel: #1F1F1E;

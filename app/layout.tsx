@@ -34,7 +34,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
-      {/* Inline bg ensures body is dark before any CSS loads — eliminates white flash */}
       <body className="min-h-full flex flex-col bg-[#1C1C1B]" style={{ backgroundColor: '#1C1C1B' }} suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>
@@ -42,7 +41,7 @@ export default function RootLayout({
             <Toaster theme="dark" richColors position="top-right" style={{ zIndex: 99999 }} />
           </ToastProvider>
         </AuthProvider>
-      </body>
-    </html>
+      </body >
+    </html >
   );
 }
