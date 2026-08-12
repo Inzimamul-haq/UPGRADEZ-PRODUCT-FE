@@ -57,11 +57,10 @@ function SearchModal() {
                 <button
                   key={ym}
                   onClick={() => setSelectedMonth(isActive ? null : ym)}
-                  className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150 ${
-                    isActive
+                  className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150 ${isActive
                       ? 'bg-[#ECECEA] text-[#1C1C1B] border-[#ECECEA]'
                       : 'text-[#8C8C8A] border-[#3A3A38] hover:border-[#5A5A58] hover:text-[#ECECEA]'
-                  }`}
+                    }`}
                 >
                   {formatMonthLabel(ym)}
                 </button>
@@ -131,7 +130,7 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
   useEffect(() => {
     const FOURTEEN_MIN = 14 * 60 * 1000;
     const interval = setInterval(() => {
-      api.get('/health').catch(() => {}); // silent best-effort
+      api.get('/health').catch(() => { }); // silent best-effort
     }, FOURTEEN_MIN);
     return () => clearInterval(interval);
   }, []);
@@ -158,8 +157,9 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
       )}
 
       {/* Main content — smoothly expands to full width when sidebar is closed */}
-      <main className={`flex-1 flex flex-col overflow-y-auto h-full relative w-full transition-all duration-300 ease-in-out pt-[var(--safe-top)] ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}>
-        {/* Open toggle — only visible when sidebar is closed */}
+      <main
+        className={`flex-1 flex flex-col overflow-y-auto overscroll-contain h-full relative w-full transition-all duration-300 ease-in-out pt-[var(--safe-top)] bg-[#1C1C1B] ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}
+      >        {/* Open toggle — only visible when sidebar is closed */}
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
