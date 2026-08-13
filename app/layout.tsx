@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/context/AuthContext";
-import { Toaster } from 'sonner';
+import { Toaster } from "sonner";
 import { PWA_CONFIG } from "@/config/pwa";
+import CapacitorStatusBar from "@/components/ui/CapacitorStatusBar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -13,8 +15,8 @@ const inter = Inter({
 
 export const viewport: Viewport = {
   themeColor: PWA_CONFIG.THEME_COLOR,
-  colorScheme: 'dark',
-  viewportFit: 'cover',
+  colorScheme: "dark",
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -33,19 +35,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.className} h-full antialiased bg-[#1C1C1B]`} style={{ backgroundColor: '#1C1C1B' }} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.className} h-full antialiased bg-[#1C1C1B]`}
+      style={{ backgroundColor: "#1C1C1B" }}
+      suppressHydrationWarning
+    >
       <head>
         <meta name="theme-color" content="#1C1C1B" />
       </head>
-      
-      <body className="min-h-full flex flex-col bg-[#1C1C1B]" style={{ backgroundColor: '#1C1C1B' }} suppressHydrationWarning>
+
+      <body
+        className="min-h-full flex flex-col bg-[#1C1C1B]"
+        style={{ backgroundColor: "#1C1C1B" }}
+        suppressHydrationWarning
+      >
+        <CapacitorStatusBar />
+
         <AuthProvider>
           <ToastProvider>
             {children}
-            <Toaster theme="dark" richColors position="top-right" style={{ zIndex: 99999 }} />
+            <Toaster
+              theme="dark"
+              richColors
+              position="top-right"
+              style={{ zIndex: 99999 }}
+            />
           </ToastProvider>
         </AuthProvider>
-      </body >
-    </html >
+      </body>
+    </html>
   );
 }
