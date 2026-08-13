@@ -4,6 +4,8 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Window;
 
+import androidx.core.view.WindowCompat;
+
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -14,10 +16,16 @@ public class MainActivity extends BridgeActivity {
 
         Window window = getWindow();
 
-        // Bottom Android navigation / gesture area
-        window.setNavigationBarColor(Color.parseColor("#1C1C1B"));
+        // Let the app content extend behind the gesture/navigation area
+        WindowCompat.setDecorFitsSystemWindows(window, false);
 
-        // Make the gesture/navigation icons suitable for dark background
-        window.getDecorView().setSystemUiVisibility(0);
+        // Gesture navigation background is transparent.
+        // Your dark app background (#1C1C1B) will show behind it.
+        window.setNavigationBarColor(Color.TRANSPARENT);
+
+        // Prevent Android from adding a contrast/white scrim.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.setNavigationBarContrastEnforced(false);
+        }
     }
 }
