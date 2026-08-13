@@ -2,6 +2,28 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from './qpParser';
 
+// ─── Logo fetch ───────────────────────────────────────────────────────────────
+
+/**
+ * Fetches a remote image via the server-side proxy (bypasses CORS)
+ * and returns a base64 data URL, or null if anything fails.
+ */
+async function fetchLogoBase64(logoUrl?: string | null, collegeId?: string | null): Promise<string | null> {
+  if (!logoUrl && !collegeId) return null;
+  try {
+    let proxyUrl = '/api/proxy-image?';
+    if (logoUrl) proxyUrl += `url=${encodeURIComponent(logoUrl)}`;
+    else if (collegeId) proxyUrl += `collegeId=${collegeId}`;
+
+    const res = await fetch(proxyUrl);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.dataUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 /** Decode a raw DB questionText into structured metadata + clean text. */
@@ -37,8 +59,11 @@ function groupByIndex(questions: (DecodedQPPrefix & { marks?: number })[]): Grou
 
 // ─── CAT / CIA paper (autoTable layout) ──────────────────────────────────────
 
-export function generateQuestionPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
+export async function generateQuestionPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
   const doc = new jsPDF();
+
+  // Fetch college logo (server-side proxy, safe from CORS)
+  const logoBase64 = await fetchLogoBase64(college?.logoUrl, college?.id);
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3']
     .includes((paper.examType ?? '').toUpperCase().replace(/\s+/g, ''));
@@ -75,7 +100,7 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
     },
     body: [
       [
-        { content: '[ LOGO ]', rowSpan: 2 },
+        { content: logoBase64 ? '' : '[ LOGO ]', rowSpan: 2 },
         {
           content: `${college?.name || 'College Name'}\nDegree/Branch: Department Of ${department?.branch || assignment.assignedToBranch || 'Branch'}(${department?.name || 'Department'})`,
           styles: { fontStyle: 'bold' },
@@ -93,6 +118,18 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
         },
       ],
     ],
+    // Inject logo image into the spanning first cell using the didDrawCell hook
+    didDrawCell: (data: any) => {
+      if (logoBase64 && data.column.index === 0 && data.row.index === 0 && data.section === 'body') {
+        const padding = 2;
+        const cellW = data.cell.width - padding * 2;
+        const cellH = data.cell.height * 2 - padding * 2; // rowSpan=2 approximation
+        const size = Math.min(cellW, cellH);
+        const imgX = data.cell.x + (data.cell.width - size) / 2;
+        const imgY = data.cell.y + (data.cell.height * 2 - size) / 2;
+        doc.addImage(logoBase64, 'PNG', imgX, imgY, size, size);
+      }
+    },
   });
 
   y = (doc as any).lastAutoTable.finalY + 5;
@@ -197,13 +234,15 @@ export function generateQuestionPaperPDF({ paper, assignment, questions, subject
 
 // ─── Model / Semester / University paper (manual y-coordinate layout) ─────────
 
-export function generateModelSemesterPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
+export async function generateModelSemesterPaperPDF({ paper, assignment, questions, subject, college, department }: any) {
   const doc = new jsPDF();
   let y = 15;
   const marginX = 15;
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
+  // Fetch college logo (server-side proxy, safe from CORS)
+  const logoBase64 = await fetchLogoBase64(college?.logoUrl, college?.id);
   // Line height calculated from actual font size (pt → mm, 1pt = 0.3528mm), × 1.4 leading
   const lineHeightMm = (fontSize: number) => fontSize * 0.3528 * 1.4;
 
@@ -228,8 +267,17 @@ export function generateModelSemesterPaperPDF({ paper, assignment, questions, su
   }
   y += 15;
 
-  // College name
+  // College name (and optional logo above it)
   const collegeName = college?.name || 'College Name';
+
+  if (logoBase64) {
+    // Logo centered above college name — 20mm square, reasonable for a header
+    const logoSize = 18;
+    const logoX = (pageWidth - logoSize) / 2;
+    doc.addImage(logoBase64, 'PNG', logoX, y, logoSize, logoSize);
+    y += logoSize + 3;
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text(collegeName, pageWidth / 2, y + 6, { align: 'center' });
