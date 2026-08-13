@@ -8,10 +8,37 @@ import { NextRequest, NextResponse } from 'next/server';
  * Returns the image as a base64 data URL string.
  */
 export async function GET(req: NextRequest) {
-  const url = req.nextUrl.searchParams.get('url');
+  let url = req.nextUrl.searchParams.get('url');
+  const collegeId = req.nextUrl.searchParams.get('collegeId');
 
+  if (!url && !collegeId) {
+    return NextResponse.json({ error: 'Missing url or collegeId param' }, { status: 400 });
+  }
+
+  // If collegeId is provided but no url, fetch the college's logoUrl from the backend
+  if (collegeId && !url) {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const collegeRes = await fetch(`${backendUrl}/colleges/${collegeId}`);
+      if (collegeRes.ok) {
+        const json = await collegeRes.json();
+        if (json.data?.logoUrl) {
+          url = json.data.logoUrl;
+        } else {
+          return NextResponse.json({ error: 'College has no logo' }, { status: 404 });
+        }
+      } else {
+        return NextResponse.json({ error: 'Failed to fetch college details' }, { status: collegeRes.status });
+      }
+    } catch (e) {
+      console.error('[proxy-image] Failed to fetch college:', e);
+      return NextResponse.json({ error: 'Failed to communicate with backend' }, { status: 500 });
+    }
+  }
+
+  // We are guaranteed to have `url` here (due to TS being unsure, we assert it or check)
   if (!url) {
-    return NextResponse.json({ error: 'Missing url param' }, { status: 400 });
+    return NextResponse.json({ error: 'Resolved URL is empty' }, { status: 400 });
   }
 
   // Basic allowlist: only allow fetching from our own storage domains

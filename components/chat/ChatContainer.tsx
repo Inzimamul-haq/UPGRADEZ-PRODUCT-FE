@@ -94,6 +94,15 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
   const [resolvedQuestions, setResolvedQuestions] = useState<{ id: string; text: string }[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
@@ -601,57 +610,106 @@ useEffect(() => {
           id: crypto.randomUUID(), role: 'assistant', content: responseText, figures: responseFigures,
           ...((isIQList || isExamPaper) && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
-      } else if (initialPaperId) {
-        // ── Study-paper mode: only question + IDs, scope derived server-side ───
-        const { data } = await api.post('/api/chats/message', {
+      } else {
+        // ── Stream standard student Q&A / Study-paper mode ────────────────────────
+        const payload = initialPaperId ? {
           question: content,
           paperId: chatId ? undefined : initialPaperId,
           chatId: chatId,
-        });
-        if (data.chatLocked) {
-          setSessionLocked(true);
-          setMessages(prev => [...prev, pushMsg(
-            `This study session has reached its natural limit to keep context focused. Here's a quick summary to help you pick up where we left off:\n\n> ${data.summary}`,
-            [{ id: 'start_new_session', label: 'Start a new session' }]
-          )]);
-          return;
-        }
-
-        if (data.chatId && !chatId) {
-          setChatId(data.chatId);
-          refreshSessions();
-          window.history.replaceState(null, '', `/chat/${data.chatId}`);
-        }
-        const parsedStudyPaper = parseActionSentinel(data.data as string);
-        setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', ...parsedStudyPaper, figures: data.figures
-        }]);
-      } else {
-        // ── Standard student Q&A ──────────────────────────────────────────
-        const { data } = await api.post('/api/chats/message', {
+        } : {
           subjectId: chatId ? undefined : sessionData?.subjectId || undefined,
           examType: chatId ? undefined : (sessionData?.examType ? sessionData.examType.toUpperCase().replace(' ', '') : undefined),
           chatId: chatId,
           question: content,
+        };
+
+        const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
+        const csrfToken = match ? decodeURIComponent(match[3]) : '';
+
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        const response = await fetch(`${api.defaults.baseURL}/api/chats/message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-College-Slug': window.location.hostname.split('.')[0],
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+          },
+          body: JSON.stringify(payload),
+          credentials: 'include',
+          signal: abortController.signal
         });
-        if (data.chatLocked) {
-          setSessionLocked(true);
-          const parsedLocked = parseActionSentinel(data.data as string);
-          setMessages(prev => [...prev, {
-            id: crypto.randomUUID(), role: 'assistant', ...parsedLocked, figures: data.figures
-          }]);
-          return;
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.message || errData.error || 'Network response was not ok');
         }
 
-        if (data.chatId && !chatId) {
-          setChatId(data.chatId);
-          refreshSessions();
-          window.history.replaceState(null, '', `/chat/${data.chatId}`);
+        if (!response.body) throw new Error('ReadableStream not supported');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        const currentBubbleId = crypto.randomUUID();
+        
+        let doneReading = false;
+        let buffer = '';
+        let streamedText = '';
+
+        setMessages(prev => [...prev, { id: currentBubbleId, role: 'assistant', content: '' }]);
+
+        while (!doneReading) {
+          const { value, done } = await reader.read();
+          if (done) {
+            doneReading = true;
+            break;
+          }
+          
+          buffer += decoder.decode(value, { stream: true });
+          
+          let boundary = buffer.indexOf('\n\n');
+          while (boundary !== -1) {
+            const chunk = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+            boundary = buffer.indexOf('\n\n');
+
+            if (chunk.startsWith('data: ')) {
+              const dataStr = chunk.slice(6);
+              if (dataStr.trim() === '[DONE]') continue;
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.error) throw new Error(data.error);
+
+                if (data.chatLocked) {
+                  setSessionLocked(true);
+                  const parsedLocked = parseActionSentinel(data.data as string);
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsedLocked, figures: data.figures } : m));
+                  return;
+                }
+
+                if (data.text) {
+                  streamedText += data.text;
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, content: streamedText } : m));
+                }
+
+                if (data.done) {
+                  if (data.chatId && !chatId) {
+                    setChatId(data.chatId);
+                    refreshSessions();
+                    window.history.replaceState(null, '', `/chat/${data.chatId}`);
+                  }
+                  
+                  // Finalize parsing (actions, figures)
+                  const finalContent = data.data as string;
+                  const parsed = parseActionSentinel(finalContent || streamedText);
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures } : m));
+                }
+              } catch (e) {
+                 console.error("Error parsing chunk", chunk, e);
+              }
+            }
+          }
         }
-        const parsedGeneral = parseActionSentinel(data.data as string);
-        setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', ...parsedGeneral, figures: data.figures
-        }]);
       }
     } catch {
       setMessages(prev => [...prev, pushMsg('Unable to process your request. Please try again in a few moments.')]);

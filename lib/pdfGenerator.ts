@@ -8,10 +8,13 @@ import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from './qpParser'
  * Fetches a remote image via the server-side proxy (bypasses CORS)
  * and returns a base64 data URL, or null if anything fails.
  */
-async function fetchLogoBase64(logoUrl?: string | null): Promise<string | null> {
-  if (!logoUrl) return null;
+async function fetchLogoBase64(logoUrl?: string | null, collegeId?: string | null): Promise<string | null> {
+  if (!logoUrl && !collegeId) return null;
   try {
-    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(logoUrl)}`;
+    let proxyUrl = '/api/proxy-image?';
+    if (logoUrl) proxyUrl += `url=${encodeURIComponent(logoUrl)}`;
+    else if (collegeId) proxyUrl += `collegeId=${collegeId}`;
+
     const res = await fetch(proxyUrl);
     if (!res.ok) return null;
     const data = await res.json();
@@ -60,7 +63,7 @@ export async function generateQuestionPaperPDF({ paper, assignment, questions, s
   const doc = new jsPDF();
 
   // Fetch college logo (server-side proxy, safe from CORS)
-  const logoBase64 = await fetchLogoBase64(college?.logoUrl);
+  const logoBase64 = await fetchLogoBase64(college?.logoUrl, college?.id);
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3']
     .includes((paper.examType ?? '').toUpperCase().replace(/\s+/g, ''));
@@ -239,7 +242,7 @@ export async function generateModelSemesterPaperPDF({ paper, assignment, questio
   const pageHeight = doc.internal.pageSize.height;
 
   // Fetch college logo (server-side proxy, safe from CORS)
-  const logoBase64 = await fetchLogoBase64(college?.logoUrl);
+  const logoBase64 = await fetchLogoBase64(college?.logoUrl, college?.id);
   // Line height calculated from actual font size (pt → mm, 1pt = 0.3528mm), × 1.4 leading
   const lineHeightMm = (fontSize: number) => fontSize * 0.3528 * 1.4;
 
