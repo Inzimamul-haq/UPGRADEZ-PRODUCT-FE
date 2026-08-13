@@ -127,9 +127,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
         };
         
         if (isModelOrSemester) {
-          generateModelSemesterPaperPDF(pdfParams);
+          await generateModelSemesterPaperPDF(pdfParams);
         } else {
-          generateQuestionPaperPDF(pdfParams);
+          await generateQuestionPaperPDF(pdfParams);
         }
       }
 
@@ -236,7 +236,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
                 Close
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const questions = parseQPStructure(rawText);
                   const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
                   const pdfParams = {
@@ -248,9 +248,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
                     department: user?.department
                   };
                   if (isModelOrSemester) {
-                    generateModelSemesterPaperPDF(pdfParams);
+                    await generateModelSemesterPaperPDF(pdfParams);
                   } else {
-                    generateQuestionPaperPDF(pdfParams);
+                    await generateQuestionPaperPDF(pdfParams);
                   }
                 }}
                 className="flex-1 border border-blue-500/30 text-blue-400 bg-blue-500/10 rounded-xl py-2 text-[13px] hover:bg-blue-500/20 transition-colors flex justify-center items-center gap-1.5"
