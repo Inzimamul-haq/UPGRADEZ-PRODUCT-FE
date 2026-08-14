@@ -57,3 +57,17 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #5A5A58;
 }
+
+.shimmer-text {
+  background: linear-gradient(90deg, var(--color-text-muted) 0%, var(--color-text-muted) 35%,
+    #ECECEA 50%, var(--color-text-muted) 65%, var(--color-text-muted) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.5s linear infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

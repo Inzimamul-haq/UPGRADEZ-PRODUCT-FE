@@ -10,6 +10,7 @@ import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
 import api from '@/lib/api';
+import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind } from "@/lib/types";
 import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
@@ -629,7 +630,7 @@ useEffect(() => {
         const abortController = new AbortController();
         abortControllerRef.current = abortController;
 
-        const response = await fetch(`${api.defaults.baseURL}/api/chats/message`, {
+        const response = await authenticatedFetch(`${api.defaults.baseURL}/api/chats/message`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -679,6 +680,14 @@ useEffect(() => {
               try {
                 const data = JSON.parse(dataStr);
                 if (data.error) throw new Error(data.error);
+
+                if (data.batch) {
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { 
+                    ...m, 
+                    batchAnswers: m.batchAnswers ? [...m.batchAnswers, ...data.batch] : data.batch
+                  } : m));
+                  continue;
+                }
 
                 if (data.chatLocked) {
                   setSessionLocked(true);
@@ -789,7 +798,6 @@ useEffect(() => {
       <ChatInput
         onSend={handleSend}
         disabled={showOverlay || isStreaming || sessionLocked}
-        questionsToday={!isFaculty ? questionsToday : 0}
       />
     </div>
   );

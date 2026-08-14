@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 
 const STATES = [
-  "Thinking...",
-  "Pondering...",
-  "Contemplating...",
-  "Unraveling...",
-  "Deliberating...",
+  "Surfing",
+  "Thinking",
+  "Pondering",
+  "Contemplating",
+  "Unraveling",
+  "Deliberating",
 ];
 
 export function TypingIndicator() {
@@ -19,14 +21,15 @@ export function TypingIndicator() {
           Math.floor(Math.random() * availableStates.length)
         ];
       });
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span>{state}</span>
+    <div className="flex items-center gap-2 text-sm">
+      <Image src="/icons/icon.png" alt="" width={18} height={18} className="shrink-0 object-contain" />
+      <span className="shimmer-text">{state}</span>
     </div>
   );
 }

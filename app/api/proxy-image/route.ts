@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
   // If collegeId is provided but no url, fetch the college's logoUrl from the backend
   if (collegeId && !url) {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const collegeRes = await fetch(`${backendUrl}/colleges/${collegeId}`);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const collegeRes = await fetch(`${backendUrl}/api/colleges/${collegeId}/public`);
       if (collegeRes.ok) {
         const json = await collegeRes.json();
         if (json.data?.logoUrl) {
@@ -41,30 +41,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Resolved URL is empty' }, { status: 400 });
   }
 
-  // Basic allowlist: only allow fetching from our own storage domains
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
-  }
 
-  const allowedHosts = [
-    'r2.dev',
-    'cloudflare.com',
-    'supabase.co',
-    'supabase.in',
-    'amazonaws.com',
-    'up-gradez.com',
-  ];
-
-  const isAllowed = allowedHosts.some(
-    (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
-  );
-
-  if (!isAllowed) {
-    return NextResponse.json({ error: 'URL not allowed' }, { status: 403 });
-  }
 
   try {
     const imageRes = await fetch(url, { next: { revalidate: 3600 } });

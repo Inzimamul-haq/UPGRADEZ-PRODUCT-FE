@@ -121,12 +121,14 @@ export async function generateQuestionPaperPDF({ paper, assignment, questions, s
     // Inject logo image into the spanning first cell using the didDrawCell hook
     didDrawCell: (data: any) => {
       if (logoBase64 && data.column.index === 0 && data.row.index === 0 && data.section === 'body') {
-        const padding = 2;
+        const padding = 3;
         const cellW = data.cell.width - padding * 2;
-        const cellH = data.cell.height * 2 - padding * 2; // rowSpan=2 approximation
+        // rowSpan=2: the actual two-row height is stored in cell.height for row 0 when rowSpanning
+        // Use a safe cap: the column width minus padding is the binding constraint
+        const cellH = data.cell.height - padding * 2;
         const size = Math.min(cellW, cellH);
         const imgX = data.cell.x + (data.cell.width - size) / 2;
-        const imgY = data.cell.y + (data.cell.height * 2 - size) / 2;
+        const imgY = data.cell.y + padding;
         doc.addImage(logoBase64, 'PNG', imgX, imgY, size, size);
       }
     },
