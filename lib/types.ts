@@ -64,7 +64,6 @@ export interface Paper {
 export interface ChatInputProps {
   onSend: (content: string) => void;
   disabled: boolean;
-  questionsToday: number;
 }
 
 export interface ChatHeaderProps {
@@ -95,6 +94,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   rag_used?: boolean;
+  batchAnswers?: { questionNo: number; answer: string; figures?: any }[];
   figures?: { pageNumber: number; caption: string; url: string; }[];
   actions?: {
     id: string;

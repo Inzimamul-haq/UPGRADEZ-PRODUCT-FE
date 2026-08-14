@@ -8,9 +8,12 @@ import { ChatMessagesProps } from '@/lib/types';
 export function ChatMessages({ messages, isStreaming, onAction }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { 
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isStreaming]);
+  useEffect(() => {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   return (
     <div className="flex-1 overflow-y-auto w-full custom-scrollbar">

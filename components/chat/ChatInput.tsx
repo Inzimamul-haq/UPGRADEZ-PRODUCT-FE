@@ -7,7 +7,7 @@ import api from '@/lib/api';
 
 type MicState = 'idle' | 'recording' | 'processing' | 'error';
 
-export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) {
+export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -50,7 +50,6 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
     }
   };
 
-  const isLimitReached = questionsToday >= 10;
 
   const handleVoiceError = (msg: string, isRateLimit = false) => {
     setMicState('error');
@@ -142,7 +141,7 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
   };
 
   const handleMicClick = () => {
-    if (disabled || isLimitReached || cooldownSeconds > 0) return;
+    if (disabled || cooldownSeconds > 0) return;
 
     if (micState === 'idle' || micState === 'error') {
       startRecording();
@@ -194,12 +193,8 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
                 handleSend();
               }
             }}
-            disabled={disabled || isLimitReached || micState === 'processing'}
-            placeholder={
-              isLimitReached
-                ? "Daily limit reached — resets at midnight"
-                : "Ask a question or name a topic..."
-            }
+            disabled={disabled || micState === 'processing'}
+            placeholder="Ask a question or name a topic..."
             className="flex-1 bg-transparent text-[14px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed py-1.5 resize-none max-h-[120px] overflow-y-auto"
             style={{ minHeight: '36px' }}
           />
@@ -207,12 +202,12 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
           <div className="flex items-center gap-1 pb-[2px]">
             <button
               onClick={handleMicClick}
-              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors \${
+              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
                 micState === 'recording' ? 'bg-red-500/10' : ''
-              } \${
-                (disabled || isLimitReached || cooldownSeconds > 0) ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#3A3A38]'
+              } ${
+                disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#3A3A38]'
               }`}
-              disabled={disabled || isLimitReached || micState === 'processing' || cooldownSeconds > 0}
+              disabled={disabled || micState === 'processing'}
               title="Voice input"
             >
               {renderMicIcon()}
@@ -220,7 +215,7 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
             
             <button
               onClick={handleSend}
-              disabled={disabled || !input.trim() || isLimitReached || micState === 'processing'}
+              disabled={disabled || !input.trim() || micState === 'processing'}
               className="w-8 h-8 flex items-center justify-center bg-orange-500 text-white rounded-lg hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <ArrowUp size={16} />
@@ -234,9 +229,7 @@ export function ChatInput({ onSend, disabled, questionsToday }: ChatInputProps) 
           </p>
         )}
         
-        <p className="text-[11px] text-[#5A5A58] text-center mt-3">
-          {questionsToday} / 10 questions used today
-        </p>
+
       </div>
     </div>
   );
