@@ -59,12 +59,15 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-6 w-full">
-      <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => router.back()}>
-          <ChevronLeft size={16} className="text-[#8C8C8A]" />
-        </button>
-        <span className="text-[12px] text-[#8C8C8A]">Questions</span>
-      </div>
+     <div className="flex mt-8 sm:mt-0 items-center gap-2 mb-2">
+  <button
+    onClick={() => router.back()}
+    className="ml-2 sm:ml-0"
+  >
+    <ChevronLeft size={16} className="text-[#8C8C8A]" />
+  </button>
+  <span className="text-[12px] text-[#8C8C8A]">Questions</span>
+</div>
 
       <div>
         <h1 className="text-[16px] font-medium text-[#ECECEA]">{subject?.name || 'Subject Details'}</h1>

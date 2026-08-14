@@ -79,7 +79,7 @@ export default function StudentQuestionsPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-6 w-full">
       <div className="flex items-center justify-between">
-        <div>
+        <div className='mt-8 sm:mt-0'>
           <h1 className="text-[16px] font-medium text-[#ECECEA]">Questions</h1>
           <p className="text-[12px] text-[#8C8C8A]">Browse by subject</p>
         </div>

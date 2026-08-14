@@ -10,7 +10,7 @@ interface ActivityFeedProps {
 
 export function ActivityFeed({ notifications }: ActivityFeedProps) {
   return (
-    <div className="divide-y divide-[#2E2E2C] max-h-[350px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#3A3A38] scrollbar-track-transparent">
+    <div className="divide-y divide-[#2E2E2C] max-h-[300px] sm:max-h-[350px] overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-[#3A3A38] scrollbar-track-transparent">
       {notifications.length === 0 ? (
         <EmptyState 
           icon={Bell}

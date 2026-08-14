@@ -158,7 +158,14 @@ useEffect(() => {
           mapped = chat.messages.map((m: any) => {
             if (m.role === 'assistant') {
               const parsed = parseActionSentinel(m.content as string);
-              return { id: m.id, role: m.role, ...parsed, figures: m.figures };
+              return {
+                id: m.id,
+                role: m.role,
+                ...parsed,
+                figures: m.figures,
+                // Restore batchAnswers if the backend persisted them (keeps Q1/Q2 labels on reload)
+                ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
+              };
             }
             return { id: m.id, role: m.role, content: m.content, figures: m.figures };
           });

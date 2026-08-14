@@ -8,7 +8,7 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 import { Plus, Search, PanelLeft } from 'lucide-react';
 import Link from 'next/link';
-import {SidebarProps } from '@/lib/types';
+import { SidebarProps } from '@/lib/types';
 
 export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   const { openSearch } = useSidebar();
@@ -27,13 +27,13 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   return (
     <div
       className={`
-        fixed left-0 top-0 z-50 flex h-full w-[240px] flex-col border-r border-[#2E2E2C] bg-[#1F1F1E]
+        fixed left-0 top-0 z-50 flex h-[100dvh] w-[240px] flex-col border-r border-[#2E2E2C] bg-[#1F1F1E]
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
       {/* Header: Logo + Search + Close toggle */}
-      <div className="flex items-center justify-between px-3 py-3">
+      <div className="flex items-center justify-between px-3 pt-[calc(0.75rem+var(--safe-top))] pb-3">
         <h1 className="pl-1 text-[16px] font-medium tracking-wide text-[#ECECEA] truncate">
           {displayTitle}
         </h1>
@@ -86,9 +86,8 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       {role !== 'super_admin' && <SidebarRecentChats />}
 
       {/* Footer */}
-      <div className="relative mt-auto border-t border-[#2E2E2C] px-3 py-3">
+      <div className="relative mt-auto border-t border-[#2E2E2C] px-3 pt-3 pb-[calc(0.75rem+var(--safe-bottom))]">
         <SidebarUserFooter />
-
       </div>
     </div>
   );

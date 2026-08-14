@@ -142,6 +142,14 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
 
               return (
                 <div key={index} className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
+                  {/* Q1, Q2 … label */}
+                  {batch.questionNo != null && (
+                    <div className="inline-flex items-center gap-1.5 mb-3 px-2.5 py-1 rounded-md bg-[#2C2C2A] border border-[#3A3A38]">
+                      <span className="text-[11px] font-semibold text-[#818CF8] tracking-wide">
+                        Q{batch.questionNo}
+                      </span>
+                    </div>
+                  )}
                   <motion.div
                     initial="hidden" animate="show"
                     variants={{ show: { transition: { staggerChildren: 0.1 } } }}
