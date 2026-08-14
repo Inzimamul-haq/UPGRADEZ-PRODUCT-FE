@@ -95,7 +95,7 @@ export default function SettingsPage() {
     <AppShell role={role ?? 'student'} navItems={navItems}>
       <div className="max-w-3xl mx-auto px-6 py-8 w-full relative">
         <div>
-          <h1 className="text-[20px] font-medium text-[#ECECEA]">Settings</h1>
+          <h1 className="text-[16px] mt-4 sm:text-[18px] sm:mt-0 font-medium text-[#ECECEA]">Settings</h1>
           {user?.college && (
             <p className="text-[13px] text-[#8C8C8A] mt-1 mb-6">
               {user.college.shortName || user.college.name}
@@ -135,18 +135,12 @@ export default function SettingsPage() {
         <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl p-6 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-4 h-4 text-[#ECECEA]" />
-            <h2 className="text-[14px] font-medium text-[#ECECEA]">Push Notifications</h2>
+            <h2 className="text-[14px] font-medium text-[#ECECEA]">Notifications</h2>
           </div>
           
-          {status === 'default' && (
-            <div className="mb-4 bg-[#3A3A38]/50 border border-[#4A4A48] rounded-lg p-3 text-[13px] text-[#ECECEA]">
-              Allow notifications to get instant alerts when new papers are assigned to your cohort.
-            </div>
-          )}
-
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[13px] text-[#ECECEA]">Enable push notifications</p>
+              <p className="text-[13px] text-[#ECECEA]">Enable notifications</p>
               <p className="text-[12px] text-[#8C8C8A] mt-1">
                 {status === 'unsupported' ? 'Not supported in this browser' : 
                  status === 'denied' ? 'Notifications blocked by browser' : 

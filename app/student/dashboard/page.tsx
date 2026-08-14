@@ -33,28 +33,37 @@ export default function StudentDashboardPage() {
     fetchData();
   }, []);
 
-
-
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const today = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
 
   if (user && !isStudentProfileReadyForSubjects(user as any)) {
     return <OnboardingPage />;
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
-      <div>
-        <h1 className="text-[18px] font-medium text-[#ECECEA]">Good morning{user ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-        <p className="text-[12px] text-[#8C8C8A] mt-0.5">{today}</p>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-6 w-full pt-14 md:pt-6">
+      {/* Header Section */}
+      <div className="space-y-0.5">
+        <h1 className="text-[16px] sm:text-[18px] font-medium text-[#ECECEA] truncate">
+          Good morning{user ? `, ${user.name.split(' ')[0]}` : ''}
+        </h1>
+        <p className="text-[11px] sm:text-[12px] text-[#8C8C8A]">
+          {today}
+        </p>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Stats Grid - Responsive */}
+      <div className="mt-5 sm:mt-6 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         {loading ? (
           <>
-            <div className="animate-pulse bg-[#2C2C2A] h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-24 rounded-xl"></div>
+            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
           </>
         ) : stats ? (
           <>
@@ -79,16 +88,23 @@ export default function StudentDashboardPage() {
             />
           </>
         ) : (
-          <div className="col-span-full text-[#8C8C8A] text-[13px] py-4">Failed to load stats.</div>
+          <div className="col-span-full text-[#8C8C8A] text-[13px] py-4 text-center">
+            Failed to load stats.
+          </div>
         )}
       </div>
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[14px] font-semibold text-[#ECECEA]">Recent Activity</h2>
+      {/* Activity Feed */}
+      <div className="mt-6 sm:mt-8">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-[14px] sm:text-[15px] font-semibold text-[#ECECEA]">
+            Recent Activity
+          </h2>
         </div>
         <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
-          <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-4 pt-3 pb-1">Recent</p>
+          <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-3 sm:px-4 pt-2.5 sm:pt-3 pb-1">
+            Recent
+          </p>
           <ActivityFeed notifications={notifications} />
         </div>
       </div>

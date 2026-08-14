@@ -166,7 +166,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-6 pb-24 w-full">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center mt-8 sm:mt-0 gap-2 mb-2">
         <button onClick={() => router.back()}>
           <ChevronLeft size={16} className="text-[#8C8C8A]" />
         </button>
@@ -228,7 +228,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
             }
             className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
           >
-            Study this paper in chat &rarr;
+            Study this paper in chat
           </button>
         </div>
       )}
