@@ -30,7 +30,8 @@ export function FacultyTableRow({
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[900px]">
+      {/* Desktop Row - hidden on mobile */}
+      <div className="hidden sm:flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A]">
         <div className="w-[20%] text-[13px] text-[#ECECEA] truncate pr-2">
           {faculty.name}
         </div>
@@ -65,6 +66,45 @@ export function FacultyTableRow({
           >
             <Trash2 size={14} />
           </button>
+        </div>
+      </div>
+
+      {/* Mobile Card View - shown on mobile */}
+      <div className="flex sm:hidden flex-col px-3 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A]">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <span className="text-[14px] font-medium text-[#ECECEA] truncate block">
+              {faculty.name}
+            </span>
+            <span className="text-[11px] text-[#8C8C8A] truncate block">
+              {faculty.email}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            <button
+              onClick={() => onEdit(faculty.id)}
+              title="Edit"
+              className="p-1.5 rounded border border-[#3A3A38] bg-[#1F1F1E] text-[#8C8C8A] hover:bg-[#2C2C2A] hover:text-[#ECECEA] transition-colors"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => setConfirmAction("delete")}
+              title="Delete"
+              className="p-1.5 rounded border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+          <span className="text-[11px] text-[#8C8C8A]">
+            {faculty.department}
+          </span>
+          <span className="text-[10px] text-[#5A5A58]">•</span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-[#2C2C2A] border border-[#3A3A38] text-[#ECECEA]">
+            {roleLabel(faculty.role)}
+          </span>
         </div>
       </div>
 

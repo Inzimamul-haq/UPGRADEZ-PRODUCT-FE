@@ -148,28 +148,30 @@ export default function AdminDepartmentsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="mx-auto w-full max-w-3xl px-3 sm:px-6 py-4 sm:py-6">
+      {/* Header - mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 mt-8 sm:mt-0">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Departments</h1>
         <button
           onClick={openAdd}
-          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
         >
           Add department
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3">
+      {/* Filters - mobile responsive */}
+      <div className="mb-4 flex flex-wrap gap-2 sm:gap-3">
         <input
           placeholder="Search departments"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-56 rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:w-56"
         />
         <select
           value={branchFilter}
           onChange={(e) => setBranchFilter(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[150px]"
         >
           <option value="">All Branches</option>
           {availableBranches.map((opt) => (
@@ -180,8 +182,10 @@ export default function AdminDepartmentsPage() {
         </select>
       </div>
 
+      {/* Table - mobile responsive card view */}
       <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#1F1F1E]">
-        <div className="flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
+        {/* Desktop header - hidden on mobile */}
+        <div className="hidden sm:flex items-center px-4 py-2.5 text-[11px] uppercase tracking-wider text-[#5A5A58]">
           <div className="w-28">Branch</div>
           <div className="flex-1">Department</div>
           <div className="w-32">Duration</div>
@@ -210,48 +214,97 @@ export default function AdminDepartmentsPage() {
           filtered.map((dept) => (
             <div
               key={dept.id}
-              className="flex items-center border-t border-[#3A3A38] px-4 py-3"
+              className="border-t border-[#3A3A38] px-3 sm:px-4 py-3 sm:py-3"
             >
-              <span className="w-28 text-[13px] text-[#8C8C8A]">{dept.branch}</span>
-              <span className="flex-1 text-[14px] text-[#ECECEA]">{dept.name}</span>
-              <span className="w-32 text-[13px] text-[#8C8C8A]">{dept.durationYears || 4} Years</span>
-              <span className="w-48 text-[13px] text-[#8C8C8A]">{dept.sections?.join(', ') || '-'}</span>
-              <div className="flex w-24 items-center justify-end gap-3">
-                <Pencil
-                  size={14}
-                  className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
-                  onClick={() => openEdit(dept)}
-                />
-                <Trash2
-                  size={14}
-                  className="cursor-pointer text-[#5A5A58] hover:text-red-400"
-                  onClick={() => setDeleteTarget(dept)}
-                />
+              {/* Desktop row view */}
+              <div className="hidden sm:flex items-center">
+                {/* Branch */}
+                <span className="w-28 shrink-0 text-[14px] text-[#ECECEA] truncate">
+                  {dept.branch}
+                </span>
+
+                {/* Department */}
+                <span className="flex-1 min-w-0 text-[14px] text-[#ECECEA] truncate">
+                  {dept.name}
+                </span>
+
+                {/* Duration */}
+                <span className="w-32 shrink-0 text-[13px] text-[#8C8C8A]">
+                  {dept.durationYears || 4} Years
+                </span>
+
+                {/* Sections */}
+                <span className="w-48 shrink-0 text-[13px] text-[#8C8C8A]">
+                  {dept.sections?.join(', ') || '-'}
+                </span>
+
+                {/* Actions */}
+                <div className="flex w-24 shrink-0 items-center justify-end gap-3">
+                  <Pencil
+                    size={14}
+                    className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+                    onClick={() => openEdit(dept)}
+                  />
+                  <Trash2
+                    size={14}
+                    className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+                    onClick={() => setDeleteTarget(dept)}
+                  />
+                </div>
+              </div>
+
+              {/* Mobile card view */}
+              <div className="flex sm:hidden flex-col gap-1.5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <span className="flex-1 min-w-0 text-[14px] text-[#ECECEA] truncate">
+                      {dept.branch} - <span className="">{dept.name}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    <Pencil
+                      size={14}
+                      className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+                      onClick={() => openEdit(dept)}
+                    />
+                    <Trash2
+                      size={14}
+                      className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+                      onClick={() => setDeleteTarget(dept)}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5A5A58]">
+                  <span>{dept.durationYears || 4} Years</span>
+                  <span>•</span>
+                  <span>Sections: {dept.sections?.join(', ') || '-'}</span>
+                </div>
               </div>
             </div>
           ))
         )}
       </div>
 
+      {/* Form Modal - mobile responsive */}
       {showFormModal && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget && !isSubmitting) setShowFormModal(false);
           }}
         >
-          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-lg border border-[#3A3A38] bg-[#1F1F1E] p-4 sm:p-6 shadow-xl mx-2 sm:mx-0">
             <h2 className="mb-4 text-[14px] font-medium text-[#ECECEA]">
               {editingDepartment ? "Edit Department" : "Add Department"}
             </h2>
 
-            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+            <label className="mb-1 block text-[11px] sm:text-[12px] text-[#8C8C8A]">
               Branch (degree / program)
             </label>
             <select
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
-              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               <option value="" disabled>
                 Select branch
@@ -263,23 +316,23 @@ export default function AdminDepartmentsPage() {
               ))}
             </select>
 
-            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+            <label className="mb-1 block text-[11px] sm:text-[12px] text-[#8C8C8A]">
               Department name (specialization)
             </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Computer Science, IT, ECE"
-              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-[#4A4A48] focus:outline-none"
             />
 
-            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+            <label className="mb-1 block text-[11px] sm:text-[12px] text-[#8C8C8A]">
               Sections Count
             </label>
             <select
               value={sectionsCount}
               onChange={(e) => setSectionsCount(parseInt(e.target.value, 10))}
-              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <option key={num} value={num}>
@@ -288,13 +341,13 @@ export default function AdminDepartmentsPage() {
               ))}
             </select>
 
-            <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+            <label className="mb-1 block text-[11px] sm:text-[12px] text-[#8C8C8A]">
               Duration (Years)
             </label>
             <select
               value={durationYears}
               onChange={(e) => setDurationYears(parseInt(e.target.value, 10))}
-              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+              className="mb-3 w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
             >
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <option key={num} value={num}>
@@ -304,21 +357,21 @@ export default function AdminDepartmentsPage() {
             </select>
 
             {formError && (
-              <p className="mb-3 text-[12px] text-red-400">{formError}</p>
+              <p className="mb-3 text-[11px] sm:text-[12px] text-red-400">{formError}</p>
             )}
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => setShowFormModal(false)}
                 disabled={isSubmitting}
-                className="rounded-md border border-[#3A3A38] px-4 py-2 text-[13px] text-[#B0B0AE] hover:bg-[#2C2C2A] disabled:opacity-40"
+                className="rounded-md border border-[#3A3A38] px-4 py-2 text-[12px] sm:text-[13px] text-[#B0B0AE] hover:bg-[#2C2C2A] disabled:opacity-40 w-full sm:w-auto"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-4 py-2 text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50"
+                className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-4 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 w-full sm:w-auto"
               >
                 {isSubmitting ? "Saving..." : editingDepartment ? "Save" : "Add"}
               </button>

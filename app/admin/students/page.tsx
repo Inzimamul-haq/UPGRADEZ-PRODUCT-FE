@@ -94,7 +94,6 @@ export default function AdminStudentsPage() {
     } else {
       setAvailableRegulations(['R2021', 'R2025']);
     }
-    // If current regulation filter is not in new list, reset to 'All'
     setRegulationFilter('All');
   }, [departmentFilter]);
 
@@ -131,18 +130,14 @@ export default function AdminStudentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    // We can reuse deleteFaculty endpoint if we want, but wait, the endpoint is /api/profiles/faculty/:id. 
-    // Wait, let's just make a generic endpoint or reuse faculty. 
-    // But since it's requireAdmin it's fine. Actually let me use a generic one or I can just use /api/profiles/faculty/:id which deletes any profile.
     try {
-      await api.delete(`/api/profiles/faculty/${id}`); // this deletes by ID regardless of role
+      await api.delete(`/api/profiles/faculty/${id}`);
       toast.success('Student deleted successfully');
       fetchStudents();
     } catch (err: any) {
       toast.error('Failed to delete student');
     }
   };
-
 
   const availablePromoteYears = Array.from({ length: bulkMaxYears }, (_, i) => String(i + 1)).filter(y => {
     return parseInt(y) > parseInt(bulkYear);
@@ -167,35 +162,37 @@ export default function AdminStudentsPage() {
   const totalPages = Math.ceil(total / parseInt(rowsPerPage, 10)) || 1;
 
   return (
-    <div className="px-6 py-6 w-full relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="px-3 sm:px-6 py-4 sm:py-6 w-full relative">
+      {/* Header - mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-8 sm:mt-0">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Students</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => setShowAddModal(true)}
-            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
             Add Student
           </button>
           <button 
             onClick={handleDownloadCSV}
-            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
-            Download Data
+            Download
           </button>
           <button 
             onClick={() => setShowBulkModal(true)}
-            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
+            className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
             Bulk Update
           </button>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        {/* 1. Search */}
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A58]" />
+      {/* Filters - mobile responsive */}
+      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
+        {/* Search */}
+        <div className="relative flex-1 sm:flex-none min-w-[120px] sm:min-w-[180px]">
+          <Search size={14} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-[#5A5A58]" />
           <input 
             placeholder="Search name" 
             value={searchName}
@@ -203,11 +200,11 @@ export default function AdminStudentsPage() {
               setSearchName(e.target.value);
               setPage(1);
             }}
-            className="pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
+            className="w-full pl-7 sm:pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
           />
         </div>
 
-        {/* 2. Department */}
+        {/* Department */}
         <select 
           value={departmentFilter}
           onChange={(e) => {
@@ -217,7 +214,7 @@ export default function AdminStudentsPage() {
             setRegulationFilter('All');
             setPage(1);
           }}
-          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[150px]"
         >
           <option value="">All Departments</option>
           {departments.map((opt) => (
@@ -225,12 +222,12 @@ export default function AdminStudentsPage() {
           ))}
         </select>
 
-        {/* 3. Batch Year — guarded */}
+        {/* Batch Year */}
         <select 
           value={batchYearFilter} 
           onFocus={() => {
             if (!departmentFilter) {
-              toast.error('Select a department first to filter by batch year');
+              toast.error('Select a department first');
             }
           }}
           onChange={(e) => {
@@ -238,7 +235,7 @@ export default function AdminStudentsPage() {
             setBatchYearFilter(e.target.value);
             setPage(1);
           }}
-          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
             !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
           }`}
         >
@@ -251,12 +248,12 @@ export default function AdminStudentsPage() {
           })}
         </select>
 
-        {/* 4. Regulation — guarded */}
+        {/* Regulation */}
         <select 
           value={regulationFilter} 
           onFocus={() => {
             if (!departmentFilter) {
-              toast.error('Select a department first to filter by regulation');
+              toast.error('Select a department first');
             }
           }}
           onChange={(e) => {
@@ -264,7 +261,7 @@ export default function AdminStudentsPage() {
             setRegulationFilter(e.target.value);
             setPage(1);
           }}
-          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
             !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
           }`}
         >
@@ -274,16 +271,16 @@ export default function AdminStudentsPage() {
               <option key={reg} value={reg}>{reg}</option>
             ))
           ) : (
-            <option value="" disabled>No regulations available</option>
+            <option value="" disabled>No regulations</option>
           )}
         </select>
 
-        {/* 5. Year — guarded */}
+        {/* Year */}
         <select 
           value={yearFilter} 
           onFocus={() => {
             if (!departmentFilter) {
-              toast.error('Select a department first to filter by year');
+              toast.error('Select a department first');
             }
           }}
           onChange={(e) => {
@@ -291,7 +288,7 @@ export default function AdminStudentsPage() {
             setYearFilter(e.target.value);
             setPage(1);
           }}
-          className={`bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] ${
+          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
             !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
           }`}
         >
@@ -301,7 +298,7 @@ export default function AdminStudentsPage() {
           ))}
         </select>
         
-        {/* 6. Section — only if dept selected */}
+        {/* Section */}
         {departmentFilter ? (
           <select 
             value={sectionFilter}
@@ -309,7 +306,7 @@ export default function AdminStudentsPage() {
               setSectionFilter(e.target.value);
               setPage(1);
             }}
-            className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+            className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px]"
           >
             <option value="">All Sections</option>
             {departments.find(d => d.id === departmentFilter)?.sections?.map((s: string) => (
@@ -319,13 +316,14 @@ export default function AdminStudentsPage() {
         ) : (
           <select 
             disabled
-            className="w-32 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#5A5A58] focus:outline-none focus:border-[#4A4A48] opacity-50 cursor-not-allowed"
+            className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#5A5A58] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px] opacity-50 cursor-not-allowed"
           >
             <option value="">All Sections</option>
           </select>
         )}
       </div>
 
+      {/* Table */}
       <TableShell
         columns={[
           { label: 'Roll No', width: '12%' },
@@ -376,22 +374,22 @@ export default function AdminStudentsPage() {
         onRowsPerPageChange={(v) => { setRowsPerPage(v); setPage(1); }}
       />
 
-      {/* Bulk Update Modal */}
+      {/* Bulk Update Modal - mobile responsive */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-6 max-w-sm w-full shadow-xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-4 sm:p-6 max-w-sm w-full shadow-xl mx-2 sm:mx-0">
             <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Bulk Promote Students</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Current Year</label>
+                <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Current Year</label>
                 <select 
                   value={bulkYear} 
                   onChange={(e) => {
                     setBulkYear(e.target.value);
                     setBulkPromoteTo('');
                   }}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
@@ -402,11 +400,11 @@ export default function AdminStudentsPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Branch</label>
+                <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Branch</label>
                 <select 
                   value={bulkBranch} 
                   onChange={(e) => setBulkBranch(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
                   <option value="" disabled>Select Branch</option>
                   {BRANCH_OPTIONS.map((opt) => (
@@ -416,11 +414,11 @@ export default function AdminStudentsPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Department</label>
+                <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Department</label>
                 <select 
                   value={bulkDepartment} 
                   onChange={(e) => setBulkDepartment(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
                   <option value="">— Select Department —</option>
                   {departments
@@ -432,11 +430,11 @@ export default function AdminStudentsPage() {
               </div>
 
               <div>
-                <label className="block text-[12px] text-[#8C8C8A] mb-1">Promote To</label>
+                <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Promote To</label>
                 <select 
                   value={bulkPromoteTo} 
                   onChange={(e) => setBulkPromoteTo(e.target.value)}
-                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
+                  className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
                   <option value="" disabled>Select Year</option>
                   {availablePromoteYears.map(y => (
@@ -446,17 +444,17 @@ export default function AdminStudentsPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
               <button 
                 onClick={() => setShowBulkModal(false)}
-                className="text-[13px] text-[#5A5A58] hover:text-[#8C8C8A] transition-colors"
+                className="text-[12px] sm:text-[13px] text-[#5A5A58] hover:text-[#8C8C8A] transition-colors py-2 sm:py-0"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleBulkUpdate}
                 disabled={!bulkDepartment || !bulkPromoteTo}
-                className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-1.5 text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-2 sm:py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
               >
                 Promote
               </button>

@@ -69,20 +69,15 @@ export default function PapersPage() {
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingPapers, setLoadingPapers] = useState(false);
 
-  // Questions modal
   const [questionModal, setQuestionModal] = useState<PaperDetail | null>(null);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
-  // Edit Exam Date modal (Flow 3)
   const [editDateModal, setEditDateModal] = useState<{
     paperId: string; currentDate: string | null; subjectName: string; examType: string;
   } | null>(null);
 
-  // Delete Q/P modal
   const [deleteModal, setDeleteModal] = useState<{ paperId: string; kind: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Upload Q/P modal
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
@@ -179,29 +174,31 @@ export default function PapersPage() {
   if (!selectedSubject) {
     return (
       <>
-        <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
-          <div className="flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6 w-full pt-14 md:pt-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
             <div>
-              <h1 className="text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
-              <p className="text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
+              <h1 className="text-[15px] sm:text-[18px] font-medium text-[#ECECEA]">My Papers</h1>
+              <p className="text-[11px] sm:text-[12px] text-[#8C8C8A] mt-0.5">Select a subject to view generated papers</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 bg-[#2C2C2A] border border-[#3A3A38] text-[#ECECEA] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#333331] transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 bg-[#2C2C2A] border border-[#3A3A38] text-[#ECECEA] text-[12px] sm:text-[13px] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-[#333331] transition-colors"
               >
                 <Upload size={14} /> Upload Q/P
               </button>
               <Link
                 href={`/chat/new?role=${currentRole}`}
-                className="flex items-center gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-white transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 bg-[#ECECEA] text-[#1C1C1B] text-[12px] sm:text-[13px] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-white transition-colors"
               >
                 <FileText size={14} /> Generate
               </Link>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-2">
+          {/* Subject List */}
+          <div className="mt-4 sm:mt-6 flex flex-col gap-2">
             {loadingSubjects ? (
               <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
             ) : subjects.length === 0 ? (
@@ -215,16 +212,16 @@ export default function PapersPage() {
                 <button
                   key={subject.id}
                   onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
-                  className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
+                  className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
                 >
-                  <div>
-                    <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
-                    <p className="text-[14px] font-medium text-[#ECECEA] mt-0.5">{subject.name}</p>
-                    <p className="text-[12px] text-[#5A5A58] mt-1">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
+                    <p className="text-[13px] sm:text-[14px] font-medium text-[#ECECEA] mt-0.5 truncate">{subject.name}</p>
+                    <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
                       {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
                     </p>
                   </div>
-                  <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors" />
+                  <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors flex-shrink-0 ml-2" />
                 </button>
               ))
             )}
@@ -247,10 +244,10 @@ export default function PapersPage() {
     );
   }
 
-
   // ─── Papers list ───────────────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6 w-full pt-14 md:pt-6">
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-4 sm:py-6 w-full pt-14 md:pt-6">
+      {/* Back button */}
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => setSelectedSubject(null)}
@@ -258,31 +255,33 @@ export default function PapersPage() {
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-[12px] text-[#8C8C8A]">Papers</span>
+        <span className="text-[11px] sm:text-[12px] text-[#8C8C8A]">Papers</span>
       </div>
 
+      {/* Subject header */}
       <div>
-        <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">{selectedSubject.code}</p>
-        <h1 className="text-[18px] font-medium text-[#ECECEA] mt-0.5">{selectedSubject.name}</h1>
+        <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider">{selectedSubject.code}</p>
+        <h1 className="text-[16px] sm:text-[18px] font-medium text-[#ECECEA] mt-0.5">{selectedSubject.name}</h1>
       </div>
 
       {/* Exam type tabs */}
-      <div className="mt-4 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+      <div className="mt-4 flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
         {EXAM_TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors ${activeTab === tab
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-medium whitespace-nowrap transition-colors ${
+              activeTab === tab
                 ? 'bg-[#ECECEA] text-[#1C1C1B]'
                 : 'text-[#8C8C8A] hover:bg-[#333331] hover:text-[#ECECEA]'
-              }`}
+            }`}
           >
             {examLabel[tab] || tab}
           </button>
         ))}
       </div>
 
-      {/* Papers */}
+      {/* Papers list */}
       <div className="mt-4 flex flex-col gap-2">
         {loadingPapers ? (
           <p className="text-[13px] text-[#5A5A58] py-4">Loading papers…</p>
@@ -293,52 +292,48 @@ export default function PapersPage() {
           </div>
         ) : (
           filtered.map(paper => (
-            <div key={paper.id} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-5 py-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {/* Badges row */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[11px] font-medium border rounded px-2 py-0.5 ${examTypeColors[paper.examType] || 'text-[#8C8C8A] bg-[#333331] border-[#3A3A38]'}`}>
-                      {examLabel[paper.examType] || paper.examType}
-                    </span>
-                    {/* Kind badge */}
-                    <span className={`text-[10px] font-medium rounded px-2 py-0.5 ${paper.kind === 'IMPORTANT_QUESTIONS'
-                        ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
-                        : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
-                      }`}>
-                      {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : 'Exam'}
-                    </span>
-                    <span className="text-[11px] text-[#5A5A58] flex items-center gap-1">
-                      <Clock size={10} /> {paper.academicYear}
-                    </span>
-                  </div>
-
-                  <p className="text-[13px] text-[#8C8C8A] mt-2">
-                    {paper._count.questions} question{paper._count.questions !== 1 ? 's' : ''}
-                  </p>
-
-                  {/* Exam date row for papers */}
-                  {paper.examDate && (
-                    <p className="text-[12px] text-[#5A5A58] mt-1">
-                      Exam date:{' '}
-                      <span className="text-[#ECECEA]">
-                        {paper.examDate}
-                      </span>
-                    </p>
-                  )}
-                </div>
+            <div key={paper.id} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-3 sm:px-5 py-3 sm:py-4">
+              {/* Badges row */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className={`text-[10px] sm:text-[11px] font-medium border rounded px-1.5 sm:px-2 py-0.5 ${examTypeColors[paper.examType] || 'text-[#8C8C8A] bg-[#333331] border-[#3A3A38]'}`}>
+                  {examLabel[paper.examType] || paper.examType}
+                </span>
+                <span className={`text-[9px] sm:text-[10px] font-medium rounded px-1.5 sm:px-2 py-0.5 ${
+                  paper.kind === 'IMPORTANT_QUESTIONS'
+                    ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
+                    : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
+                }`}>
+                  {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : 'Exam'}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-[#5A5A58] flex items-center gap-1">
+                  <Clock size={10} /> {paper.academicYear}
+                </span>
               </div>
 
+              {/* Question count */}
+              <p className="text-[12px] sm:text-[13px] text-[#8C8C8A] mt-2">
+                {paper._count.questions} question{paper._count.questions !== 1 ? 's' : ''}
+              </p>
+
+              {/* Exam date */}
+              {paper.examDate && (
+                <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
+                  Exam date:{' '}
+                  <span className="text-[#ECECEA]">
+                    {paper.examDate}
+                  </span>
+                </p>
+              )}
+
               {/* Action buttons */}
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-3 flex-wrap">
                 <button
                   onClick={() => openQuestions(paper.id)}
-                  className="flex items-center gap-1.5 text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
+                  className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
                 >
                   <Eye size={13} /> View
                 </button>
 
-                {/* Exam paper: Edit Exam Date (Flow 3) */}
                 {paper.kind === 'EXAM_PAPER' && (
                   <button
                     onClick={() => setEditDateModal({
@@ -347,26 +342,24 @@ export default function PapersPage() {
                       subjectName: selectedSubject.name,
                       examType: paper.examType,
                     })}
-                    className="flex items-center gap-1.5 text-[12px] text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-1.5 hover:bg-amber-400/20 transition-colors"
+                    className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
                   >
-                    <Pencil size={12} /> Edit Exam Date
+                    <Pencil size={12} /> Edit Date
                   </button>
                 )}
 
-                {/* Exam paper: Download PDF */}
                 {paper.kind === 'EXAM_PAPER' && (
                   <button
                     onClick={() => handleDownloadPDF(paper)}
-                    className="flex items-center gap-1.5 text-[12px] text-blue-400 bg-blue-400/10 border border-blue-400/20 rounded-lg px-3 py-1.5 hover:bg-blue-400/20 transition-colors"
+                    className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
                   >
-                    <Download size={12} /> Download PDF
+                    <Download size={12} /> Download
                   </button>
                 )}
 
-                {/* Delete Paper Button */}
                 <button
                   onClick={() => setDeleteModal({ paperId: paper.id, kind: paper.kind })}
-                  className="flex items-center gap-1.5 text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5 hover:bg-red-500/20 transition-colors"
+                  className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-red-500/20 transition-colors"
                 >
                   <Trash2 size={12} /> Delete
                 </button>
@@ -380,39 +373,39 @@ export default function PapersPage() {
       {(loadingQuestions || questionModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-xl border border-[#3A3A38] bg-[#1A1A19] shadow-2xl flex flex-col max-h-[80vh]">
-            <div className="flex items-start justify-between px-6 py-4 border-b border-[#2E2E2C]">
+            <div className="flex items-start justify-between px-4 sm:px-6 py-4 border-b border-[#2E2E2C]">
               {loadingQuestions ? (
                 <p className="text-[13px] text-[#8C8C8A]">Loading questions…</p>
               ) : questionModal && (
-                <div>
-                  <p className="text-[11px] text-[#8C8C8A] uppercase tracking-wider">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider truncate">
                     {questionModal.subject.code} · {examLabel[questionModal.examType] || questionModal.examType}
                     {' · '}
                     <span className={questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'text-amber-400' : 'text-blue-400'}>
                       {questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper'}
                     </span>
                   </p>
-                  <h2 className="text-[15px] font-medium text-[#ECECEA] mt-0.5">{questionModal.subject.name}</h2>
-                  <p className="text-[12px] text-[#5A5A58] mt-0.5">{questionModal.questions.length} questions</p>
+                  <h2 className="text-[14px] sm:text-[15px] font-medium text-[#ECECEA] mt-0.5 truncate">{questionModal.subject.name}</h2>
+                  <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-0.5">{questionModal.questions.length} questions</p>
                 </div>
               )}
               <button
                 onClick={() => setQuestionModal(null)}
-                className="ml-4 text-[#5A5A58] hover:text-[#ECECEA] transition-colors mt-0.5"
+                className="ml-4 text-[#5A5A58] hover:text-[#ECECEA] transition-colors mt-0.5 flex-shrink-0"
               >
                 <X size={16} />
               </button>
             </div>
 
             {!loadingQuestions && questionModal && (
-              <div className="overflow-y-auto px-6 py-4 flex flex-col gap-3">
+              <div className="overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
                 {questionModal.questions.length === 0 ? (
                   <p className="text-[13px] text-[#5A5A58] text-center py-6">No questions found.</p>
                 ) : (
                   questionModal.questions.map((q, idx) => (
-                    <div key={q.id} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-4 py-3">
-                      <span className="text-[11px] text-[#5A5A58] font-medium">Q{idx + 1}</span>
-                      <p className="text-[13px] text-[#ECECEA] mt-1 leading-relaxed">{q.questionText}</p>
+                    <div key={q.id} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3">
+                      <span className="text-[10px] sm:text-[11px] text-[#5A5A58] font-medium">Q{idx + 1}</span>
+                      <p className="text-[12px] sm:text-[13px] text-[#ECECEA] mt-1 leading-relaxed">{q.questionText}</p>
                     </div>
                   ))
                 )}
@@ -422,7 +415,7 @@ export default function PapersPage() {
         </div>
       )}
 
-      {/* Edit Exam Date Modal (Flow 3) */}
+      {/* Edit Exam Date Modal */}
       {editDateModal && (
         <EditExamDateModal
           paperId={editDateModal.paperId}
