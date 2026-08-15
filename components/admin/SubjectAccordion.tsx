@@ -36,7 +36,7 @@ export type Subject = {
 };
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  queued: { label: 'Embedding queued', className: 'border-yellow-400/50 text-yellow-400' },
+  queued: { label: 'Queued', className: 'border-yellow-400/50 text-yellow-400' },
   processing: { label: 'Processing', className: 'border-blue-400/50 text-blue-400' },
   completed: { label: 'Completed', className: 'border-green-400/50 text-green-400' },
   failed: { label: 'Failed', className: 'border-red-400/50 text-red-400' },
@@ -91,25 +91,25 @@ export function SubjectAccordion({
   };
 
   const handleRetry = async (e: React.MouseEvent) => {
-  e.stopPropagation();
+    e.stopPropagation();
 
-  if (isRetrying) return;
+    if (isRetrying) return;
 
-  setIsRetrying(true);
+    setIsRetrying(true);
 
-  try {
-    await api.post(`/api/subjects/${subject.id}/retry`);
+    try {
+      await api.post(`/api/subjects/${subject.id}/retry`);
 
-    // Immediately refresh from backend
-    await onRefresh?.();
+      await onRefresh?.();
 
-    toast.success("Retry queued successfully");
-  } catch (err: any) {
-    toast.error(extractErrorMessage(err, "Failed to retry subject"));
-  } finally {
-    setIsRetrying(false);
-  }
-};
+      toast.success("Retry queued successfully");
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, "Failed to retry subject"));
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   const handleStopPublish = () => {
     onTogglePublish(subject.id, stopAcademicYear);
     setShowStopPublishModal(false);
@@ -128,45 +128,54 @@ export function SubjectAccordion({
   return (
     <>
       <div className="overflow-hidden rounded-lg border border-[#3A3A38] bg-[#2C2C2A]">
+        {/* Accordion Header - Mobile responsive */}
         <div
-          className="flex cursor-pointer items-center justify-between px-4 py-3 hover:bg-[#333331]"
+          className="flex cursor-pointer items-start sm:items-center justify-between gap-2 px-3 sm:px-4 py-3 hover:bg-[#333331]"
           onClick={() => setIsOpen(!isOpen)}
         >
-          <div className="min-w-0">
-            <span className="text-[14px] font-medium text-[#ECECEA]">
-              {subject.name}
-            </span>
-            <span className="ml-2 text-[12px] text-[#8C8C8A]">{subject.code}</span>
-            <span className="ml-2 text-[12px] text-[#5A5A58]">
-              {subject.departments && subject.departments.length > 0 && (
-                <>{subject.departments.map((d) => d.branch ? `${d.branch}/${d.name}` : d.name).join(" , ")}</>
-              )}
-            </span>
-
-            {!subject.isPublished && subject.stoppedAcademicYear && (
-              <span className="ml-3 rounded border border-red-400/50 px-1.5 py-0.5 text-[10px] text-red-400">
-                Stopped for {subject.stoppedAcademicYear}
+          {/* Left side - Subject info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+              <span className="text-[13px] sm:text-[14px] font-medium text-[#ECECEA] truncate max-w-[100px] sm:max-w-[200px]">
+                {subject.name}
               </span>
-            )}
+              <span className="text-[11px] sm:text-[12px] text-[#8C8C8A] truncate">
+                {subject.code}
+              </span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
+              <span className="text-[10px] sm:text-[12px] text-[#5A5A58] truncate max-w-[120px] sm:max-w-[200px]">
+                {subject.departments && subject.departments.length > 0 && (
+                  <>{subject.departments.map((d) => d.branch ? `${d.branch}` : d.name).join(", ")}</>
+                )}
+              </span>
 
-            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
-              const totalFiles = subject.files?.length || 0;
-              const completedFiles = subject.files?.filter(f => f.status === 'done').length || 0;
-              const totalProgress = subject.files?.reduce((acc, f) => acc + (f.progress ?? (f.status === 'done' ? 100 : 0)), 0) || 0;
-              const progressPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
-              const label = EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.label ?? subject.embeddingStatus;
-              
-              return (
-                <span
-                  className={`ml-3 rounded border px-1.5 py-0.5 text-[10px] ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
-                >
-                  {label} {totalFiles > 0 ? `(${progressPercentage}%)` : ''}
+              {!subject.isPublished && subject.stoppedAcademicYear && (
+                <span className="inline-flex rounded border border-red-400/50 px-1.5 py-0.5 text-[9px] sm:text-[10px] text-red-400 whitespace-nowrap">
+                  Stopped
                 </span>
-              );
-            })()}
+              )}
+
+              {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
+                const totalFiles = subject.files?.length || 0;
+                const totalProgress = subject.files?.reduce((acc, f) => acc + (f.progress ?? (f.status === 'done' ? 100 : 0)), 0) || 0;
+                const progressPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
+                const label = EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.label ?? subject.embeddingStatus;
+                
+                return (
+                  <span
+                    className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] sm:text-[10px] whitespace-nowrap ${EMBEDDING_STATUS_LABELS[subject.embeddingStatus]?.className ?? 'border-[#5A5A58] text-[#8C8C8A]'}`}
+                  >
+                    {label} {totalFiles > 0 ? `${progressPercentage}%` : ''}
+                  </span>
+                );
+              })()}
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right side - Action buttons */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {subject.isPublished ? (
               <div title="Stop Publishing" onClick={(e) => e.stopPropagation()}>
                 <Ban
@@ -177,7 +186,7 @@ export function SubjectAccordion({
               </div>
             ) : (
               <button
-                className="rounded border border-[#4A4A48] bg-[#1F1F1E] px-2 py-0.5 text-[11px] text-[#ECECEA] hover:bg-[#333331]"
+                className="rounded border border-[#4A4A48] bg-[#1F1F1E] px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] text-[#ECECEA] hover:bg-[#333331] whitespace-nowrap"
                 onClick={(e) => {
                   e.stopPropagation();
                   onTogglePublish(subject.id);
@@ -222,15 +231,17 @@ export function SubjectAccordion({
             />
 
             {isOpen ? (
-              <ChevronUp size={14} className="text-[#8C8C8A]" />
+              <ChevronUp size={14} className="text-[#8C8C8A] flex-shrink-0" />
             ) : (
-              <ChevronDown size={14} className="text-[#8C8C8A]" />
+              <ChevronDown size={14} className="text-[#8C8C8A] flex-shrink-0" />
             )}
           </div>
         </div>
 
+        {/* Expanded Content */}
         {isOpen && (
-          <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-4">
+          <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-3 sm:p-4">
+            {/* Processing Status */}
             {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
               const totalFiles = subject.files?.length || 0;
               const completedFiles = subject.files?.filter(f => f.status === 'done').length || 0;
@@ -238,12 +249,12 @@ export function SubjectAccordion({
               const progressPercentage = totalFiles > 0 ? Math.round(totalProgress / totalFiles) : 0;
 
               return (
-                <div className="mb-4 rounded border border-[#3A3A38] bg-[#2C2C2A] p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[13px] font-medium text-[#ECECEA]">
+                <div className="mb-4 rounded border border-[#3A3A38] bg-[#2C2C2A] p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                    <span className="text-[12px] sm:text-[13px] font-medium text-[#ECECEA]">
                       {subject.embeddingStatus === 'failed' ? 'Processing Failed' : 'Processing Syllabus Files'}
                     </span>
-                    <span className="text-[12px] text-[#8C8C8A]">
+                    <span className="text-[11px] sm:text-[12px] text-[#8C8C8A]">
                       {completedFiles} of {totalFiles} jobs completed ({progressPercentage}%)
                     </span>
                   </div>
@@ -256,14 +267,14 @@ export function SubjectAccordion({
                   </div>
 
                   {subject.embeddingStatus === 'failed' && (
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#3A3A38]">
-                      <span className="text-[12px] text-[#8C8C8A]">
-                        Process halted. You can resume processing from the failed area.
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-3 pt-3 border-t border-[#3A3A38]">
+                      <span className="text-[11px] sm:text-[12px] text-[#8C8C8A]">
+                        Process halted. You can resume processing.
                       </span>
                       <button
                         onClick={handleRetry}
                         disabled={isRetrying}
-                        className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#1F1F1E] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#1F1F1E] px-3 py-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] disabled:opacity-50 w-full sm:w-auto justify-center"
                       >
                         <RefreshCw size={14} className={isRetrying ? "animate-spin" : ""} />
                         {isRetrying ? "Resuming..." : "Resume Processing"}
@@ -274,84 +285,47 @@ export function SubjectAccordion({
               );
             })()}
 
-            {/* Official Syllabus Section */}
-            {/* <div className="mb-4 rounded border border-[#3A3A38] bg-[#2C2C2A] p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[13px] font-medium text-[#ECECEA]">
-                  Official Syllabus
-                </span>
-                <label className={`inline-flex cursor-pointer items-center justify-center rounded-md border border-[#4A4A48] bg-[#1F1F1E] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] ${isUploadingSyllabus ? 'opacity-50 pointer-events-none' : ''}`}>
-                  {isUploadingSyllabus ? "Processing..." : "Upload Syllabus (PDF/PNG)"}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,application/pdf,.png,image/png"
-                    onChange={handleUploadSyllabus}
-                    disabled={isUploadingSyllabus}
-                  />
-                </label>
-              </div>
-
-              {subject.tocPlan?.type === 'official' && subject.tocPlan.entries?.length > 0 ? (
-                <div className="mt-3 bg-[#1F1F1E] p-3 rounded border border-[#3A3A38]">
-                  <p className="text-[12px] text-[#8C8C8A] mb-2">Parsed Units/Chapters:</p>
-                  <ul className="text-[12px] text-[#ECECEA] space-y-1 pl-4 list-disc">
-                    {subject.tocPlan.entries.map((entry: any, i: number) => (
-                      <li key={i}>
-                        <span className="font-medium">Ch {entry.chapter}:</span> {entry.title}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-[11px] text-blue-400 mt-2">
-                    Material uploads will now be matched against this official list.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[12px] text-[#8C8C8A] mt-2">
-                  No official syllabus uploaded. The system will attempt to guess units from the materials.
-                </p>
-              )}
-            </div> */}
-
+            {/* Materials & Textbooks Header */}
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-[13px] font-medium text-[#ECECEA]">
+              <span className="text-[12px] sm:text-[13px] font-medium text-[#ECECEA]">
                 Materials & Textbooks
               </span>
             </div>
 
+            {/* Files List */}
             {(() => {
               const materialFiles = (subject.files ?? []).filter(f => f.fileType !== 'SYLLABUS');
               return materialFiles.length > 0 ? (
                 <div className="flex flex-col gap-3">
                   {materialFiles.map((file, index) => (
-                  <div key={file.id} className="flex items-center justify-between border-b border-[#3A3A38]/50 pb-3 last:border-0 last:pb-0">
-                    <div>
-                      <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
-                        {subject.pdfName ? `${subject.pdfName.replace(/\.[^/.]+$/, "")}${index > 0 ? `_${index + 1}` : ""}.pdf` : `Syllabus Part ${index + 1}`}
-                      </p>
-                      <p className="text-[12px] text-[#8C8C8A]">
-                        {file.createdAt ? `Uploaded ${new Date(file.createdAt).toLocaleDateString()}` : ""}
-                      </p>
-                    </div>
+                    <div key={file.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#3A3A38]/50 pb-3 last:border-0 last:pb-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-medium text-[#ECECEA] truncate">
+                          {subject.pdfName ? `${subject.pdfName.replace(/\.[^/.]+$/, "")}${index > 0 ? `_${index + 1}` : ""}.pdf` : `Syllabus Part ${index + 1}`}
+                        </p>
+                        <p className="text-[10px] sm:text-[12px] text-[#8C8C8A]">
+                          {file.createdAt ? `Uploaded ${new Date(file.createdAt).toLocaleDateString()}` : ""}
+                        </p>
+                      </div>
 
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download?fileId=${file.id}`}
-                      download
-                      className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
-                    >
-                      <Download size={14} />
-                      Download
-                    </a>
-                  </div>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download?fileId=${file.id}`}
+                        download
+                        className="flex items-center justify-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
+                      >
+                        <Download size={14} />
+                        Download
+                      </a>
+                    </div>
                   ))}
                 </div>
               ) : subject.pdfUrl ? (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="mb-1 text-[12px] font-medium text-[#ECECEA]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="mb-1 text-[12px] font-medium text-[#ECECEA] truncate">
                       Current File
                     </p>
-                    <p className="text-[12px] text-[#8C8C8A]">
+                    <p className="text-[10px] sm:text-[12px] text-[#8C8C8A] truncate">
                       {subject.pdfName || "Syllabus file"}
                       {subject.uploadDate ? ` · Uploaded ${subject.uploadDate}` : ""}
                     </p>
@@ -360,7 +334,7 @@ export function SubjectAccordion({
                   <a
                     href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download`}
                     download
-                    className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+                    className="flex items-center justify-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
                   >
                     <Download size={14} />
                     Download
@@ -378,7 +352,7 @@ export function SubjectAccordion({
         )}
       </div>
 
-      {/* Delete Confirm Modal — rendered outside the accordion via fragment */}
+      {/* Delete Confirm Modal */}
       <ConfirmDeleteModal
         isOpen={showDeleteModal}
         title={`Delete "${subject.name}"?`}
@@ -388,25 +362,25 @@ export function SubjectAccordion({
         onClose={() => setShowDeleteModal(false)}
       />
 
-      {/* Stop Publish Modal */}
+      {/* Stop Publish Modal - Mobile responsive */}
       {showStopPublishModal && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="z-50 w-full max-w-sm rounded-xl border border-[#3A3A38] bg-[#1F1F1E] p-6 shadow-2xl">
+          <div className="z-50 w-full max-w-sm rounded-xl border border-[#3A3A38] bg-[#1F1F1E] p-4 sm:p-6 shadow-2xl mx-4">
             <h2 className="mb-2 text-[14px] font-medium text-[#ECECEA]">
               Stop Publishing
             </h2>
-            <p className="mb-4 text-[12px] text-[#8C8C8A]">
+            <p className="mb-4 text-[11px] sm:text-[12px] text-[#8C8C8A]">
               Select the academic year to revoke access for this subject.
             </p>
 
             <div className="mb-6">
-              <label className="mb-1 block text-[12px] text-[#8C8C8A]">
+              <label className="mb-1 block text-[11px] sm:text-[12px] text-[#8C8C8A]">
                 Academic Year
               </label>
               <select
                 value={stopAcademicYear}
                 onChange={(e) => setStopAcademicYear(e.target.value)}
-                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+                className="w-full rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
               >
                 <option value="2024-2028">2024-2028</option>
                 <option value="2023-2027">2023-2027</option>
@@ -415,16 +389,16 @@ export function SubjectAccordion({
               </select>
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
               <button
                 onClick={() => setShowStopPublishModal(false)}
-                className="text-[13px] text-[#5A5A58] transition-colors hover:text-[#8C8C8A]"
+                className="text-[12px] sm:text-[13px] text-[#5A5A58] transition-colors hover:text-[#8C8C8A] py-2 sm:py-0"
               >
                 Cancel
               </button>
               <button
                 onClick={handleStopPublish}
-                className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-1.5 text-[13px] text-red-400 transition-colors hover:bg-red-500/20"
+                className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-2 sm:py-1.5 text-[12px] sm:text-[13px] text-red-400 transition-colors hover:bg-red-500/20"
               >
                 Stop Publish
               </button>

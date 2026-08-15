@@ -297,27 +297,27 @@ export default function FacultySyllabusPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-6">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 py-4 sm:py-6">
+      {/* Header - mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 mt-16 sm:mt-0">
         <div>
           <h1 className="text-[16px] font-medium text-[#ECECEA]">Syllabus</h1>
-          <p className="text-[12px] text-[#8C8C8A] mt-0.5">Add or manage subjects you teach</p>
+          <p className="text-[11px] sm:text-[12px] text-[#8C8C8A] mt-0.5">Add or manage subjects you teach</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
         >
           Add subject
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-3">
+      {/* Filters - mobile responsive */}
+      <div className="mb-4 flex flex-wrap gap-2 sm:gap-3">
         <select
           value={filterDepartmentId}
           onChange={(e) => setFilterDepartmentId(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[150px]"
         >
           <option value="">All Departments</option>
           {departmentOptions.map((opt) => (
@@ -328,7 +328,7 @@ export default function FacultySyllabusPage() {
         <select
           value={filterYear}
           onChange={(e) => setFilterYear(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[130px]"
         >
           <option value="">All Years</option>
           <option value="1">1st Year</option>

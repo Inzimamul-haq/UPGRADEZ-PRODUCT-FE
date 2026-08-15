@@ -83,7 +83,7 @@ export default function FacultyGlobalQuestionsPage() {
 
 return (
     <div className="px-6 py-6 w-full max-w-4xl mx-auto">
-      <div>
+      <div className='mt-8 sm:mt-0'>
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Global Questions</h1>
         <p className="text-[12px] text-[#8C8C8A] mt-0.5">Browse all subjects across the institution</p>
       </div>

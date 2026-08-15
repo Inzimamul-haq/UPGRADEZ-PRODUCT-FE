@@ -470,27 +470,27 @@ export default function AdminSyllabusPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-6">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 py-4 sm:py-6">
+      {/* Header - proper mobile responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 mt-10 sm:mt-0">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Syllabus</h1>
 
         <button
           onClick={() => {
             setShowAddModal(true);
           }}
-          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
         >
           Add subject
         </button>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-3">
-        {/* Department filter */}
+      {/* Filters - proper mobile responsive */}
+      <div className="mb-4 flex flex-wrap gap-2 sm:gap-3">
         <select
           value={filterDepartmentId}
           onChange={(e) => handleDeptFilterChange(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[150px]"
         >
           <option value="">All Departments</option>
           {departmentOptions.map((opt) => (
@@ -498,11 +498,10 @@ export default function AdminSyllabusPage() {
           ))}
         </select>
 
-        {/* Year filter — dynamic based on selected dept */}
         <select
           value={filterYear}
           onChange={(e) => setFilterYear(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[130px]"
         >
           <option value="">All Years</option>
           {Array.from({ length: filterDeptMaxYears }, (_, i) => i + 1).map(y => (
@@ -510,11 +509,10 @@ export default function AdminSyllabusPage() {
           ))}
         </select>
 
-        {/* Regulation filter */}
         <select
           value={filterRegulation}
           onChange={(e) => handleRegulationChange(e.target.value)}
-          className="rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5 text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none"
+          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:border-[#4A4A48] focus:outline-none min-w-[0px] sm:min-w-[130px]"
         >
           <option value="All">All Regulations</option>
           {uniqueRegulations.map((reg: any) => (
