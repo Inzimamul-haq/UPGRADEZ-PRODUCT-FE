@@ -16,7 +16,7 @@ export function ChatMessages({ messages, isStreaming, onAction }: ChatMessagesPr
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
+    <div className="min-h-0 flex-1 overflow-y-auto w-full custom-scrollbar">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 w-full">
         {messages.map(m => (
           <ChatMessage key={m.id} message={m} onAction={onAction} />

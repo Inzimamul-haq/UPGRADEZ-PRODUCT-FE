@@ -111,6 +111,13 @@ export interface Notification {
   message: string;
   read_at: string | null;
   created_at: string;
+  createdAt?: string;
+  paperId?: string | null;
+  paper?: {
+    subjectId?: string;
+    examType?: string;
+    subject?: { id: string; name: string };
+  } | null;
 }
 
 export interface SessionData {

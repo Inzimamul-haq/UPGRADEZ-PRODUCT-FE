@@ -5,9 +5,10 @@ import { relativeTime } from '@/lib/utils';
 
 interface ActivityFeedItemProps {
   item: Notification;
+  onClick?: () => void;
 }
 
-export function ActivityFeedItem({ item }: ActivityFeedItemProps) {
+export function ActivityFeedItem({ item, onClick }: ActivityFeedItemProps) {
   let Icon = Bell;
 
   if (item.type === 'new_paper') Icon = FileText;
@@ -20,7 +21,13 @@ export function ActivityFeedItem({ item }: ActivityFeedItemProps) {
     .trim();
 
   return (
-    <div className="flex items-center gap-4 px-4 py-4 hover:bg-[#2C2C2A] transition-colors cursor-default">
+    <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+      className={`flex items-center gap-4 px-4 py-4 hover:bg-[#2C2C2A] transition-colors ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
+    >
       <div className="w-9 h-9 rounded-full bg-[#333331] flex items-center justify-center flex-shrink-0">
         <Icon size={15} className="text-[#ECECEA]" />
       </div>

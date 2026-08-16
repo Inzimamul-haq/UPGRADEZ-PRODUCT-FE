@@ -27,13 +27,13 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
   return (
     <div
       className={`
-        fixed left-0 top-0 z-50 flex h-[100dvh] w-[240px] flex-col border-r border-[#2E2E2C] bg-[#1F1F1E]
+        fixed left-0 top-0 z-50 flex h-[100dvh] w-[240px] flex-col overflow-hidden border-r border-[#2E2E2C] bg-[#1F1F1E]
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
       {/* Header: Logo + Search + Close toggle */}
-      <div className="flex items-center justify-between px-3 pt-[calc(0.75rem+var(--safe-top))] pb-3">
+      <div className="flex flex-shrink-0 items-center justify-between px-3 pt-[calc(0.75rem+var(--safe-top))] pb-3">
         <h1 className="pl-1 text-[16px] font-medium tracking-wide text-[#ECECEA] truncate">
           {displayTitle}
         </h1>
@@ -59,7 +59,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
 
       {/* New Chat / New Paper */}
       {role !== 'super_admin' && (
-        <div className="px-3 pb-2">
+        <div className="flex-shrink-0 px-3 pb-2">
           <Link
             href={isPaperRole ? `/chat/new?role=${role}` : '/chat/new'}
             onClick={handleLinkClick}
@@ -73,20 +73,21 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
         </div>
       )}
 
-      {/* Nav Items */}
-      <div className="flex flex-col gap-0.5 px-3">
-        {navItems.map((item) => (
-          <div key={item.href} onClick={handleLinkClick}>
-            <SidebarNavItem {...item} />
-          </div>
-        ))}
+      {/* Nav + Recent — middle section scrolls independently on mobile */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex flex-shrink-0 flex-col gap-0.5 px-3">
+          {navItems.map((item) => (
+            <div key={item.href} onClick={handleLinkClick}>
+              <SidebarNavItem {...item} />
+            </div>
+          ))}
+        </div>
+
+        {role !== 'super_admin' && <SidebarRecentChats />}
       </div>
 
-      {/* Recent Chats */}
-      {role !== 'super_admin' && <SidebarRecentChats />}
-
       {/* Footer */}
-      <div className="relative mt-auto border-t border-[#2E2E2C] px-3 pt-3 pb-[calc(0.75rem+var(--safe-bottom))]">
+      <div className="relative flex-shrink-0 border-t border-[#2E2E2C] px-3 pt-3 pb-[calc(0.75rem+var(--safe-bottom))]">
         <SidebarUserFooter />
       </div>
     </div>
