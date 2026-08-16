@@ -17,6 +17,14 @@ export function SharedSubjectPapers({ subjectId }: { subjectId: string }) {
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
   const departmentId = searchParams.get('department');
+  const examTypeParam = searchParams.get('examType');
+
+  useEffect(() => {
+    if (examTypeParam) {
+      setActiveTab(examTypeParam);
+    }
+  }, [examTypeParam]);
+
   useEffect(() => {
     const fetchPapers = async () => {
       try {

@@ -1,10 +1,12 @@
 import { Message } from "@/lib/types";
 
 export const CHAT_MESSAGES = {
-  studentWelcome: (subject: string, examType: string) =>
-    `Here are the **${examType}** questions for **${subject}**.
+studentWelcome: (subject: string, examType: string) =>
+  `Here are the **${examType}** questions for **${subject}**.
 
-Where would you like to start?`,
+Where would you like to start? You can ask me for a **2-mark answer**, about syllabus, or help with any question.`,
+
+content: (subject: string, examType: string) => `Ready to study **${subject}** — ${examType}. You can ask me anything about the paper, a topic, previous year questions, or ask me to **give you a 2-mark answer**.`,
 
   facultyWelcome: (subject: string, examType: string) =>
     `Hello! 👋 Let's work on **${subject}** — ${examType}.
