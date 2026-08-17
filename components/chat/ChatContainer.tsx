@@ -11,7 +11,8 @@ import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
-import { SessionData, ChatContainerProps, PaperKind } from "@/lib/types";
+import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
+import { DifficultySelector } from './DifficultySelector';
 import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
@@ -91,6 +92,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
+  const [difficultyMode, setDifficultyMode] = useState<DifficultyMode>('MEDIUM');
+  const [difficultyConfirmed, setDifficultyConfirmed] = useState(false);
   const [chatId, setChatId] = useState<string | undefined>(initialSessionId);
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
   const [resolvedQuestions, setResolvedQuestions] = useState<{ id: string; text: string }[]>([]);
@@ -210,6 +213,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
               text: stripQPPrefix(q.questionText || q.text || ''),
               marks: q.marks
             })));
+          }
+
+          if (isFaculty && inferredPaperKind === 'EXAM_PAPER') {
+            setDifficultyConfirmed(true);
           }
 
           setMessages(mapped);
@@ -417,6 +424,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     if (hasLinkedIQ && hasLinkedExamPaper) {
       // 1. Both exist
       setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+      setDifficultyConfirmed(true);
       setSessionLocked(true);
 
       const creditLines = [
@@ -461,6 +469,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         }
       } else {
         setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+        setDifficultyConfirmed(false);
+        setDifficultyMode('MEDIUM');
         const isUniversity = data.examType.toUpperCase().includes('UNIVERSITY');
         const msgContent = isUniversity
           ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
@@ -502,6 +512,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     if (actionId === 'pick_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+      setDifficultyConfirmed(false);
+      setDifficultyMode('MEDIUM');
 
       const isUniversity = sessionData?.examType.toUpperCase().includes('UNIVERSITY');
       const hasIQ = sessionData?.hasLinkedIQ;
@@ -518,6 +530,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     if (actionId === 'proceed_to_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+      setDifficultyConfirmed(false);
+      setDifficultyMode('MEDIUM');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
         `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
       )));
@@ -593,6 +607,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           branch: sessionData?.branch || '',
           instruction: content,
           paperKind: sessionData?.paperKind || 'EXAM_PAPER',
+          difficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
           chatId: chatId,
           history,
@@ -770,42 +785,56 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
   };
 
-  return (
-    <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B]">
-      {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
 
-      {!showOverlay && (
-        <ChatHeader
-          subjectName={sessionData?.subjectName ?? 'Study Session'}
-          examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
-          paperResolved={!!resolvedPaperId || !!initialPaperId}
-          onOpenQuestions={() => setIsPanelOpen(true)}
-          role={role}
-        />
-      )}
+return (
+  <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B]">
+    {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
 
-      <QuestionsPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        questions={resolvedQuestions}
+    {!showOverlay && (
+      <ChatHeader
+        subjectName={sessionData?.subjectName ?? 'Study Session'}
+        examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
+        paperResolved={!!resolvedPaperId || !!initialPaperId}
+        onOpenQuestions={() => setIsPanelOpen(true)}
+        role={role}
+        // New difficulty props
+        showDifficulty={isFaculty && !showOverlay && sessionData?.paperKind === 'EXAM_PAPER' && !sessionLocked}
+        difficultyValue={difficultyMode}
+        difficultyConfirmed={difficultyConfirmed}
+        onDifficultyConfirm={(mode) => {
+          setDifficultyMode(mode);
+          setDifficultyConfirmed(true);
+          setSessionData((prev) => (prev ? { ...prev, difficultyMode: mode } : prev));
+        }}
+        onDifficultyEdit={() => setDifficultyConfirmed(false)}
+        difficultyDisabled={isStreaming}
       />
+    )}
 
-      <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
+    <QuestionsPanel
+      isOpen={isPanelOpen}
+      onClose={() => setIsPanelOpen(false)}
+      questions={resolvedQuestions}
+    />
 
-      {assignModalOpen && sessionData && (
-        <AssignModal
-          sessionData={sessionData}
-          rawText={paperRawText}
-          onClose={() => setAssignModalOpen(false)}
-          onSuccess={handleAssignSuccess}
-          chatId={chatId}
-        />
-      )}
+    <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
 
-      <ChatInput
-        onSend={handleSend}
-        disabled={showOverlay || isStreaming || sessionLocked}
+    {assignModalOpen && sessionData && (
+      <AssignModal
+        sessionData={sessionData}
+        rawText={paperRawText}
+        onClose={() => setAssignModalOpen(false)}
+        onSuccess={handleAssignSuccess}
+        chatId={chatId}
       />
-    </div>
-  );
+    )}
+
+    {/* Remove the standalone DifficultySelector from here */}
+
+    <ChatInput
+      onSend={handleSend}
+      disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && sessionData?.paperKind === 'EXAM_PAPER' && !difficultyConfirmed)}
+    />
+  </div>
+);
 }

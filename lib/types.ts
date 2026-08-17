@@ -2,6 +2,7 @@ import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
 export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
+export type DifficultyMode = 'SIMPLE' | 'MEDIUM' | 'HARD';
 
 export interface User {
   id: string;
@@ -134,6 +135,7 @@ export interface SessionData {
   examType: string;
 
   paperKind: PaperKind | null;
+  difficultyMode?: DifficultyMode;
 
   hasLinkedIQ: boolean;
   linkedIQPaperId?: string;
