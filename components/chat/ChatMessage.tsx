@@ -40,7 +40,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
   // 1. Add a newline before (i), (ii), etc. if it's preceded by text and not already on a new line.
   // 2. Wrap list items starting with (i) in bold Markdown if they end with a colon. E.g. (i) Node and Clusters: -> **(i) Node and Clusters:**
   const processedContent = (message.content || '')
-    .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n$2')
+    .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
   const markdownComponents: any = {
@@ -137,7 +137,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
           <div className="flex flex-col gap-8">
             {message.batchAnswers.map((batch, index) => {
               const processedBatchContent = (batch.answer || '')
-                .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n$2')
+                .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
               return (
@@ -151,24 +151,30 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
                     </div>
                   )}
                   <motion.div
-                    initial="hidden" animate="show"
-                    variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
                   >
-                    {processedBatchContent.split('\n\n').map((block, i) => (
-                      <motion.div key={i} variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={markdownComponents}
-                        >
-                          {block}
-                        </ReactMarkdown>
-                      </motion.div>
-                    ))}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={markdownComponents}
+                    >
+                      {processedBatchContent}
+                    </ReactMarkdown>
                   </motion.div>
                 </div>
               );
             })}
+          </div>
+        ) : processedContent.startsWith('[ASSIGN_SUCCESS]') ? (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 my-4">
+            <h3 className="text-[14px] font-semibold text-emerald-400 mb-2 whitespace-pre-wrap">
+               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n')[0]}
+            </h3>
+            <div className="text-[13px] text-emerald-500/80 whitespace-pre-wrap leading-relaxed">
+               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n').slice(1).join('\n\n')}
+            </div>
           </div>
         ) : (
           <div className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">

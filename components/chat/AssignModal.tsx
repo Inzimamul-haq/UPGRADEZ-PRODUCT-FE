@@ -6,7 +6,7 @@ import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/p
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
-import { parseQPStructure } from '@/lib/qpParser';
+import { parseQPStructure, encodeQPPrefix } from '@/lib/qpParser';
 
 import { useAuth } from '@/context/AuthContext';
 
@@ -134,7 +134,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
       }
 
       const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
-      const successMsg = `${kindLabel} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${defaultYear}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;
+      const successMsg = `[ASSIGN_SUCCESS]\n${kindLabel} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${defaultYear}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;
 
       onSuccess(successMsg, sessionData.paperKind as PaperKind, paper.id);
       onClose();
@@ -237,10 +237,14 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
               </button>
               <button
                 onClick={async () => {
-                  const questions = parseQPStructure(rawText);
+                  const rawQuestions = parseQPStructure(rawText);
+                  const questions = rawQuestions.map(q => ({
+                    ...q,
+                    questionText: encodeQPPrefix(q)
+                  }));
                   const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
                   const pdfParams = {
-                    paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}` },
+                    paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`, examDate: lockedUntil },
                     assignment: { assignedToYear: defaultYear || '2', assignedToBranch: branch || 'All', assignedToSection: section || 'All' },
                     questions,
                     subject: sessionData.subject,
@@ -330,7 +334,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading || !branch || (needsDirectDate && !directExamDate) || (isFlow2B && !section)}
+                disabled={loading || (needsDirectDate && !directExamDate) || (isFlow2B && !section)}
                 className="flex-1 bg-orange-500 rounded-xl py-2.5 text-[13px] font-medium text-white hover:bg-orange-400 disabled:opacity-40 transition-colors"
               >
                 {loading ? 'Assigning…' : 'Assign'}

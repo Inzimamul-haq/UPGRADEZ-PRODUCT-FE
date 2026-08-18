@@ -136,6 +136,7 @@ export interface SessionData {
 
   paperKind: PaperKind | null;
   difficultyMode?: DifficultyMode;
+  linkedIQDifficultyMode?: DifficultyMode;
 
   hasLinkedIQ: boolean;
   linkedIQPaperId?: string;

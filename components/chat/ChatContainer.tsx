@@ -18,6 +18,7 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { stripQPPrefix } from '@/lib/qpParser';
+import { text } from 'stream/consumers';
 
 interface ChatContainerExtendedProps extends ChatContainerProps {
   initialSubjectId?: string;
@@ -152,7 +153,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             year: assignment?.assignedToYear?.toString() || chat.assignedToYear?.toString() || undefined,
             departmentId: departmentInfo?.id || undefined,
             department: departmentInfo?.name || undefined,
-            branch: departmentInfo?.branch || undefined,
+            // Bug 4: also try subject.department as branch fallback when assignment lacks branch
+            branch: departmentInfo?.branch || chat.subject?.department?.branch || undefined,
             section: assignment?.assignedToSection || chat.assignedToSection || undefined,
           });
 
@@ -173,26 +175,28 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
               return { id: m.id, role: m.role, content: m.content, figures: m.figures };
             });
 
-            // For faculty: if the last assistant message looks like a generated
-            // paper (long structured text), re-attach the Assign action button
-            // so they can assign without needing to regenerate.
             if (isFaculty && mapped.length > 0) {
-              const lastIdx = mapped.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
-              if (lastIdx !== undefined) {
-                const lastMsg = mapped[lastIdx];
-                const text = lastMsg.content;
-                const isIQList = inferredPaperKind === 'IMPORTANT_QUESTIONS'
-                  && text.length > 200 && /^\s*\d+\./m.test(text);
-                const isExamPaper = inferredPaperKind === 'EXAM_PAPER'
-                  && text.length > 300
-                  && (text.includes('Part A') || text.includes('Section A') || text.includes('Marks'));
-                if (isIQList || isExamPaper) {
-                  mapped[lastIdx] = {
-                    ...lastMsg,
-                    actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
-                  };
+              mapped = mapped.map((m, i) => {
+                if (m.role === 'assistant') {
+                  const text = m.content as string;
+                  const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(text);
+                  const hasMarks = /\d+\s*marks?/i.test(text);
+                  const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(text);
+                  
+                  const isLikelyPaper = text.length > 100 && (
+                    /(?:part|section)\s*[-_]?\s*[a-c]/i.test(text) || 
+                    (/important questions?/i.test(text) && hasNumberedList) ||
+                    (hasNumberedList && hasMarks && hasQuestionWords)
+                  );
+                  if (isLikelyPaper && !m.actions?.some(a => a.id === 'generate_pdf')) {
+                    return {
+                      ...m,
+                      actions: [...(m.actions || []), { id: 'generate_pdf', label: 'Assign', icon: 'file-down' }]
+                    };
+                  }
                 }
-              }
+                return m;
+              });
             }
           }
 
@@ -215,7 +219,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             })));
           }
 
-          if (isFaculty && inferredPaperKind === 'EXAM_PAPER') {
+          // Bug 3: always mark difficulty as confirmed when reloading an existing session.
+          // Faculty already went through difficulty setup before generating — requiring them
+          // to re-confirm on every reload would lock the input unnecessarily.
+          if (isFaculty) {
             setDifficultyConfirmed(true);
           }
 
@@ -462,6 +469,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             [{ id: 'start_new_session', label: 'Start a new session' }]
           )]);
         } else {
+          setDifficultyConfirmed(false);
+          setDifficultyMode('MEDIUM');
           setMessages([
             pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
             pushMsg(`Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`)
@@ -504,6 +513,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const handleAction = (messageId: string, actionId: string) => {
     if (actionId === 'pick_iq') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'IMPORTANT_QUESTIONS' } : prev);
+      setDifficultyConfirmed(false);
+      setDifficultyMode('MEDIUM');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
         `Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`
       )));
@@ -528,10 +539,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       return;
     }
 
-    if (actionId === 'proceed_to_exam_paper') {
-      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
-      setDifficultyConfirmed(false);
-      setDifficultyMode('MEDIUM');
+    if (actionId.startsWith('proceed_to_exam_paper')) {
+      const mode = actionId.endsWith('simple') ? 'SIMPLE' : actionId.endsWith('hard') ? 'HARD' : 'MEDIUM';
+      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER', linkedIQDifficultyMode: difficultyMode } : prev);
+      setDifficultyConfirmed(true);
+      setDifficultyMode(mode);
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
         `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
       )));
@@ -608,6 +620,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           instruction: content,
           paperKind: sessionData?.paperKind || 'EXAM_PAPER',
           difficultyMode,
+          linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
           chatId: chatId,
           history,
@@ -621,17 +634,21 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         }
 
         const responseText = data.data as string;
-        const isIQList = sessionData?.paperKind === 'IMPORTANT_QUESTIONS'
-          && responseText.length > 200 && /^\s*\d+\./m.test(responseText);
-        const isExamPaper = sessionData?.paperKind === 'EXAM_PAPER'
-          && responseText.length > 300
-          && (responseText.includes('Part A') || responseText.includes('Section A') || responseText.includes('Marks'));
+        const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(responseText);
+        const hasMarks = /\d+\s*marks?/i.test(responseText);
+        const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(responseText);
+
+        const isLikelyPaper = responseText.length > 100 && (
+          /(?:part|section)\s*[-_]?\s*[a-c]/i.test(responseText) || 
+          (/important questions?/i.test(responseText) && hasNumberedList) ||
+          (hasNumberedList && hasMarks && hasQuestionWords)
+        );
 
         const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
 
         setMessages(prev => [...prev, {
           id: crypto.randomUUID(), role: 'assistant', content: responseText, figures: responseFigures,
-          ...((isIQList || isExamPaper) && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
+          ...(isLikelyPaper && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
       } else {
         // ── Stream standard student Q&A / Study-paper mode ────────────────────────
@@ -767,11 +784,15 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         ? { ...prev, hasLinkedIQ: true, linkedIQPaperId: assignedPaperId, paperKind: null }
         : prev
       );
-      const followUp = `Great! Important questions have been assigned. Ready to generate the actual **Exam Paper** now?`;
+      const followUp = `Ready to generate the actual **Exam Paper** now? Please select the target difficulty for the exam:`;
       setTimeout(async () => {
         setMessages(prev => [...prev, pushMsg(
           followUp,
-          [{ id: 'proceed_to_exam_paper', label: 'Yes, generate the Exam Paper' }]
+          [
+            { id: 'proceed_to_exam_paper_simple', label: 'Simple Exam Paper' },
+            { id: 'proceed_to_exam_paper_medium', label: 'Medium Exam Paper' },
+            { id: 'proceed_to_exam_paper_hard', label: 'Hard Exam Paper' },
+          ]
         )]);
         // Persist the follow-up prompt too
         if (chatId) {
@@ -798,7 +819,7 @@ return (
         onOpenQuestions={() => setIsPanelOpen(true)}
         role={role}
         // New difficulty props
-        showDifficulty={isFaculty && !showOverlay && sessionData?.paperKind === 'EXAM_PAPER' && !sessionLocked}
+        showDifficulty={isFaculty && !showOverlay && !!sessionData?.paperKind && !sessionLocked}
         difficultyValue={difficultyMode}
         difficultyConfirmed={difficultyConfirmed}
         onDifficultyConfirm={(mode) => {
@@ -833,7 +854,7 @@ return (
 
     <ChatInput
       onSend={handleSend}
-      disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && sessionData?.paperKind === 'EXAM_PAPER' && !difficultyConfirmed)}
+      disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
     />
   </div>
 );
