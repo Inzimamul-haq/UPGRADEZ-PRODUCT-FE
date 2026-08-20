@@ -11,6 +11,8 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
 
+import { MathSolution, MathSolutionData } from './MathSolution';
+
 export function ChatMessage({ message, onAction }: ChatMessageProps) {
   const isUser = message.role === 'user';
 
@@ -39,9 +41,27 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
   // Pre-process message content:
   // 1. Add a newline before (i), (ii), etc. if it's preceded by text and not already on a new line.
   // 2. Wrap list items starting with (i) in bold Markdown if they end with a colon. E.g. (i) Node and Clusters: -> **(i) Node and Clusters:**
-  const processedContent = (message.content || '')
+  let processedContent = (message.content || '')
     .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
+
+  let mathJsonData: MathSolutionData | null = null;
+  const jsonBlockRegex = /```json\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
+  const match = processedContent.match(jsonBlockRegex);
+  if (match && match[1]) {
+    try {
+      // LLMs frequently forget to double-escape LaTeX backslashes in JSON (e.g. outputting \frac instead of \\frac).
+      // This sanitizer replaces all single backslashes with double backslashes, unless they are already doubled.
+      const sanitizedJson = match[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+      const parsed = JSON.parse(sanitizedJson);
+      if (parsed.solution) {
+        mathJsonData = parsed.solution;
+        processedContent = processedContent.replace(match[0], '').trim();
+      }
+    } catch (e) {
+      console.error('Failed to parse math solution JSON', e);
+    }
+  }
 
   const markdownComponents: any = {
     code(props: any) {
@@ -108,9 +128,9 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
     tr: ({ node, ...props }: any) => <tr className="hover:bg-[#252523] transition-colors" {...props} />,
     td: ({ node, ...props }: any) => <td className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed" {...props} />,
     strong: ({ node, ...props }: any) => <strong className="font-[600] text-[#BC676A] bg-[#1A1A19] border border-[#BC676A]/30 px-1.5 py-0.5 rounded mx-0.5" {...props} />,
-    h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-3 text-white" {...props} />,
-    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-2 text-white" {...props} />,
-    h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 text-white" {...props} />,
+    h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-4 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 pb-1 border-b border-[#3A3A38]/50 text-white" {...props} />,
     blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
     img: ({ node, ...props }: any) => {
       if (props.src) {
@@ -136,9 +156,24 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         {message.batchAnswers && message.batchAnswers.length > 0 ? (
           <div className="flex flex-col gap-8">
             {message.batchAnswers.map((batch, index) => {
-              const processedBatchContent = (batch.answer || '')
+              let processedBatchContent = (batch.answer || '')
                 .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
+                
+              let batchMathData: MathSolutionData | null = null;
+              const bMatch = processedBatchContent.match(jsonBlockRegex);
+              if (bMatch && bMatch[1]) {
+                try {
+                  const sanitizedJson = bMatch[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+                  const parsed = JSON.parse(sanitizedJson);
+                  if (parsed.solution) {
+                    batchMathData = parsed.solution;
+                    processedBatchContent = processedBatchContent.replace(bMatch[0], '').trim();
+                  }
+                } catch (e) {
+                  console.error('Failed to parse batch math solution JSON', e);
+                }
+              }
 
               return (
                 <div key={index} className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
@@ -162,6 +197,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
                     >
                       {processedBatchContent}
                     </ReactMarkdown>
+                    {batchMathData && <MathSolution data={batchMathData} />}
                   </motion.div>
                 </div>
               );
@@ -185,6 +221,7 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
             >
               {processedContent}
             </ReactMarkdown>
+            {mathJsonData && <MathSolution data={mathJsonData} />}
           </div>
         )}
 
