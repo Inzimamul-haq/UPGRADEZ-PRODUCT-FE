@@ -793,10 +793,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                     window.history.replaceState(null, '', `/chat/${data.chatId}`);
                   }
 
-                  // Finalize parsing (actions, figures)
+                  // Finalize parsing (actions, figures, and map the real database messageId)
                   const finalContent = data.data as string;
                   const parsed = parseActionSentinel(finalContent || streamedText);
-                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures } : m));
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures, id: data.messageId || m.id } : m));
                 }
               } catch (e) {
                 console.error("Error parsing chunk", chunk, e);
@@ -814,6 +814,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
   // ── After assign success ─────────────────────────────────────────────────
   const handleAssignSuccess = async (message: string, assignedKind: PaperKind, assignedPaperId: string) => {
+    // Instantly update the assigned message in UI state so the green badge appears
+    if (assignMessageId) {
+      setMessages(prev => prev.map(m => m.id === assignMessageId ? { ...m, isAssigned: true } : m));
+    }
+
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: message }]);
 
     // Persist the success message to the DB if we have a chatId
