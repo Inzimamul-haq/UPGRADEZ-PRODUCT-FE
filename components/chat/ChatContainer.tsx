@@ -89,6 +89,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [questionsToday, setQuestionsToday] = useState(0);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignMessageId, setAssignMessageId] = useState<string | null>(null);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
   const [difficultyMode, setDifficultyMode] = useState<DifficultyMode>('MEDIUM');
@@ -166,11 +167,12 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                   role: m.role,
                   ...parsed,
                   figures: m.figures,
+                  isAssigned: m.isAssigned,
                   // Restore batchAnswers if the backend persisted them (keeps Q1/Q2 labels on reload)
                   ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
                 };
               }
-              return { id: m.id, role: m.role, content: m.content, figures: m.figures };
+              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned };
             });
 
             if (isFaculty && mapped.length > 0) {
@@ -552,6 +554,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       const msg = messages.find(m => m.id === messageId);
       if (msg) {
         setPaperRawText(msg.content);
+        setAssignMessageId(messageId);
         setAssignModalOpen(true);
       }
       return;
@@ -586,6 +589,50 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       setResolvedQuestions([]);
       setShowOverlay(true);
       return;
+    }
+  };
+
+  const handleEditSubmit = async (messageId: string, content: string) => {
+    if (!chatId) return;
+    try {
+      const { data } = await api.patch(`/api/chats/${chatId}/messages/${messageId}`, { content });
+      
+      setMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          const parsed = parseActionSentinel(content);
+          return {
+            ...m,
+            ...parsed,
+            actions: m.actions, // preserve Assign button
+          };
+        }
+        return m;
+      }));
+    } catch (err: any) {
+      console.error('Failed to edit message', err);
+      const code = err?.response?.status;
+      if (code === 409) {
+        toast.error('Cannot edit this message as it has already been assigned.');
+        throw err; // throw so ChatMessage component knows it failed
+      } else if (code === 404) {
+        // Message not found in DB (likely an unsaved mutation). Just update local state.
+        setMessages(prev => prev.map(m => {
+          if (m.id === messageId) {
+            const parsed = parseActionSentinel(content);
+            return {
+              ...m,
+              ...parsed,
+              actions: m.actions, // preserve Assign button
+            };
+          }
+          return m;
+        }));
+        toast.success('Local edit saved (message not persisted).');
+        return; // do not throw, it was successful locally
+      } else {
+        toast.error('Failed to edit message.');
+        throw err;
+      }
     }
   };
 
@@ -643,9 +690,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         );
 
         const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
+        const returnedMessageId = data.messageId || crypto.randomUUID();
 
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: responseText, figures: responseFigures,
+          id: returnedMessageId, role: 'assistant', content: responseText, figures: responseFigures,
           ...(isLikelyPaper && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
       } else {
@@ -836,12 +884,13 @@ return (
       questions={resolvedQuestions}
     />
 
-    <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
+    <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
     {assignModalOpen && sessionData && (
       <AssignModal
         sessionData={sessionData}
         rawText={paperRawText}
+        messageId={assignMessageId}
         onClose={() => setAssignModalOpen(false)}
         onSuccess={handleAssignSuccess}
         chatId={chatId}

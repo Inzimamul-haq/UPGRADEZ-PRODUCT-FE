@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
 import { FileDown, Users, CheckCircle, RefreshCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -13,8 +13,17 @@ import { DiagramCard } from './DiagramCard';
 
 import { MathSolution, MathSolutionData } from './MathSolution';
 
-export function ChatMessage({ message, onAction }: ChatMessageProps) {
+export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isEditable = !message.isAssigned && message.role === 'assistant' && !!onEditSubmit && !!message.actions?.some(a => a.id === 'generate_pdf');
+  const visibleActions = message.actions?.filter(a => {
+    if (message.isAssigned && (a.id === 'generate_pdf' || a.id === 'pick_exam_paper')) return false;
+    return true;
+  });
 
   if (isUser) {
     return (
@@ -223,14 +232,84 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
           </div>
         ) : (
           <div className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkMath, remarkGfm]}
-              rehypePlugins={[rehypeKatex]}
-              components={markdownComponents}
-            >
-              {processedContent}
-            </ReactMarkdown>
-            {mathJsonData && <MathSolution data={mathJsonData} />}
+            {message.isAssigned && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 mb-3">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <span className="text-[11px] font-semibold text-emerald-500 tracking-wide uppercase">Assigned</span>
+              </div>
+            )}
+            
+            <AnimatePresence mode="wait">
+              {isEditing ? (
+                <motion.div 
+                  key="edit"
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
+                >
+                  <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
+                    </div>
+                  </div>
+                  <textarea
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[300px] resize-y custom-scrollbar focus:outline-none leading-relaxed"
+                    disabled={isSaving}
+                    placeholder="Make changes to the AI generated content..."
+                  />
+                  <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
+                    <button 
+                      onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
+                      className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        if (onEditSubmit) {
+                          setIsSaving(true);
+                          try {
+                            await onEditSubmit(message.id, editContent);
+                            setIsEditing(false);
+                          } catch (e) {
+                            // Error toast handled by parent
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }
+                      }} 
+                      disabled={isSaving || !editContent.trim() || editContent === message.content} 
+                      className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[rehypeKatex]}
+                    components={markdownComponents}
+                  >
+                    {processedContent}
+                  </ReactMarkdown>
+                  {mathJsonData && <MathSolution data={mathJsonData} />}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -257,18 +336,28 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
           </div>
         )}
         
-        {message.actions && message.actions.length > 0 && (
+        {((visibleActions && visibleActions.length > 0) || (isEditable && !isEditing)) && (
           <div className="flex flex-wrap gap-2 mt-3 mb-2">
-            {message.actions.map(action => (
+            {visibleActions?.map(action => (
               <button
                 key={action.id}
                 onClick={() => onAction && onAction(message.id, action.id)}
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors"
+                disabled={isEditing}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {renderIcon(action.icon)}
                 {action.label}
               </button>
             ))}
+            
+            {isEditable && !isEditing && (
+              <button
+                onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
+              >
+                Edit
+              </button>
+            )}
           </div>
         )}
 

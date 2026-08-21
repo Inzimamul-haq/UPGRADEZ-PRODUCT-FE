@@ -104,6 +104,7 @@ export interface Message {
     subjectId?: string;
     examType?: string;
   }[];
+  isAssigned?: boolean;
 }
 
 export interface Notification {
@@ -160,12 +161,14 @@ export interface ChatContainerProps {
 export interface ChatMessageProps {
   message: Message;
   onAction?: (messageId: string, actionId: string) => void;
+  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
 
 export interface ChatMessagesProps {
   messages: Message[];
   isStreaming: boolean;
   onAction?: (messageId: string, actionId: string) => void;
+  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
 
 export interface ChatStepOverlayProps {

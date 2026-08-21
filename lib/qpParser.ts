@@ -75,11 +75,23 @@ export function encodeQPPrefix(q: StructuredQuestion): string {
 
 /** Extracts a marks value from trailing "(N Marks)" or "(N)" patterns. */
 function extractMarks(text: string): { cleanText: string; marks: number | undefined } {
-  const m = text.match(/\(\s*(\d+)\s*marks?\s*\)\s*$/i);
+  const m = text.match(/[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]\s*$/i);
   if (m) {
     return { cleanText: text.slice(0, m.index).trim(), marks: parseInt(m[1], 10) };
   }
   return { cleanText: text, marks: undefined };
+}
+
+function extractTotalMarks(text: string): number | undefined {
+  let total = 0;
+  let found = false;
+  const regex = /[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]/gi;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    total += parseInt(match[1], 10);
+    found = true;
+  }
+  return found ? total : undefined;
 }
 
 /**
@@ -99,6 +111,7 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
   const results: StructuredQuestion[] = [];
 
   let currentPart = 'A';
+  let seenExplicitPartHeader = false;
   let partAGroupCounter = 0;
   let partBCGroupCounter = 0;
 
@@ -112,14 +125,39 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
 
   const flushBuffer = () => {
     if (!bufferText.trim()) return;
-    const { cleanText, marks } = extractMarks(bufferText.trim());
+    const { cleanText, marks: endMarks } = extractMarks(bufferText.trim());
+    const totalMarks = extractTotalMarks(bufferText) || endMarks;
+
+    // Auto-transition to Part B/C if not explicit and marks indicate it
+    if (!seenExplicitPartHeader) {
+      let targetPart = bufferPart;
+      
+      if (totalMarks !== undefined) {
+        if (totalMarks <= 4) targetPart = 'A';
+        else if (totalMarks <= 13) targetPart = 'B';
+        else targetPart = 'C';
+      } else if (bufferSubLabel) {
+        targetPart = 'B';
+      }
+
+      if (targetPart !== bufferPart && targetPart > bufferPart) {
+        if (bufferPart === 'A') {
+          partAGroupCounter = Math.max(0, partAGroupCounter - 1);
+          partBCGroupCounter++;
+          bufferGroupIndex = partBCGroupCounter;
+        }
+        currentPart = targetPart;
+        bufferPart = targetPart;
+      }
+    }
+
     if (cleanText) {
       results.push({
         text: cleanText,
         part: bufferPart,
         groupIndex: bufferGroupIndex,
         subLabel: bufferSubLabel,
-        marks,
+        marks: totalMarks, // store the aggregated total marks
       });
     }
     bufferText = '';
@@ -138,6 +176,7 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
     if (partMatch) {
       flushBuffer();
       currentPart = partMatch[1].toUpperCase();
+      seenExplicitPartHeader = true;
       awaitingBSide = false;
       continue;
     }
@@ -163,8 +202,8 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
     }
 
     // ── Numbered question line: "11. a) text" or "1. text" ───────────────────
-    // Regex: optional leading number + dot, then optional sub-label a) or b)
-    const numberedMatch = line.match(/^(\d+)\.\s*(?:(a|b)\)?\s*)?(.+)/i);
+    // Regex: mandatory closing parenthesis for sub-labels to prevent false matches like "Briefly" -> "B"
+    const numberedMatch = line.match(/^(\d+)\.\s*(?:([ab])\)\s*)?(.+)/i);
     if (numberedMatch) {
       flushBuffer();
       awaitingBSide = false;

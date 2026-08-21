@@ -12,9 +12,10 @@ import { useAuth } from '@/context/AuthContext';
 
 export interface AssignModalExtendedProps extends AssignModalProps {
   chatId?: string;
+  messageId?: string | null;
 }
 
-export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }: AssignModalExtendedProps) {
+export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, messageId }: AssignModalExtendedProps) {
   const { user } = useAuth();
   
   const isUniversity = sessionData.examType.toUpperCase().includes('UNIVERSITY');
@@ -109,6 +110,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId }
           : null,
         examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
         chatId: chatId || undefined,
+        messageId: messageId || undefined,
       };
 
       const res = await api.post('/api/question-papers/save-and-assign', payload);
