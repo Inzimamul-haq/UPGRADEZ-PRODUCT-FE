@@ -12,13 +12,11 @@ import { QuestionsPanel } from './QuestionsPanel';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
-import { DifficultySelector } from './DifficultySelector';
 import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { stripQPPrefix } from '@/lib/qpParser';
-import { text } from 'stream/consumers';
 
 interface ChatContainerExtendedProps extends ChatContainerProps {
   initialSubjectId?: string;
@@ -473,7 +471,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           setDifficultyMode('MEDIUM');
           setMessages([
             pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
-            pushMsg(`Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`)
+            pushMsg(CHAT_MESSAGES.importantQuestionsPrompt)
           ]);
         }
       } else {
@@ -482,8 +480,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         setDifficultyMode('MEDIUM');
         const isUniversity = data.examType.toUpperCase().includes('UNIVERSITY');
         const msgContent = isUniversity
-          ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
-          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+          ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
+          : CHAT_MESSAGES.examPaperPrompt;
         setMessages([
           pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
           pushMsg(msgContent)
@@ -516,7 +514,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       setDifficultyConfirmed(false);
       setDifficultyMode('MEDIUM');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        `Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`
+        CHAT_MESSAGES.importantQuestionsPrompt
       )));
       return;
     }
@@ -530,10 +528,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       const hasIQ = sessionData?.hasLinkedIQ;
 
       const messageContent = isUniversity
-        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
+        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
         : hasIQ
-          ? `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
-          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+          ? CHAT_MESSAGES.examPaperFromIQ
+          : CHAT_MESSAGES.examPaperPrompt;
 
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
       return;
@@ -545,7 +543,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       setDifficultyConfirmed(true);
       setDifficultyMode(mode);
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
+        CHAT_MESSAGES.examPaperFromIQ
       )));
       return;
     }
@@ -855,6 +853,11 @@ return (
     <ChatInput
       onSend={handleSend}
       disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
+      onDisabledClick={() => {
+        if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
+          toast.error("Please confirm the difficulty mode on top to start generating.");
+        }
+      }}
     />
   </div>
 );

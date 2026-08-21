@@ -7,7 +7,7 @@ import api from '@/lib/api';
 
 type MicState = 'idle' | 'recording' | 'processing' | 'error';
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, onDisabledClick }: ChatInputProps & { onDisabledClick?: () => void }) {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -181,7 +181,16 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <div className="relative z-20 mt-auto shrink-0 bg-[#1C1C1B] pb-4">
       <div className="max-w-3xl mx-auto px-4 w-full flex flex-col items-center">
-        <div className="flex items-end gap-2 bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-2 focus-within:border-[#4A4A48] focus-within:shadow-sm transition-all w-full">
+        <div className="relative flex items-end gap-2 bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-2 focus-within:border-[#4A4A48] focus-within:shadow-sm transition-all w-full">
+          {disabled && onDisabledClick && (
+            <div 
+              className="absolute inset-0 z-10 cursor-not-allowed" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onDisabledClick();
+              }} 
+            />
+          )}
           <textarea
             ref={textareaRef}
             rows={1}
@@ -201,12 +210,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           
           <div className="flex items-center gap-1 pb-[2px]">
             <button
-              onClick={handleMicClick}
               className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
                 micState === 'recording' ? 'bg-red-500/10' : ''
               } ${
                 disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#3A3A38]'
               }`}
+              onClick={handleMicClick}
               disabled={disabled || micState === 'processing'}
               title="Voice input"
             >

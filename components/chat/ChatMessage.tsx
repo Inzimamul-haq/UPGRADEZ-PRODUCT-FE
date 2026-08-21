@@ -112,6 +112,15 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         );
       }
 
+      if (content.startsWith('Example:') || content.startsWith('**Example:**')) {
+        return (
+          <div className="bg-[#2C2C2A]/50 border border-[#3A3A38] rounded-lg p-3.5 my-3 relative overflow-hidden">
+             <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#10B981]/80"></div>
+             <p className="text-[13.5px] text-[#D1D1C7] whitespace-pre-wrap leading-relaxed pl-2" {...props} />
+          </div>
+        );
+      }
+
       return <p className="mb-3 whitespace-pre-wrap" {...props} />;
     },
     ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-4 space-y-2" {...props} />,
