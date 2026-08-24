@@ -41,7 +41,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
       if (res.data.success) {
         setSessions(res.data.data.map((c: any) => ({
           id: c.id,
-          subject_name: c.subject?.name || c.title,
+          subject_name: c.title || c.subject?.name || 'Untitled',
           exam_type: c.examType,
           created_at: c.createdAt,
         })));

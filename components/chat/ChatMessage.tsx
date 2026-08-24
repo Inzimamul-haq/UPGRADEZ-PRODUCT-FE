@@ -1,7 +1,7 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
-import { FileDown, Users, CheckCircle, RefreshCcw } from 'lucide-react';
+import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -11,16 +11,121 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
 
-export function ChatMessage({ message, onAction }: ChatMessageProps) {
+import { MathSolution, MathSolutionData } from './MathSolution';
+
+export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const isEditable = !message.isAssigned && message.role === 'assistant' && !!onEditSubmit && !!message.actions?.some(a => a.id === 'generate_pdf');
+  const visibleActions = message.actions?.filter(a => {
+    if (message.isAssigned && (a.id === 'generate_pdf' || a.id === 'pick_exam_paper')) return false;
+    return true;
+  });
 
   if (isUser) {
+    if (isEditing) {
+      return (
+        <div className="flex justify-end">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[400px] md:w-[500px]"
+          >
+            <textarea
+              ref={el => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = el.scrollHeight + 'px';
+                }
+              }}
+              value={editContent}
+              onChange={e => {
+                setEditContent(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
+              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
+              disabled={isSaving}
+            />
+            <div className="flex justify-end gap-2 p-2 bg-[#1C1C1B] border-t border-[#3A3A38]">
+              <button 
+                onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
+                className="px-3 py-1 text-[11px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  if (onEditSubmit) {
+                    setIsSaving(true);
+                    try {
+                      await onEditSubmit(message.id, editContent);
+                      setIsEditing(false);
+                    } catch (e) {
+                      // err
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }
+                }} 
+                disabled={isSaving || !editContent.trim() || editContent === message.content} 
+                className="px-4 py-1 text-[11px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save & Resubmit'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[70%] bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-2">
-          <p className="text-[14px] text-[#ECECEA] leading-relaxed">
-            {message.content}
-          </p>
+      <div className="flex justify-end w-full">
+        <div className="flex flex-col items-end gap-1.5 max-w-[90%] md:max-w-[70%]">
+          <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-2 w-auto text-left">
+            <p className="text-[14px] text-[#ECECEA] leading-relaxed break-words">
+              {message.content}
+            </p>
+          </div>
+          <div className=" flex items-center gap-1 mt-0.5">
+            <button
+              onClick={handleCopy}
+              title="Copy message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              
+            </button>
+            {/* <button
+              onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+              title="Edit message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              onClick={async () => {
+                if (onEditSubmit) {
+                  await onEditSubmit(message.id, message.content || '');
+                }
+              }}
+              title="Regenerate message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              <RefreshCcw size={12} />
+            </button> */}
+          </div>
         </div>
       </div>
     );
@@ -39,9 +144,27 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
   // Pre-process message content:
   // 1. Add a newline before (i), (ii), etc. if it's preceded by text and not already on a new line.
   // 2. Wrap list items starting with (i) in bold Markdown if they end with a colon. E.g. (i) Node and Clusters: -> **(i) Node and Clusters:**
-  const processedContent = (message.content || '')
-    .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n$2')
+  let processedContent = (message.content || '')
+    .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
+
+  let mathJsonData: MathSolutionData | null = null;
+  const jsonBlockRegex = /```json\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
+  const match = processedContent.match(jsonBlockRegex);
+  if (match && match[1]) {
+    try {
+      // LLMs frequently forget to double-escape LaTeX backslashes in JSON (e.g. outputting \frac instead of \\frac).
+      // This sanitizer replaces all single backslashes with double backslashes, unless they are already doubled.
+      const sanitizedJson = match[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+      const parsed = JSON.parse(sanitizedJson);
+      if (parsed.solution) {
+        mathJsonData = parsed.solution;
+        processedContent = processedContent.replace(match[0], '').trim();
+      }
+    } catch (e) {
+      console.error('Failed to parse math solution JSON', e);
+    }
+  }
 
   const markdownComponents: any = {
     code(props: any) {
@@ -92,6 +215,15 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         );
       }
 
+      if (content.startsWith('Example:') || content.startsWith('**Example:**')) {
+        return (
+          <div className="bg-[#2C2C2A]/50 border border-[#3A3A38] rounded-lg p-3.5 my-3 relative overflow-hidden">
+             <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#10B981]/80"></div>
+             <p className="text-[13.5px] text-[#D1D1C7] whitespace-pre-wrap leading-relaxed pl-2" {...props} />
+          </div>
+        );
+      }
+
       return <p className="mb-3 whitespace-pre-wrap" {...props} />;
     },
     ol: ({ node, ...props }: any) => <ol className="list-decimal pl-5 mb-4 space-y-2" {...props} />,
@@ -108,9 +240,9 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
     tr: ({ node, ...props }: any) => <tr className="hover:bg-[#252523] transition-colors" {...props} />,
     td: ({ node, ...props }: any) => <td className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed" {...props} />,
     strong: ({ node, ...props }: any) => <strong className="font-[600] text-[#BC676A] bg-[#1A1A19] border border-[#BC676A]/30 px-1.5 py-0.5 rounded mx-0.5" {...props} />,
-    h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-3 text-white" {...props} />,
-    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-2 text-white" {...props} />,
-    h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 text-white" {...props} />,
+    h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-4 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 pb-1 border-b border-[#3A3A38]/50 text-white" {...props} />,
     blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
     img: ({ node, ...props }: any) => {
       if (props.src) {
@@ -136,9 +268,24 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
         {message.batchAnswers && message.batchAnswers.length > 0 ? (
           <div className="flex flex-col gap-8">
             {message.batchAnswers.map((batch, index) => {
-              const processedBatchContent = (batch.answer || '')
-                .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n$2')
+              let processedBatchContent = (batch.answer || '')
+                .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
+                
+              let batchMathData: MathSolutionData | null = null;
+              const bMatch = processedBatchContent.match(jsonBlockRegex);
+              if (bMatch && bMatch[1]) {
+                try {
+                  const sanitizedJson = bMatch[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+                  const parsed = JSON.parse(sanitizedJson);
+                  if (parsed.solution) {
+                    batchMathData = parsed.solution;
+                    processedBatchContent = processedBatchContent.replace(bMatch[0], '').trim();
+                  }
+                } catch (e) {
+                  console.error('Failed to parse batch math solution JSON', e);
+                }
+              }
 
               return (
                 <div key={index} className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
@@ -151,34 +298,122 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
                     </div>
                   )}
                   <motion.div
-                    initial="hidden" animate="show"
-                    variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
                   >
-                    {processedBatchContent.split('\n\n').map((block, i) => (
-                      <motion.div key={i} variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={markdownComponents}
-                        >
-                          {block}
-                        </ReactMarkdown>
-                      </motion.div>
-                    ))}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkMath, remarkGfm]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={markdownComponents}
+                    >
+                      {processedBatchContent}
+                    </ReactMarkdown>
+                    {batchMathData && <MathSolution data={batchMathData} />}
                   </motion.div>
                 </div>
               );
             })}
           </div>
+        ) : processedContent.startsWith('[ASSIGN_SUCCESS]') ? (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 my-4">
+            <h3 className="text-[14px] font-semibold text-emerald-400 mb-2 whitespace-pre-wrap">
+               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n')[0]}
+            </h3>
+            <div className="text-[13px] text-emerald-500/80 whitespace-pre-wrap leading-relaxed">
+               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n').slice(1).join('\n\n')}
+            </div>
+          </div>
         ) : (
           <div className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkMath, remarkGfm]}
-              rehypePlugins={[rehypeKatex]}
-              components={markdownComponents}
-            >
-              {processedContent}
-            </ReactMarkdown>
+            {message.isAssigned && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 mb-3">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <span className="text-[11px] font-semibold text-emerald-500 tracking-wide uppercase">Assigned</span>
+              </div>
+            )}
+            
+            <AnimatePresence mode="wait">
+              {isEditing ? (
+                <motion.div 
+                  key="edit"
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
+                >
+                  <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
+                    </div>
+                  </div>
+                  <textarea
+                    ref={el => {
+                      if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      }
+                    }}
+                    value={editContent}
+                    onChange={e => {
+                      setEditContent(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
+                    disabled={isSaving}
+                    placeholder="Make changes to the AI generated content..."
+                  />
+                  <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
+                    <button 
+                      onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
+                      className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        if (onEditSubmit) {
+                          setIsSaving(true);
+                          try {
+                            await onEditSubmit(message.id, editContent);
+                            setIsEditing(false);
+                          } catch (e) {
+                            // Error toast handled by parent
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }
+                      }} 
+                      disabled={isSaving || !editContent.trim() || editContent === message.content} 
+                      className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath, remarkGfm]}
+                    rehypePlugins={[rehypeKatex]}
+                    components={markdownComponents}
+                  >
+                    {processedContent}
+                  </ReactMarkdown>
+                  {mathJsonData && <MathSolution data={mathJsonData} />}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -205,18 +440,28 @@ export function ChatMessage({ message, onAction }: ChatMessageProps) {
           </div>
         )}
         
-        {message.actions && message.actions.length > 0 && (
+        {((visibleActions && visibleActions.length > 0) || (isEditable && !isEditing)) && (
           <div className="flex flex-wrap gap-2 mt-3 mb-2">
-            {message.actions.map(action => (
+            {visibleActions?.map(action => (
               <button
                 key={action.id}
                 onClick={() => onAction && onAction(message.id, action.id)}
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors"
+                disabled={isEditing}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {renderIcon(action.icon)}
                 {action.label}
               </button>
             ))}
+            
+            {isEditable && !isEditing && (
+              <button
+                onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
+              >
+                Edit
+              </button>
+            )}
           </div>
         )}
 

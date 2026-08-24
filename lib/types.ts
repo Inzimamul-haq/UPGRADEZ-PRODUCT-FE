@@ -2,6 +2,7 @@ import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
 export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
+export type DifficultyMode = 'SIMPLE' | 'MEDIUM' | 'HARD';
 
 export interface User {
   id: string;
@@ -103,6 +104,7 @@ export interface Message {
     subjectId?: string;
     examType?: string;
   }[];
+  isAssigned?: boolean;
 }
 
 export interface Notification {
@@ -134,6 +136,8 @@ export interface SessionData {
   examType: string;
 
   paperKind: PaperKind | null;
+  difficultyMode?: DifficultyMode;
+  linkedIQDifficultyMode?: DifficultyMode;
 
   hasLinkedIQ: boolean;
   linkedIQPaperId?: string;
@@ -157,12 +161,14 @@ export interface ChatContainerProps {
 export interface ChatMessageProps {
   message: Message;
   onAction?: (messageId: string, actionId: string) => void;
+  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
 
 export interface ChatMessagesProps {
   messages: Message[];
   isStreaming: boolean;
   onAction?: (messageId: string, actionId: string) => void;
+  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
 
 export interface ChatStepOverlayProps {

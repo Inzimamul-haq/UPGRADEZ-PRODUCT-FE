@@ -48,9 +48,9 @@ function ToastContainer() {
           {/* Dismiss */}
           <button
             onClick={() => removeToast(toast.id)}
-            className="mt-0.5 shrink-0 text-[#5A5A58] transition-colors hover:text-[#8C8C8A]"
+            className="mt-0.5 ml-2 flex-shrink-0 p-1 text-[#ECECEA] opacity-50 hover:opacity-100 hover:bg-[#3A3A38] rounded-md transition-all"
           >
-            <X size={13} />
+            <X size={16} />
           </button>
         </div>
       ))}

@@ -11,7 +11,7 @@ import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
-import { SessionData, ChatContainerProps, PaperKind } from "@/lib/types";
+import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
 import { CHAT_MESSAGES } from '@/lib/messages';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
@@ -89,8 +89,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [questionsToday, setQuestionsToday] = useState(0);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignMessageId, setAssignMessageId] = useState<string | null>(null);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
+  const [difficultyMode, setDifficultyMode] = useState<DifficultyMode | ''>('');
+  const [difficultyConfirmed, setDifficultyConfirmed] = useState(false);
   const [chatId, setChatId] = useState<string | undefined>(initialSessionId);
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
   const [resolvedQuestions, setResolvedQuestions] = useState<{ id: string; text: string }[]>([]);
@@ -149,7 +152,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             year: assignment?.assignedToYear?.toString() || chat.assignedToYear?.toString() || undefined,
             departmentId: departmentInfo?.id || undefined,
             department: departmentInfo?.name || undefined,
-            branch: departmentInfo?.branch || undefined,
+            // Bug 4: also try subject.department as branch fallback when assignment lacks branch
+            branch: departmentInfo?.branch || chat.subject?.department?.branch || undefined,
             section: assignment?.assignedToSection || chat.assignedToSection || undefined,
           });
 
@@ -163,33 +167,36 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                   role: m.role,
                   ...parsed,
                   figures: m.figures,
+                  isAssigned: m.isAssigned,
                   // Restore batchAnswers if the backend persisted them (keeps Q1/Q2 labels on reload)
                   ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
                 };
               }
-              return { id: m.id, role: m.role, content: m.content, figures: m.figures };
+              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned };
             });
 
-            // For faculty: if the last assistant message looks like a generated
-            // paper (long structured text), re-attach the Assign action button
-            // so they can assign without needing to regenerate.
             if (isFaculty && mapped.length > 0) {
-              const lastIdx = mapped.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop();
-              if (lastIdx !== undefined) {
-                const lastMsg = mapped[lastIdx];
-                const text = lastMsg.content;
-                const isIQList = inferredPaperKind === 'IMPORTANT_QUESTIONS'
-                  && text.length > 200 && /^\s*\d+\./m.test(text);
-                const isExamPaper = inferredPaperKind === 'EXAM_PAPER'
-                  && text.length > 300
-                  && (text.includes('Part A') || text.includes('Section A') || text.includes('Marks'));
-                if (isIQList || isExamPaper) {
-                  mapped[lastIdx] = {
-                    ...lastMsg,
-                    actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
-                  };
+              mapped = mapped.map((m, i) => {
+                if (m.role === 'assistant') {
+                  const text = m.content as string;
+                  const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(text);
+                  const hasMarks = /\d+\s*marks?/i.test(text);
+                  const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(text);
+                  
+                  const isLikelyPaper = text.length > 100 && (
+                    /(?:part|section)\s*[-_]?\s*[a-c]/i.test(text) || 
+                    (/important questions?/i.test(text) && hasNumberedList) ||
+                    (hasNumberedList && hasMarks && hasQuestionWords)
+                  );
+                  if (isLikelyPaper && !m.actions?.some(a => a.id === 'generate_pdf')) {
+                    return {
+                      ...m,
+                      actions: [...(m.actions || []), { id: 'generate_pdf', label: 'Assign', icon: 'file-down' }]
+                    };
+                  }
                 }
-              }
+                return m;
+              });
             }
           }
 
@@ -210,6 +217,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
               text: stripQPPrefix(q.questionText || q.text || ''),
               marks: q.marks
             })));
+          }
+
+          // Bug 3: always mark difficulty as confirmed when reloading an existing session.
+          // Faculty already went through difficulty setup before generating — requiring them
+          // to re-confirm on every reload would lock the input unnecessarily.
+          if (isFaculty) {
+            setDifficultyConfirmed(true);
           }
 
           setMessages(mapped);
@@ -417,6 +431,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     if (hasLinkedIQ && hasLinkedExamPaper) {
       // 1. Both exist
       setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+      setDifficultyConfirmed(true);
       setSessionLocked(true);
 
       const creditLines = [
@@ -454,17 +469,21 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             [{ id: 'start_new_session', label: 'Start a new session' }]
           )]);
         } else {
+          setDifficultyConfirmed(false);
+          setDifficultyMode('MEDIUM');
           setMessages([
             pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
-            pushMsg(`Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`)
+            pushMsg(CHAT_MESSAGES.importantQuestionsPrompt)
           ]);
         }
       } else {
         setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
+        setDifficultyConfirmed(false);
+        setDifficultyMode('MEDIUM');
         const isUniversity = data.examType.toUpperCase().includes('UNIVERSITY');
         const msgContent = isUniversity
-          ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
-          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+          ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
+          : CHAT_MESSAGES.examPaperPrompt;
         setMessages([
           pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
           pushMsg(msgContent)
@@ -494,32 +513,39 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const handleAction = (messageId: string, actionId: string) => {
     if (actionId === 'pick_iq') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'IMPORTANT_QUESTIONS' } : prev);
+      setDifficultyConfirmed(false);
+      setDifficultyMode('MEDIUM');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        `Great! Let's prepare **Important Questions** for this exam.\n\nPlease tell me:\n1. **Which chapter(s)** should be covered?\n2. **Mark distribution** — how many questions and of what mark value?`
+        CHAT_MESSAGES.importantQuestionsPrompt
       )));
       return;
     }
 
     if (actionId === 'pick_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+      setDifficultyConfirmed(false);
+      setDifficultyMode('MEDIUM');
 
       const isUniversity = sessionData?.examType.toUpperCase().includes('UNIVERSITY');
       const hasIQ = sessionData?.hasLinkedIQ;
 
       const messageContent = isUniversity
-        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\nLet's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`
+        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
         : hasIQ
-          ? `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
-          : `Let's build the **Exam Paper** directly. Please confirm:\n1. **Which chapter(s)** should be covered?\n2. **Mark/part distribution** (e.g. Part A: 10×2 marks, Part B: 3×13 marks)\n3. **Exam date**`;
+          ? CHAT_MESSAGES.examPaperFromIQ
+          : CHAT_MESSAGES.examPaperPrompt;
 
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
       return;
     }
 
-    if (actionId === 'proceed_to_exam_paper') {
-      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+    if (actionId.startsWith('proceed_to_exam_paper')) {
+      const mode = actionId.endsWith('simple') ? 'SIMPLE' : actionId.endsWith('hard') ? 'HARD' : 'MEDIUM';
+      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER', linkedIQDifficultyMode: difficultyMode || undefined } : prev);
+      setDifficultyConfirmed(true);
+      setDifficultyMode(mode);
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)? And what is the exam date?`
+        CHAT_MESSAGES.examPaperFromIQ
       )));
       return;
     }
@@ -528,6 +554,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       const msg = messages.find(m => m.id === messageId);
       if (msg) {
         setPaperRawText(msg.content);
+        setAssignMessageId(messageId);
         setAssignModalOpen(true);
       }
       return;
@@ -565,8 +592,59 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
   };
 
+  const handleEditSubmit = async (messageId: string, content: string) => {
+    if (!chatId) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (msg?.role === 'user') {
+      // User message edit -> trim history and regenerate
+      handleSend(content, messageId);
+      return;
+    }
+
+    try {
+      const { data } = await api.patch(`/api/chats/${chatId}/messages/${messageId}`, { content });
+      
+      setMessages(prev => prev.map(m => {
+        if (m.id === messageId) {
+          const parsed = parseActionSentinel(content);
+          return {
+            ...m,
+            ...parsed,
+            actions: m.actions, // preserve Assign button
+          };
+        }
+        return m;
+      }));
+    } catch (err: any) {
+      console.error('Failed to edit message', err);
+      const code = err?.response?.status;
+      if (code === 409) {
+        toast.error('Cannot edit this message as it has already been assigned.');
+        throw err; // throw so ChatMessage component knows it failed
+      } else if (code === 404) {
+        // Message not found in DB (likely an unsaved mutation). Just update local state.
+        setMessages(prev => prev.map(m => {
+          if (m.id === messageId) {
+            const parsed = parseActionSentinel(content);
+            return {
+              ...m,
+              ...parsed,
+              actions: m.actions, // preserve Assign button
+            };
+          }
+          return m;
+        }));
+        toast.success('Local edit saved (message not persisted).');
+        return; // do not throw, it was successful locally
+      } else {
+        toast.error('Failed to edit message.');
+        throw err;
+      }
+    }
+  };
+
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, editMessageId?: string) => {
     if (!isFaculty && questionsToday >= 10) return;
     if (!isFaculty) setQuestionsToday(p => p + 1);
 
@@ -579,12 +657,35 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       return;
     }
 
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content }]);
+    const newUserMsgId = crypto.randomUUID();
+    const newUserMsg = { id: newUserMsgId, role: 'user', content };
+    let newMessagesList: Message[] = [];
+    
+    setMessages(prev => {
+      if (editMessageId) {
+        const idx = prev.findIndex(m => m.id === editMessageId);
+        if (idx !== -1) {
+          newMessagesList = [...prev.slice(0, idx), newUserMsg as Message];
+          return newMessagesList;
+        }
+      }
+      newMessagesList = [...prev, newUserMsg as Message];
+      return newMessagesList;
+    });
+
     setIsStreaming(true);
 
     try {
       if (isFaculty) {
-        const history = messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
+        let effectivePaperKind = sessionData?.paperKind || 'EXAM_PAPER';
+        // Auto-transition to EXAM_PAPER if they ask for one, even if they reload the chat later
+        if (effectivePaperKind === 'IMPORTANT_QUESTIONS' && /\b(?:exam|exam paper|qp|question paper)\b/i.test(content)) {
+          effectivePaperKind = 'EXAM_PAPER';
+          setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+        }
+
+        const historyToUse = newMessagesList.slice(0, -1); // exclude the newly added user message for API history if needed, or include it
+        const history = historyToUse.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
         const { data } = await api.post('/api/generate/qp', {
           subjectId: sessionData?.subjectId || undefined,
           subjectName: sessionData?.subjectName || '',
@@ -592,8 +693,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           year: sessionData?.year || '',
           branch: sessionData?.branch || '',
           instruction: content,
-          paperKind: sessionData?.paperKind || 'EXAM_PAPER',
+          paperKind: effectivePaperKind,
+          difficultyMode: difficultyMode || 'MEDIUM',
+          linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
+          linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
           chatId: chatId,
           history,
         });
@@ -606,17 +710,22 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         }
 
         const responseText = data.data as string;
-        const isIQList = sessionData?.paperKind === 'IMPORTANT_QUESTIONS'
-          && responseText.length > 200 && /^\s*\d+\./m.test(responseText);
-        const isExamPaper = sessionData?.paperKind === 'EXAM_PAPER'
-          && responseText.length > 300
-          && (responseText.includes('Part A') || responseText.includes('Section A') || responseText.includes('Marks'));
+        const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(responseText);
+        const hasMarks = /\d+\s*marks?/i.test(responseText);
+        const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(responseText);
+
+        const isLikelyPaper = responseText.length > 100 && (
+          /(?:part|section)\s*[-_]?\s*[a-c]/i.test(responseText) || 
+          (/important questions?/i.test(responseText) && hasNumberedList) ||
+          (hasNumberedList && hasMarks && hasQuestionWords)
+        );
 
         const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
+        const returnedMessageId = data.messageId || crypto.randomUUID();
 
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(), role: 'assistant', content: responseText, figures: responseFigures,
-          ...((isIQList || isExamPaper) && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
+          id: returnedMessageId, role: 'assistant', content: responseText, figures: responseFigures,
+          ...(isLikelyPaper && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
         }]);
       } else {
         // ── Stream standard student Q&A / Study-paper mode ────────────────────────
@@ -624,11 +733,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           question: content,
           paperId: chatId ? undefined : initialPaperId,
           chatId: chatId,
+          editMessageId,
         } : {
           subjectId: chatId ? undefined : sessionData?.subjectId || undefined,
           examType: chatId ? undefined : (sessionData?.examType ? sessionData.examType.toUpperCase().replace(' ', '') : undefined),
           chatId: chatId,
           question: content,
+          editMessageId,
         };
 
         const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
@@ -715,10 +826,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                     window.history.replaceState(null, '', `/chat/${data.chatId}`);
                   }
 
-                  // Finalize parsing (actions, figures)
+                  // Finalize parsing (actions, figures, and map the real database messageId)
                   const finalContent = data.data as string;
                   const parsed = parseActionSentinel(finalContent || streamedText);
-                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures } : m));
+                  setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures, id: data.messageId || m.id } : m));
                 }
               } catch (e) {
                 console.error("Error parsing chunk", chunk, e);
@@ -736,6 +847,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
   // ── After assign success ─────────────────────────────────────────────────
   const handleAssignSuccess = async (message: string, assignedKind: PaperKind, assignedPaperId: string) => {
+    // Instantly update the assigned message in UI state so the green badge appears
+    if (assignMessageId) {
+      setMessages(prev => prev.map(m => m.id === assignMessageId ? { ...m, isAssigned: true } : m));
+    }
+
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: message }]);
 
     // Persist the success message to the DB if we have a chatId
@@ -752,11 +868,15 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         ? { ...prev, hasLinkedIQ: true, linkedIQPaperId: assignedPaperId, paperKind: null }
         : prev
       );
-      const followUp = `Great! Important questions have been assigned. Ready to generate the actual **Exam Paper** now?`;
+      const followUp = `Ready to generate the actual **Exam Paper** now? Please select the target difficulty for the exam:`;
       setTimeout(async () => {
         setMessages(prev => [...prev, pushMsg(
           followUp,
-          [{ id: 'proceed_to_exam_paper', label: 'Yes, generate the Exam Paper' }]
+          [
+            { id: 'proceed_to_exam_paper_simple', label: 'Simple Exam Paper' },
+            { id: 'proceed_to_exam_paper_medium', label: 'Medium Exam Paper' },
+            { id: 'proceed_to_exam_paper_hard', label: 'Hard Exam Paper' },
+          ]
         )]);
         // Persist the follow-up prompt too
         if (chatId) {
@@ -770,42 +890,62 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
   };
 
-  return (
-    <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B]">
-      {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
 
-      {!showOverlay && (
-        <ChatHeader
-          subjectName={sessionData?.subjectName ?? 'Study Session'}
-          examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
-          paperResolved={!!resolvedPaperId || !!initialPaperId}
-          onOpenQuestions={() => setIsPanelOpen(true)}
-          role={role}
-        />
-      )}
+return (
+  <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B]">
+    {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
 
-      <QuestionsPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        questions={resolvedQuestions}
+    {!showOverlay && (
+      <ChatHeader
+        subjectName={sessionData?.subjectName ?? 'Study Session'}
+        examType={sessionData?.examType ?? (initialPaperId ? 'Paper Chat' : 'General')}
+        paperResolved={!!resolvedPaperId || !!initialPaperId}
+        onOpenQuestions={() => setIsPanelOpen(true)}
+        role={role}
+        // New difficulty props
+        showDifficulty={isFaculty && !showOverlay && !!sessionData?.paperKind && !sessionLocked}
+        difficultyValue={difficultyMode}
+        difficultyConfirmed={difficultyConfirmed}
+        onDifficultyConfirm={(mode) => {
+          setDifficultyMode(mode);
+          setDifficultyConfirmed(true);
+          setSessionData((prev) => (prev ? { ...prev, difficultyMode: mode } : prev));
+        }}
+        onDifficultyEdit={() => setDifficultyConfirmed(false)}
+        difficultyDisabled={isStreaming}
       />
+    )}
 
-      <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} />
+    <QuestionsPanel
+      isOpen={isPanelOpen}
+      onClose={() => setIsPanelOpen(false)}
+      questions={resolvedQuestions}
+    />
 
-      {assignModalOpen && sessionData && (
-        <AssignModal
-          sessionData={sessionData}
-          rawText={paperRawText}
-          onClose={() => setAssignModalOpen(false)}
-          onSuccess={handleAssignSuccess}
-          chatId={chatId}
-        />
-      )}
+    <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
-      <ChatInput
-        onSend={handleSend}
-        disabled={showOverlay || isStreaming || sessionLocked}
+    {assignModalOpen && sessionData && (
+      <AssignModal
+        sessionData={sessionData}
+        rawText={paperRawText}
+        messageId={assignMessageId}
+        onClose={() => setAssignModalOpen(false)}
+        onSuccess={handleAssignSuccess}
+        chatId={chatId}
       />
-    </div>
-  );
+    )}
+
+    {/* Remove the standalone DifficultySelector from here */}
+
+    <ChatInput
+      onSend={handleSend}
+      disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
+      onDisabledClick={() => {
+        if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
+          toast.error("Please confirm the difficulty mode on top to start generating.");
+        }
+      }}
+    />
+  </div>
+);
 }
