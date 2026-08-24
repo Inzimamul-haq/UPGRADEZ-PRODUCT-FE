@@ -9,6 +9,17 @@ import api from '@/lib/api';
 
 const SCROLL_THRESHOLD_PX = 10;
 
+/** Strip trailing date suffix and exam type suffix from chat titles. */
+function stripSuffixes(title: string, examType: string): string {
+  let cleaned = title.replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{4}\)\s*$/, '').trim();
+  if (examType) {
+    // Remove " - CAT1" or " – CAT1" from the end
+    const examTypeRegex = new RegExp(`\\s*[-–]\\s*${examType}\\s*$`, 'i');
+    cleaned = cleaned.replace(examTypeRegex, '').trim();
+  }
+  return cleaned;
+}
+
 export function SidebarRecentChats() {
   const { sessions, requestDelete, refreshSessions } = useSidebar();
   const router = useRouter();
@@ -153,7 +164,7 @@ export function SidebarRecentChats() {
                   ) : (
                     <>
                       <p className={`truncate text-[13px] ${isCurrentChat ? 'font-medium text-white' : 'text-[#ECECEA]'}`}>
-                        {session.subject_name}
+                        {stripSuffixes(session.subject_name, session.exam_type)}
                       </p>
                       <p className="text-[11px] text-[#5A5A58]">
                         {session.exam_type}
