@@ -17,7 +17,7 @@ const MODE_LABELS: Record<DifficultyMode, string> = {
 };
 
 interface DifficultySelectorProps {
-  value: DifficultyMode;
+  value: DifficultyMode | '';
   confirmed: boolean;
   onConfirm: (mode: DifficultyMode) => void;
   onEdit: () => void;
@@ -32,7 +32,7 @@ export function DifficultySelector({
   disabled,
 }: DifficultySelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [draft, setDraft] = useState<DifficultyMode>(value);
+  const [draft, setDraft] = useState<DifficultyMode | ''>(value);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -109,16 +109,16 @@ export function DifficultySelector({
         disabled={disabled}
         className={`
           flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-200
-          ${confirmed ? getDifficultyBg(value) : 'bg-[#2C2C2A] border-[#3A3A38] hover:border-orange-500/30'}
+          ${confirmed && value ? getDifficultyBg(value as DifficultyMode) : 'bg-[#2C2C2A] border-[#3A3A38] hover:border-orange-500/30'}
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
           text-sm font-medium text-[#ECECEA]
         `}
       >
         <span className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${confirmed ? getOptionDot(value) : 'bg-[#5A5A58]'}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${confirmed && value ? getOptionDot(value as DifficultyMode) : 'bg-[#5A5A58]'}`} />
           <span>
-            {confirmed ? (
-              <span className={getDifficultyColor(value)}>{MODE_LABELS[value]}</span>
+            {confirmed && value ? (
+              <span className={getDifficultyColor(value as DifficultyMode)}>{MODE_LABELS[value as DifficultyMode]}</span>
             ) : (
               <span className="text-[#8C8C8A]">Select Difficulty</span>
             )}

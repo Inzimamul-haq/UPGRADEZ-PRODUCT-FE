@@ -11,7 +11,7 @@ interface ChatHeaderPropsExtended {
   role?: string;
   // Difficulty props
   showDifficulty?: boolean;
-  difficultyValue?: DifficultyMode;
+  difficultyValue?: DifficultyMode | '';
   difficultyConfirmed?: boolean;
   onDifficultyConfirm?: (mode: DifficultyMode) => void;
   onDifficultyEdit?: () => void;
@@ -25,7 +25,7 @@ export function ChatHeader({
   onOpenQuestions,
   role,
   showDifficulty = false,
-  difficultyValue = 'MEDIUM',
+  difficultyValue = '',
   difficultyConfirmed = false,
   onDifficultyConfirm = () => {},
   onDifficultyEdit = () => {},
@@ -34,7 +34,7 @@ export function ChatHeader({
   return (
     <div className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-[#2E2E2C] bg-[#1C1C1B] px-3 py-2.5 sm:px-6 sm:py-3.5">
       {/* Left: Subject / Exam */}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 ml-8 ">
         <p className="text-[13px] sm:text-[14px] font-medium text-[#ECECEA] truncate">
           {subjectName}
         </p>

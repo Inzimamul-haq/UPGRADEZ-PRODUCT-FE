@@ -92,7 +92,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [assignMessageId, setAssignMessageId] = useState<string | null>(null);
   const [paperRawText, setPaperRawText] = useState('');
   const [sessionLocked, setSessionLocked] = useState(false);
-  const [difficultyMode, setDifficultyMode] = useState<DifficultyMode>('MEDIUM');
+  const [difficultyMode, setDifficultyMode] = useState<DifficultyMode | ''>('');
   const [difficultyConfirmed, setDifficultyConfirmed] = useState(false);
   const [chatId, setChatId] = useState<string | undefined>(initialSessionId);
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
@@ -541,7 +541,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     if (actionId.startsWith('proceed_to_exam_paper')) {
       const mode = actionId.endsWith('simple') ? 'SIMPLE' : actionId.endsWith('hard') ? 'HARD' : 'MEDIUM';
-      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER', linkedIQDifficultyMode: difficultyMode } : prev);
+      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER', linkedIQDifficultyMode: difficultyMode || undefined } : prev);
       setDifficultyConfirmed(true);
       setDifficultyMode(mode);
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
@@ -594,6 +594,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
   const handleEditSubmit = async (messageId: string, content: string) => {
     if (!chatId) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (msg?.role === 'user') {
+      // User message edit -> trim history and regenerate
+      handleSend(content, messageId);
+      return;
+    }
+
     try {
       const { data } = await api.patch(`/api/chats/${chatId}/messages/${messageId}`, { content });
       
@@ -637,7 +644,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, editMessageId?: string) => {
     if (!isFaculty && questionsToday >= 10) return;
     if (!isFaculty) setQuestionsToday(p => p + 1);
 
@@ -650,12 +657,35 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       return;
     }
 
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content }]);
+    const newUserMsgId = crypto.randomUUID();
+    const newUserMsg = { id: newUserMsgId, role: 'user', content };
+    let newMessagesList: Message[] = [];
+    
+    setMessages(prev => {
+      if (editMessageId) {
+        const idx = prev.findIndex(m => m.id === editMessageId);
+        if (idx !== -1) {
+          newMessagesList = [...prev.slice(0, idx), newUserMsg as Message];
+          return newMessagesList;
+        }
+      }
+      newMessagesList = [...prev, newUserMsg as Message];
+      return newMessagesList;
+    });
+
     setIsStreaming(true);
 
     try {
       if (isFaculty) {
-        const history = messages.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
+        let effectivePaperKind = sessionData?.paperKind || 'EXAM_PAPER';
+        // Auto-transition to EXAM_PAPER if they ask for one, even if they reload the chat later
+        if (effectivePaperKind === 'IMPORTANT_QUESTIONS' && /\b(?:exam|exam paper|qp|question paper)\b/i.test(content)) {
+          effectivePaperKind = 'EXAM_PAPER';
+          setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+        }
+
+        const historyToUse = newMessagesList.slice(0, -1); // exclude the newly added user message for API history if needed, or include it
+        const history = historyToUse.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
         const { data } = await api.post('/api/generate/qp', {
           subjectId: sessionData?.subjectId || undefined,
           subjectName: sessionData?.subjectName || '',
@@ -663,10 +693,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           year: sessionData?.year || '',
           branch: sessionData?.branch || '',
           instruction: content,
-          paperKind: sessionData?.paperKind || 'EXAM_PAPER',
-          difficultyMode,
+          paperKind: effectivePaperKind,
+          difficultyMode: difficultyMode || 'MEDIUM',
           linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
+          linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
           chatId: chatId,
           history,
         });
@@ -702,11 +733,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           question: content,
           paperId: chatId ? undefined : initialPaperId,
           chatId: chatId,
+          editMessageId,
         } : {
           subjectId: chatId ? undefined : sessionData?.subjectId || undefined,
           examType: chatId ? undefined : (sessionData?.examType ? sessionData.examType.toUpperCase().replace(' ', '') : undefined),
           chatId: chatId,
           question: content,
+          editMessageId,
         };
 
         const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));

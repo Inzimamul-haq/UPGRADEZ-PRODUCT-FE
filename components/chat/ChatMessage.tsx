@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
-import { FileDown, Users, CheckCircle, RefreshCcw } from 'lucide-react';
+import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -18,6 +18,13 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const isEditable = !message.isAssigned && message.role === 'assistant' && !!onEditSubmit && !!message.actions?.some(a => a.id === 'generate_pdf');
   const visibleActions = message.actions?.filter(a => {
@@ -26,12 +33,99 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
   });
 
   if (isUser) {
+    if (isEditing) {
+      return (
+        <div className="flex justify-end">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[400px] md:w-[500px]"
+          >
+            <textarea
+              ref={el => {
+                if (el) {
+                  el.style.height = 'auto';
+                  el.style.height = el.scrollHeight + 'px';
+                }
+              }}
+              value={editContent}
+              onChange={e => {
+                setEditContent(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
+              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
+              disabled={isSaving}
+            />
+            <div className="flex justify-end gap-2 p-2 bg-[#1C1C1B] border-t border-[#3A3A38]">
+              <button 
+                onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
+                className="px-3 py-1 text-[11px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  if (onEditSubmit) {
+                    setIsSaving(true);
+                    try {
+                      await onEditSubmit(message.id, editContent);
+                      setIsEditing(false);
+                    } catch (e) {
+                      // err
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }
+                }} 
+                disabled={isSaving || !editContent.trim() || editContent === message.content} 
+                className="px-4 py-1 text-[11px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save & Resubmit'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[70%] bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-2">
-          <p className="text-[14px] text-[#ECECEA] leading-relaxed">
-            {message.content}
-          </p>
+      <div className="flex justify-end w-full">
+        <div className="flex flex-col items-end gap-1.5 max-w-[90%] md:max-w-[70%]">
+          <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-2 w-auto text-left">
+            <p className="text-[14px] text-[#ECECEA] leading-relaxed break-words">
+              {message.content}
+            </p>
+          </div>
+          <div className=" flex items-center gap-1 mt-0.5">
+            <button
+              onClick={handleCopy}
+              title="Copy message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              
+            </button>
+            {/* <button
+              onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+              title="Edit message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              onClick={async () => {
+                if (onEditSubmit) {
+                  await onEditSubmit(message.id, message.content || '');
+                }
+              }}
+              title="Regenerate message"
+              className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
+            >
+              <RefreshCcw size={12} />
+            </button> */}
+          </div>
         </div>
       </div>
     );
@@ -256,9 +350,19 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                     </div>
                   </div>
                   <textarea
+                    ref={el => {
+                      if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      }
+                    }}
                     value={editContent}
-                    onChange={e => setEditContent(e.target.value)}
-                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[300px] resize-y custom-scrollbar focus:outline-none leading-relaxed"
+                    onChange={e => {
+                      setEditContent(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
                     disabled={isSaving}
                     placeholder="Make changes to the AI generated content..."
                   />
