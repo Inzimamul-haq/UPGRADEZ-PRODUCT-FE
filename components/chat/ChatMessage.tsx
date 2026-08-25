@@ -11,7 +11,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
 
-import { MathSolution, MathSolutionData } from './MathSolution';
+import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
 
 export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
   const isUser = message.role === 'user';
@@ -148,7 +148,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
     .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
-  let mathJsonData: MathSolutionData | null = null;
+  let mathJsonData: MultiSchemaData | null = null;
   const jsonBlockRegex = /```json\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
   const match = processedContent.match(jsonBlockRegex);
   if (match && match[1]) {
@@ -158,7 +158,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
       const sanitizedJson = match[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
       const parsed = JSON.parse(sanitizedJson);
       if (parsed.solution) {
-        mathJsonData = parsed.solution;
+        mathJsonData = parsed;
         processedContent = processedContent.replace(match[0], '').trim();
       }
     } catch (e) {
@@ -272,14 +272,14 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                 .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
                 
-              let batchMathData: MathSolutionData | null = null;
+              let batchMathData: MultiSchemaData | null = null;
               const bMatch = processedBatchContent.match(jsonBlockRegex);
               if (bMatch && bMatch[1]) {
                 try {
                   const sanitizedJson = bMatch[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
                   const parsed = JSON.parse(sanitizedJson);
                   if (parsed.solution) {
-                    batchMathData = parsed.solution;
+                    batchMathData = parsed;
                     processedBatchContent = processedBatchContent.replace(bMatch[0], '').trim();
                   }
                 } catch (e) {
@@ -309,7 +309,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                     >
                       {processedBatchContent}
                     </ReactMarkdown>
-                    {batchMathData && <MathSolution data={batchMathData} />}
+                    {batchMathData && <SolutionRenderer data={batchMathData} />}
                   </motion.div>
                 </div>
               );
@@ -410,7 +410,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                   >
                     {processedContent}
                   </ReactMarkdown>
-                  {mathJsonData && <MathSolution data={mathJsonData} />}
+                  {mathJsonData && <SolutionRenderer data={mathJsonData} />}
                 </motion.div>
               )}
             </AnimatePresence>
