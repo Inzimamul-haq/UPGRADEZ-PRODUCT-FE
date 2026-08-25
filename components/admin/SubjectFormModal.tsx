@@ -28,19 +28,27 @@ export default function SubjectFormModal({
   const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-    setName(initialValues?.name ?? "");
-    setCode(initialValues?.code ?? "");
-    setDepartmentIds(initialValues?.departmentIds ?? []);
-    setYear(initialValues?.year ?? "1");
-    setRegulation(initialValues?.regulation ?? "R2021");
-    setSyllabusFile(null);
-    setMaterialFiles([]);
-    setUploadMode("append");
-    setLocalError("");
-  }, [open, initialValues]);
+  useEffect(() => {
+    if (!open) {
+      setHasInitialized(false);
+      return;
+    }
+
+    if (!hasInitialized) {
+      setName(initialValues?.name ?? "");
+      setCode(initialValues?.code ?? "");
+      setDepartmentIds(initialValues?.departmentIds ?? []);
+      setYear(initialValues?.year ?? "1");
+      setRegulation(initialValues?.regulation ?? "R2021");
+      setSyllabusFile(null);
+      setMaterialFiles([]);
+      setUploadMode("append");
+      setLocalError("");
+      setHasInitialized(true);
+    }
+  }, [open, initialValues, hasInitialized]);
 
   useEffect(() => {
     if (!open) return;
@@ -273,7 +281,7 @@ export default function SubjectFormModal({
                     type="file"
                     className="hidden"
                     disabled={mode === 'edit'}
-                    accept=".pdf,application/pdf,.png,image/png,.jpg,.jpeg,image/jpeg"
+                    accept="image/*,application/pdf"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
                         setSyllabusFile(e.target.files[0]);
