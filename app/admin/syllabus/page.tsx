@@ -305,6 +305,7 @@ export default function AdminSyllabusPage() {
         const materialData = new FormData();
         values.materialFiles.forEach((file) => materialData.append("pdfs", file));
         materialData.append("fileType", "MATERIAL");
+        materialData.append("uploadMode", values.uploadMode || "append");
         await api.post(`/api/subjects/${createdSubjectId}/pdf`, materialData, {
           headers: { "Content-Type": "multipart/form-data" },
         });

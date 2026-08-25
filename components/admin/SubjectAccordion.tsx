@@ -64,6 +64,8 @@ export function SubjectAccordion({
   const [showStopPublishModal, setShowStopPublishModal] = useState(false);
   const [stopAcademicYear, setStopAcademicYear] = useState("2023-2027");
   const [isRetrying, setIsRetrying] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string, name: string } | null>(null);
+  const [isFileDeleting, setIsFileDeleting] = useState(false);
 
   const [isUploadingSyllabus, setIsUploadingSyllabus] = useState(false);
 
@@ -122,6 +124,21 @@ export function SubjectAccordion({
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
+    }
+  };
+
+  const handleDeleteFileConfirm = async () => {
+    if (!fileToDelete) return;
+    setIsFileDeleting(true);
+    try {
+      await api.delete(`/api/subjects/${subject.id}/files/${fileToDelete.id}`);
+      toast.success("File deleted successfully");
+      await onRefresh?.();
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, "Failed to delete file"));
+    } finally {
+      setIsFileDeleting(false);
+      setFileToDelete(null);
     }
   };
 
@@ -308,14 +325,23 @@ export function SubjectAccordion({
                         </p>
                       </div>
 
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download?fileId=${file.id}`}
-                        download
-                        className="flex items-center justify-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
-                      >
-                        <Download size={14} />
-                        Download
-                      </a>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000'}/api/subjects/${subject.id}/download?fileId=${file.id}`}
+                          download
+                          className="flex items-center justify-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] transition-colors hover:bg-[#333331] flex-1 sm:flex-none"
+                        >
+                          <Download size={14} />
+                          Download
+                        </a>
+                        <button
+                          onClick={() => setFileToDelete({ id: file.id, name: subject.pdfName ? `${subject.pdfName.replace(/\.[^/.]+$/, "")}${index > 0 ? `_${index + 1}` : ""}.pdf` : `Syllabus Part ${index + 1}` })}
+                          className="flex items-center justify-center rounded-md border border-[#4A4A48] bg-[#2C2C2A] p-1.5 text-[#5A5A58] hover:text-red-400 transition-colors hover:bg-[#333331]"
+                          title="Delete File"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -352,7 +378,7 @@ export function SubjectAccordion({
         )}
       </div>
 
-      {/* Delete Confirm Modal */}
+      {/* Delete Subject Confirm Modal */}
       <ConfirmDeleteModal
         isOpen={showDeleteModal}
         title={`Delete "${subject.name}"?`}
@@ -360,6 +386,16 @@ export function SubjectAccordion({
         loading={isDeleting}
         onConfirm={handleDeleteConfirm}
         onClose={() => setShowDeleteModal(false)}
+      />
+
+      {/* Delete File Confirm Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!fileToDelete}
+        title={`Delete File?`}
+        description={`Are you sure you want to delete "${fileToDelete?.name}"? This action cannot be undone.`}
+        loading={isFileDeleting}
+        onConfirm={handleDeleteFileConfirm}
+        onClose={() => setFileToDelete(null)}
       />
 
       {/* Stop Publish Modal - Mobile responsive */}
