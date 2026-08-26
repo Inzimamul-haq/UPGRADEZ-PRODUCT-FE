@@ -149,8 +149,17 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
   let mathJsonData: MultiSchemaData | null = null;
-  const jsonBlockRegex = /```json\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
-  const match = processedContent.match(jsonBlockRegex);
+  const jsonBlockRegex = /```(?:json)?\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
+  let match = processedContent.match(jsonBlockRegex);
+  
+  if (!match) {
+    // Fallback for when the LLM outputs pure JSON without markdown code block ticks
+    const rawMatch = processedContent.match(/(\{[\s\S]*"solution"[\s\S]*\})/i);
+    if (rawMatch) {
+      match = rawMatch;
+    }
+  }
+
   if (match && match[1]) {
     try {
       // LLMs frequently forget to double-escape LaTeX backslashes in JSON (e.g. outputting \frac instead of \\frac).
@@ -273,7 +282,12 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
                 
               let batchMathData: MultiSchemaData | null = null;
-              const bMatch = processedBatchContent.match(jsonBlockRegex);
+              let bMatch = processedBatchContent.match(jsonBlockRegex);
+              if (!bMatch) {
+                const rawMatch = processedBatchContent.match(/(\{[\s\S]*"solution"[\s\S]*\})/i);
+                if (rawMatch) bMatch = rawMatch;
+              }
+
               if (bMatch && bMatch[1]) {
                 try {
                   const sanitizedJson = bMatch[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
