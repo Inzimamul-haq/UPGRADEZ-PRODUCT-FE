@@ -1,12 +1,16 @@
-import React from 'react';
-import { CheckCircle2, FileDigit, List } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, FileDigit, List, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
 
 export interface NumericalExecutionStep {
-  description: string;
+  step_title?: string;
+  explanation?: string;
+  description?: string;
   calculation: string;
 }
 
@@ -60,26 +64,7 @@ export function NumericalSolution({ data }: { data: NumericalSolutionData }) {
       
       <div className="flex flex-col gap-3">
         {data.execution_steps.map((step, idx) => (
-          <div key={idx} className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 flex flex-col gap-3 items-start group hover:border-[#4A4A48] transition-colors">
-            <div className="w-full text-[13px] text-[#D1D1C7] leading-relaxed">
-              <span className="font-semibold text-[#818CF8] mr-2">Step {idx + 1}:</span>
-              {step.description}
-            </div>
-            {(() => {
-              const calc = step.calculation;
-              if (!calc || calc === 'undefined') return null;
-              const isText = calc.includes('\n') || calc.includes('\\n') || calc.includes('$') || calc.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
-              const displayCalc = isText ? calc.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${calc}$$`;
-              
-              return (
-                <div className={`w-full py-3 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto text-[13px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap leading-relaxed flex flex-col gap-2' : 'flex justify-center'}`}>
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {displayCalc}
-                  </ReactMarkdown>
-                </div>
-              );
-            })()}
-          </div>
+          <NumericalStepCard key={idx} step={step} idx={idx} />
         ))}
       </div>
 
@@ -88,11 +73,84 @@ export function NumericalSolution({ data }: { data: NumericalSolutionData }) {
           <CheckCircle2 size={48} />
         </div>
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
-        <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 overflow-x-auto py-2">
-          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {`$$${data.finalAnswer}$$`}
-          </ReactMarkdown>
+        <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
+          {(() => {
+            const ans = ensureBoxedIsMath(data.finalAnswer);
+            if (!ans || ans === 'undefined') return null;
+            
+            return (
+              <div className="flex flex-col text-left w-full overflow-x-auto">
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                  {ans}
+                </ReactMarkdown>
+              </div>
+            );
+          })()}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function NumericalStepCard({ step, idx }: { step: NumericalExecutionStep; idx: number }) {
+  const [showExplanation, setShowExplanation] = useState(false);
+  const title = step.step_title || step.description || 'Calculation';
+
+  return (
+    <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 relative group hover:border-[#4A4A48] transition-colors">
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <div className="text-[14px] font-semibold text-[#ECECEA] flex items-center gap-2">
+          <span className="text-[#818CF8]">Step {idx + 1}:</span>
+          {title}
+        </div>
+        {step.explanation && (
+          <button 
+            onClick={() => setShowExplanation(!showExplanation)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[11px] font-medium text-[#A1A1AA]"
+          >
+            {showExplanation ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            Explanation
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showExplanation && step.explanation && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed">
+              {step.explanation}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-col w-full mt-2 text-[14px] text-[#E5E5E5]">
+        {(() => {
+          const calc = step.calculation;
+          if (!calc || calc === 'undefined') return null;
+          
+          const lines = parseMathLines(calc);
+          const containerClass = "w-full py-3 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto text-[13px] text-[#D1D1C7]";
+          
+          if (lines.length === 0) return null;
+          
+          return (
+            <div className={`${containerClass} flex flex-col gap-2 items-center`}>
+              {lines.map((line, i) => (
+                <div key={i} className="flex justify-center w-full">
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                  </ReactMarkdown>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

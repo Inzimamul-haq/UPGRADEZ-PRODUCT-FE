@@ -13,57 +13,113 @@ import { DiagramCard } from './DiagramCard';
 
 import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
 
-// Helper to safely extract and parse math JSON from markdown text
-function parseMathSolution(text: string): { data: MultiSchemaData | null; remainingText: string } {
-  let data: MultiSchemaData | null = null;
-  let match = text.match(/```(?:json)?\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i);
-  
-  if (!match) {
-    const startIndex = text.indexOf('{');
-    if (startIndex !== -1) {
-      let braceCount = 0;
-      for (let i = startIndex; i < text.length; i++) {
-        if (text[i] === '{') braceCount++;
-        else if (text[i] === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            const possibleJson = text.substring(startIndex, i + 1);
-            if (possibleJson.includes('"solution"')) {
-              match = [possibleJson, possibleJson]; 
-              break;
+type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData };
+
+function parseMathSolutions(text: string): SolutionSegment[] {
+  const segments: SolutionSegment[] = [];
+  let remainingText = text;
+
+  while (true) {
+    const explicitMatch = remainingText.match(/%%EXECUTION_JSON_START%%\s*(\{[\s\S]*?\})\s*%%EXECUTION_JSON_END%%/i);
+    const fencedMatch = remainingText.match(/```(?:json)?\s*(\{[\s\S]*?(?:"solution"|"step"|"ui_type")[\s\S]*?\})\s*```/i);
+    
+    let bestMatch: RegExpMatchArray | null = null;
+    let bestIndex = Infinity;
+
+    if (explicitMatch && explicitMatch.index !== undefined && explicitMatch.index < bestIndex) {
+      bestMatch = explicitMatch;
+      bestIndex = explicitMatch.index;
+    }
+    if (fencedMatch && fencedMatch.index !== undefined && fencedMatch.index < bestIndex) {
+      bestMatch = fencedMatch;
+      bestIndex = fencedMatch.index;
+    }
+    
+    if (!bestMatch) {
+      const startIndex = remainingText.indexOf('{');
+      if (startIndex !== -1 && startIndex < bestIndex) {
+        let braceCount = 0;
+        for (let i = startIndex; i < remainingText.length; i++) {
+          if (remainingText[i] === '{') braceCount++;
+          else if (remainingText[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              const possibleJson = remainingText.substring(startIndex, i + 1);
+              if (possibleJson.includes('"solution"') || possibleJson.includes('"step"') || possibleJson.includes('"ui_type"')) {
+                bestMatch = [possibleJson, possibleJson] as any;
+                (bestMatch as any).index = startIndex;
+                break;
+              }
             }
           }
         }
       }
     }
-  }
 
-  let remainingText = text;
-  if (match && match[1]) {
+    if (!bestMatch || bestMatch.index === undefined) {
+      break;
+    }
+
+    const matchIndexLocal = bestMatch.index;
+    const matchFull = bestMatch[0];
+    const matchContent = bestMatch[1];
+
+    let data: MultiSchemaData | null = null;
     try {
-      const sanitizedJson = match[1].replace(/\\(?!")/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+      const sanitizedJson = matchContent.replace(/\\(?!")/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
       let parsed;
       try {
         parsed = JSON.parse(sanitizedJson);
       } catch (err) {
-        parsed = new Function('return ' + match[1])();
+        parsed = new Function('return ' + matchContent)();
       }
-      
-      if (parsed && parsed.solution) {
-        data = parsed;
-        remainingText = remainingText
-          .replace(match[0], '')
-          .replace(/```(?:json)?\s*```/ig, '')
-          .replace(/%%EXECUTION_JSON_START%%/g, '')
-          .replace(/%%EXECUTION_JSON_END%%/g, '')
-          .trim();
+      if (parsed) {
+        if (parsed.solution === undefined) {
+          data = { ui_type: 'fallback', solution: parsed };
+        } else {
+          data = parsed;
+        }
       }
     } catch (e) {
       console.error('Failed to parse math solution JSON', e);
     }
+
+    if (data) {
+      const textBefore = remainingText.substring(0, matchIndexLocal).trim();
+      if (textBefore) {
+        segments.push({ type: 'text', content: textBefore });
+      }
+      segments.push({ type: 'solution', data });
+      remainingText = remainingText.substring(matchIndexLocal + matchFull.length);
+    } else {
+      const beforeAndMatch = remainingText.substring(0, matchIndexLocal + matchFull.length);
+      segments.push({ type: 'text', content: beforeAndMatch });
+      remainingText = remainingText.substring(matchIndexLocal + matchFull.length);
+    }
   }
-  
-  return { data, remainingText };
+
+  if (remainingText.trim()) {
+    segments.push({ type: 'text', content: remainingText.trim() });
+  }
+
+  const finalSegments: SolutionSegment[] = [];
+  for (const seg of segments) {
+    if (seg.type === 'text') {
+      let cleanedText = seg.content.replace(/%%EXECUTION_JSON_START%%/g, '').replace(/%%EXECUTION_JSON_END%%/g, '').replace(/```(?:json)?\s*```/ig, '').trim();
+      if (cleanedText) {
+        const last = finalSegments[finalSegments.length - 1];
+        if (last && last.type === 'text') {
+          last.content += '\n\n' + cleanedText;
+        } else {
+          finalSegments.push({ type: 'text', content: cleanedText });
+        }
+      }
+    } else {
+      finalSegments.push(seg);
+    }
+  }
+
+  return finalSegments.length > 0 ? finalSegments : [{ type: 'text', content: text }];
 }
 
 export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
@@ -201,9 +257,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
     .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
-  const parsedMain = parseMathSolution(processedContent);
-  const mathJsonData = parsedMain.data;
-  processedContent = parsedMain.remainingText;
+  const segmentsMain = parseMathSolutions(processedContent);
 
   const markdownComponents: any = {
     code(props: any) {
@@ -311,9 +365,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                 .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
                 
-              const parsedBatch = parseMathSolution(processedBatchContent);
-              const batchMathData = parsedBatch.data;
-              processedBatchContent = parsedBatch.remainingText;
+              const batchSegments = parseMathSolutions(processedBatchContent);
 
               return (
                 <div key={index} className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
@@ -330,14 +382,21 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkMath, remarkGfm]}
-                      rehypePlugins={[rehypeKatex]}
-                      components={markdownComponents}
-                    >
-                      {processedBatchContent}
-                    </ReactMarkdown>
-                    {batchMathData && <SolutionRenderer data={batchMathData} />}
+                    {batchSegments.map((seg, i) => (
+                      <div key={i} className="mb-4">
+                        {seg.type === 'text' ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath, remarkGfm]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={markdownComponents}
+                          >
+                            {seg.content}
+                          </ReactMarkdown>
+                        ) : (
+                          <SolutionRenderer data={seg.data} />
+                        )}
+                      </div>
+                    ))}
                   </motion.div>
                 </div>
               );
@@ -431,14 +490,21 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ReactMarkdown
-                    remarkPlugins={[remarkMath, remarkGfm]}
-                    rehypePlugins={[rehypeKatex]}
-                    components={markdownComponents}
-                  >
-                    {processedContent}
-                  </ReactMarkdown>
-                  {mathJsonData && <SolutionRenderer data={mathJsonData} />}
+                  {segmentsMain.map((seg, i) => (
+                    <div key={i} className="mb-4">
+                      {seg.type === 'text' ? (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkMath, remarkGfm]}
+                          rehypePlugins={[rehypeKatex]}
+                          components={markdownComponents}
+                        >
+                          {seg.content}
+                        </ReactMarkdown>
+                      ) : (
+                        <SolutionRenderer data={seg.data} />
+                      )}
+                    </div>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>

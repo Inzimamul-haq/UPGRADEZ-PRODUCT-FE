@@ -5,7 +5,7 @@ import api from '@/lib/api';
 type Range = 'day' | 'week' | 'month' | 'year';
 
 export const TokenUsageChart = ({ collegeId }: { collegeId?: string }) => {
-  const [range, setRange] = useState<Range>('month');
+  const [range, setRange] = useState<Range>('day');
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState<{ label: string, tokensUsed: number }[]>([]);
   const [loading, setLoading] = useState(true);

@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Subject, Message } from '@/lib/types';
+import { Subject, Message, TocEntry } from '@/lib/types';
 import { ChatStepOverlay } from './ChatStepOverlay';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
+import { SyllabusPanel } from './SyllabusPanel';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
@@ -98,6 +99,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [resolvedPaperId, setResolvedPaperId] = useState<string | null>(null);
   const [resolvedQuestions, setResolvedQuestions] = useState<{ id: string; text: string }[]>([]);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  // Syllabus TOC panel state
+  const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
+  const [syllabusEntries, setSyllabusEntries] = useState<TocEntry[]>([]);
+  const [syllabusSubjectName, setSyllabusSubjectName] = useState('');
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -110,6 +115,24 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'super-admin';
+
+  // Fetch syllabus TOC whenever subject changes
+  useEffect(() => {
+    const subjectId = sessionData?.subjectId;
+    if (!subjectId) return;
+    let cancelled = false;
+    api.get(`/api/subjects/${subjectId}/toc`)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setSyllabusEntries(data.entries ?? []);
+        setSyllabusSubjectName(data.subjectName ?? '');
+      })
+      .catch(() => {
+        // Silently fail — syllabus button just stays hidden
+        if (!cancelled) setSyllabusEntries([]);
+      });
+    return () => { cancelled = true; };
+  }, [sessionData?.subjectId]);
 
   useEffect(() => {
     if (initialSessionId) {
@@ -913,6 +936,9 @@ return (
         }}
         onDifficultyEdit={() => setDifficultyConfirmed(false)}
         difficultyDisabled={isStreaming}
+        // Syllabus props
+        syllabusAvailable={syllabusEntries.length > 0}
+        onOpenSyllabus={() => setIsSyllabusOpen(true)}
       />
     )}
 
@@ -920,6 +946,13 @@ return (
       isOpen={isPanelOpen}
       onClose={() => setIsPanelOpen(false)}
       questions={resolvedQuestions}
+    />
+
+    <SyllabusPanel
+      open={isSyllabusOpen}
+      onClose={() => setIsSyllabusOpen(false)}
+      subjectName={syllabusSubjectName || sessionData?.subjectName || ''}
+      entries={syllabusEntries}
     />
 
     <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />

@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -47,13 +48,22 @@ export function MathSolution({ data }: { data: MathSolutionData }) {
           <CheckCircle2 size={48} />
         </div>
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
-        <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10">
-          <ReactMarkdown
-            remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-          >
-            {`$$${data.final_answer.display}$$`}
-          </ReactMarkdown>
+        <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
+          {(() => {
+            const ans = ensureBoxedIsMath(data.final_answer.display);
+            if (!ans || ans === 'undefined') return null;
+            
+            return (
+              <div className="flex flex-col text-left w-full overflow-x-auto">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {ans}
+                </ReactMarkdown>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -81,53 +91,78 @@ function MathStepCard({ step }: { step: MathStep }) {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 mt-2 text-[14px] text-[#E5E5E5] w-full math-solution-container">
-        {step.work.map((workItem, i) => (
-          <div key={i} className="flex flex-col w-full">
-            <AnimatePresence>
-              {showExplanation && workItem.explanation && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mb-2 p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed">
-                    {workItem.explanation}
+      <AnimatePresence>
+        {showExplanation && step.work.some(w => w.explanation) && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2">
+              {step.work.map((w, i) => w.explanation ? (
+                <div key={i}>{w.explanation}</div>
+              ) : null)}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-col w-full math-solution-container mt-2 text-[14px] text-[#E5E5E5]">
+        {step.work.map((workItem, i) => {
+          const eq = workItem.equation;
+          if (!eq || eq === 'undefined') return null;
+
+          return (
+            <div key={i} className={`flex flex-col w-full ${i > 0 ? 'mt-5' : ''}`}>
+              {(() => {
+                const lines = parseMathLines(eq);
+                if (lines.length === 0) return null;
+                
+                return (
+                  <div className="w-full py-2 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col gap-2 items-center">
+                    {lines.map((line, pIdx) => (
+                        <div key={pIdx} className="flex justify-center w-full">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                          >
+                            {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                          </ReactMarkdown>
+                        </div>
+                    ))}
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {(() => {
-              const eq = workItem.equation;
-              if (!eq || eq === 'undefined') return null;
-              const isText = eq.includes('\n') || eq.includes('\\n') || eq.includes('$') || eq.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
-              const displayEq = isText ? eq.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${eq}$$`;
-              
-              return (
-                <div className={`w-full py-3 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap leading-relaxed flex flex-col gap-2' : 'flex justify-center'}`}>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                  >
-                    {displayEq}
-                  </ReactMarkdown>
-                </div>
-              );
-            })()}
-          </div>
-        ))}
+                );
+              })()}
+            </div>
+          );
+        })}
       </div>
 
       {step.result && (
-        <div className="mt-4 pt-3 border-t border-[#3A3A38]/50 flex justify-end">
-          <div className="px-3 py-1 bg-[#2C2C2A] rounded font-medium text-[13px] text-[#A1A1AA]">
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-            >
-              {`$${step.result}$`}
-            </ReactMarkdown>
+        <div className="mt-5 bg-[#252523] border-l-[3px] border-[#3A3A38] rounded-r-lg px-4 py-3 relative overflow-hidden">
+          <h4 className="text-[11px] font-bold text-[#A1A1AA] tracking-wider uppercase mb-2">Step Result</h4>
+          <div className="text-[14px] font-semibold text-[#D1D1C7] relative z-10 overflow-x-auto">
+            {(() => {
+              const res = step.result;
+              const lines = parseMathLines(res);
+              if (lines.length === 0) return null;
+              
+              return (
+                <div className="flex flex-col gap-2 items-center">
+                  {lines.map((line, i) => (
+                    <div key={i} className="flex justify-center w-full">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                      </ReactMarkdown>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

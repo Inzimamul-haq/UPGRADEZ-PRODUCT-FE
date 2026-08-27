@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -58,15 +59,17 @@ export function LegacySolution({ data }: { data: LegacySolutionData }) {
             <CheckCircle2 size={100} />
           </div>
           <h4 className="text-[11px] font-bold text-gray-400 tracking-[0.2em] uppercase mb-2">Final Conclusion</h4>
-          <div className="text-[16px] font-medium text-[#ECECEA] relative z-10 w-full flex justify-center">
+          <div className="text-[16px] font-medium text-[#ECECEA] relative z-10 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
             {(() => {
-              const eq = data.final_answer.display;
-              const isText = eq.includes('\n') || eq.includes('\\n') || eq.includes('$') || eq.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
-              const displayEq = isText ? eq.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n') : `$$${eq}$$`;
+              const ans = ensureBoxedIsMath(data.final_answer.display);
+              if (!ans || ans === 'undefined') return null;
+              
               return (
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {displayEq}
-                </ReactMarkdown>
+                <div className="flex flex-col text-left w-full overflow-x-auto">
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {ans}
+                  </ReactMarkdown>
+                </div>
               );
             })()}
           </div>
@@ -107,14 +110,20 @@ function LegacyStepCard({ step }: { step: MathStep }) {
               <div className="bg-[#181817] border border-[#2A2A28] rounded-lg p-3 w-full shadow-inner">
                 {(() => {
                   const eq = workItem.equation;
-                  const isText = eq.includes('\n') || eq.includes('\\n') || eq.includes('$') || eq.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
-                  const displayEq = isText ? eq.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${eq}$$`;
+                  if (!eq || eq === 'undefined') return null;
+                  
+                  const lines = parseMathLines(eq);
+                  if (lines.length === 0) return null;
                   
                   return (
-                    <div className={`w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap flex flex-col gap-2' : 'flex justify-center text-[15px] text-indigo-200'}`}>
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {displayEq}
-                      </ReactMarkdown>
+                    <div className="w-full overflow-x-auto flex flex-col gap-2 items-center text-[15px] text-indigo-200">
+                      {lines.map((line, i) => (
+                        <div key={i} className="flex justify-center w-full">
+                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                            {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                          </ReactMarkdown>
+                        </div>
+                      ))}
                     </div>
                   );
                 })()}
@@ -128,9 +137,23 @@ function LegacyStepCard({ step }: { step: MathStep }) {
           <div className="mt-1 flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-2.5 w-max max-w-full">
             <ArrowRight size={14} className="text-indigo-400 mt-0.5 shrink-0" />
             <div className="text-[13px] font-medium text-indigo-300/90 italic">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                {step.result}
-              </ReactMarkdown>
+              {(() => {
+                const res = step.result;
+                const lines = parseMathLines(res);
+                if (lines.length === 0) return null;
+                
+                return (
+                  <div className="flex flex-col gap-2 items-start">
+                    {lines.map((line, i) => (
+                      <div key={i} className="flex justify-center w-full">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                        </ReactMarkdown>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
