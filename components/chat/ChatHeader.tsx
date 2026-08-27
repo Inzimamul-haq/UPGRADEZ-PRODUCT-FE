@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, BookOpen } from 'lucide-react';
 import { DifficultySelector } from './DifficultySelector';
 import { DifficultyMode } from '@/lib/types';
 
@@ -16,6 +16,9 @@ interface ChatHeaderPropsExtended {
   onDifficultyConfirm?: (mode: DifficultyMode) => void;
   onDifficultyEdit?: () => void;
   difficultyDisabled?: boolean;
+  // Syllabus props
+  syllabusAvailable?: boolean;
+  onOpenSyllabus?: () => void;
 }
 
 export function ChatHeader({
@@ -30,6 +33,8 @@ export function ChatHeader({
   onDifficultyConfirm = () => {},
   onDifficultyEdit = () => {},
   difficultyDisabled = false,
+  syllabusAvailable = false,
+  onOpenSyllabus,
 }: ChatHeaderPropsExtended) {
   return (
     <div className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-[#2E2E2C] bg-[#1C1C1B] px-3 py-2.5 sm:px-6 sm:py-3.5">
@@ -43,7 +48,7 @@ export function ChatHeader({
         </p>
       </div>
 
-      {/* Right: Difficulty Dropdown + View Questions */}
+      {/* Right: Difficulty + Syllabus + View Questions */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 ml-3">
         {showDifficulty && (
           <DifficultySelector
@@ -54,6 +59,33 @@ export function ChatHeader({
             disabled={difficultyDisabled}
           />
         )}
+
+        {/* Syllabus button — always visible for both student and faculty */}
+        <button
+          onClick={onOpenSyllabus}
+          id="chat-header-syllabus-btn"
+          className="
+            inline-flex items-center gap-1.5
+            px-2.5 sm:px-3
+            py-1.5 sm:py-2
+            rounded-lg
+            border
+            transition-all duration-200
+            flex-shrink-0
+            text-[11px] sm:text-[12px] font-medium
+            bg-[#2C2C2A]
+            border-[#7A6A3A]/30
+            text-[#B8A46A]
+            hover:bg-[#332F22]
+            hover:border-[#7A6A3A]/50
+            hover:scale-[1.02]
+          "
+          title="View syllabus units"
+          aria-label="View syllabus"
+        >
+          <BookOpen size={14} className="sm:w-[15px] sm:h-[15px]" />
+          <span className="hidden xs:inline">Syllabus</span>
+        </button>
 
         {role === 'student' && (
           <button
@@ -97,3 +129,4 @@ export function ChatHeader({
     </div>
   );
 }
+

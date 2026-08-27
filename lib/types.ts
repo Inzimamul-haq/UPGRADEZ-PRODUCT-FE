@@ -28,6 +28,12 @@ export interface StudentSubject {
   regulation: string | null;
 }
 
+export interface TocEntry {
+  chapter: number;
+  title: string;
+  startPage?: number;
+}
+
 export interface AssignModalProps {
   sessionData: SessionData;
   rawText: string;

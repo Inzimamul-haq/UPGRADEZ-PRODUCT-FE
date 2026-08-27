@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { subjectSchema } from "@/Schema/validations";
 import api from "@/lib/api";
 import { DepartmentOption, SubjectFormModalProps } from "@/lib/types";
+import SyllabusPdfGeneratorModal from "./SyllabusPdfGeneratorModal";
 
 export default function SubjectFormModal({
   open,
@@ -27,6 +28,7 @@ export default function SubjectFormModal({
   const [materialFiles, setMaterialFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
+  const [showPdfGenerator, setShowPdfGenerator] = useState(false);
 
   const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -258,9 +260,18 @@ export default function SubjectFormModal({
 
           {/* Syllabus Upload */}
           <div>
-            <label className="block text-[12px] text-[#8C8C8A] mb-2">
-              Syllabus index pdf or image {mode === 'add' && "(Required)"}
-            </label>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-[12px] text-[#8C8C8A]">
+                Syllabus index pdf {mode === 'add' && "(Required)"}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPdfGenerator(true)}
+                className="text-[12px] font-medium text-[#B8A46A] hover:text-[#D1BE85] hover:underline"
+              >
+                Generate PDF from Text
+              </button>
+            </div>
             <div className={`flex flex-col gap-2 ${mode === 'edit' ? 'opacity-50 pointer-events-none' : ''}`}>
               {syllabusFile && (
                 <div className="flex items-center justify-between rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-3 py-1.5">
@@ -432,6 +443,12 @@ export default function SubjectFormModal({
           </div>
         </div>
       </div>
+      
+      <SyllabusPdfGeneratorModal
+        open={showPdfGenerator}
+        onClose={() => setShowPdfGenerator(false)}
+        subjectName={name}
+      />
     </div>
   );
 }
