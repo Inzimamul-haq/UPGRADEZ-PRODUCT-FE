@@ -60,16 +60,25 @@ export function NumericalSolution({ data }: { data: NumericalSolutionData }) {
       
       <div className="flex flex-col gap-3">
         {data.execution_steps.map((step, idx) => (
-          <div key={idx} className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between group hover:border-[#4A4A48] transition-colors">
-            <div className="flex-1 w-full text-[13px] text-[#D1D1C7] leading-relaxed">
+          <div key={idx} className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 flex flex-col gap-3 items-start group hover:border-[#4A4A48] transition-colors">
+            <div className="w-full text-[13px] text-[#D1D1C7] leading-relaxed">
               <span className="font-semibold text-[#818CF8] mr-2">Step {idx + 1}:</span>
               {step.description}
             </div>
-            <div className="w-full md:w-auto min-w-[200px] flex justify-center py-2 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                {`$$${step.calculation}$$`}
-              </ReactMarkdown>
-            </div>
+            {(() => {
+              const calc = step.calculation;
+              if (!calc || calc === 'undefined') return null;
+              const isText = calc.includes('\n') || calc.includes('\\n') || calc.includes('$') || calc.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
+              const displayCalc = isText ? calc.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${calc}$$`;
+              
+              return (
+                <div className={`w-full py-3 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto text-[13px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap leading-relaxed flex flex-col gap-2' : 'flex justify-center'}`}>
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {displayCalc}
+                  </ReactMarkdown>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

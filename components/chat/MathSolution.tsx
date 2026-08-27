@@ -98,14 +98,23 @@ function MathStepCard({ step }: { step: MathStep }) {
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex justify-center w-full py-2 overflow-x-auto">
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {`$$${workItem.equation}$$`}
-              </ReactMarkdown>
-            </div>
+            {(() => {
+              const eq = workItem.equation;
+              if (!eq || eq === 'undefined') return null;
+              const isText = eq.includes('\n') || eq.includes('\\n') || eq.includes('$') || eq.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
+              const displayEq = isText ? eq.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${eq}$$`;
+              
+              return (
+                <div className={`w-full py-3 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap leading-relaxed flex flex-col gap-2' : 'flex justify-center'}`}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {displayEq}
+                  </ReactMarkdown>
+                </div>
+              );
+            })()}
           </div>
         ))}
       </div>

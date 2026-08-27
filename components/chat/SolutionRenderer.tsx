@@ -2,6 +2,8 @@ import React from 'react';
 import { MathSolution, MathSolutionData } from './MathSolution';
 import { DerivationSolution, DerivationSolutionData } from './DerivationSolution';
 import { NumericalSolution, NumericalSolutionData } from './NumericalSolution';
+import { LegacySolution, LegacySolutionData } from './LegacySolution';
+import { FallbackSolution } from './FallbackSolution';
 
 export interface MultiSchemaData {
   ui_type?: string;
@@ -17,6 +19,10 @@ export function SolutionRenderer({ data }: { data: MultiSchemaData }) {
     return <NumericalSolution data={data.solution as NumericalSolutionData} />;
   }
   
-  // Legacy / Fallback
-  return <MathSolution data={data.solution as MathSolutionData} />;
+  if (data.ui_type === 'legacy') {
+    return <LegacySolution data={data.solution as LegacySolutionData} />;
+  }
+  
+  // Ultimate Fallback for unknown ui_types or poorly formatted data
+  return <FallbackSolution data={data.solution} />;
 }
