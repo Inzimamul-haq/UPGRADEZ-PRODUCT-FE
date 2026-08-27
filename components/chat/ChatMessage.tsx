@@ -11,7 +11,60 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
 
-import { MathSolution, MathSolutionData } from './MathSolution';
+import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
+
+// Helper to safely extract and parse math JSON from markdown text
+function parseMathSolution(text: string): { data: MultiSchemaData | null; remainingText: string } {
+  let data: MultiSchemaData | null = null;
+  let match = text.match(/```(?:json)?\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i);
+  
+  if (!match) {
+    const startIndex = text.indexOf('{');
+    if (startIndex !== -1) {
+      let braceCount = 0;
+      for (let i = startIndex; i < text.length; i++) {
+        if (text[i] === '{') braceCount++;
+        else if (text[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            const possibleJson = text.substring(startIndex, i + 1);
+            if (possibleJson.includes('"solution"')) {
+              match = [possibleJson, possibleJson]; 
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let remainingText = text;
+  if (match && match[1]) {
+    try {
+      const sanitizedJson = match[1].replace(/\\(?!")/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
+      let parsed;
+      try {
+        parsed = JSON.parse(sanitizedJson);
+      } catch (err) {
+        parsed = new Function('return ' + match[1])();
+      }
+      
+      if (parsed && parsed.solution) {
+        data = parsed;
+        remainingText = remainingText
+          .replace(match[0], '')
+          .replace(/```(?:json)?\s*```/ig, '')
+          .replace(/%%EXECUTION_JSON_START%%/g, '')
+          .replace(/%%EXECUTION_JSON_END%%/g, '')
+          .trim();
+      }
+    } catch (e) {
+      console.error('Failed to parse math solution JSON', e);
+    }
+  }
+  
+  return { data, remainingText };
+}
 
 export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
   const isUser = message.role === 'user';
@@ -148,23 +201,9 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
     .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
     .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
 
-  let mathJsonData: MathSolutionData | null = null;
-  const jsonBlockRegex = /```json\s*(\{[\s\S]*?"solution"[\s\S]*?\})\s*```/i;
-  const match = processedContent.match(jsonBlockRegex);
-  if (match && match[1]) {
-    try {
-      // LLMs frequently forget to double-escape LaTeX backslashes in JSON (e.g. outputting \frac instead of \\frac).
-      // This sanitizer replaces all single backslashes with double backslashes, unless they are already doubled.
-      const sanitizedJson = match[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
-      const parsed = JSON.parse(sanitizedJson);
-      if (parsed.solution) {
-        mathJsonData = parsed.solution;
-        processedContent = processedContent.replace(match[0], '').trim();
-      }
-    } catch (e) {
-      console.error('Failed to parse math solution JSON', e);
-    }
-  }
+  const parsedMain = parseMathSolution(processedContent);
+  const mathJsonData = parsedMain.data;
+  processedContent = parsedMain.remainingText;
 
   const markdownComponents: any = {
     code(props: any) {
@@ -272,20 +311,9 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                 .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
                 
-              let batchMathData: MathSolutionData | null = null;
-              const bMatch = processedBatchContent.match(jsonBlockRegex);
-              if (bMatch && bMatch[1]) {
-                try {
-                  const sanitizedJson = bMatch[1].replace(/\\/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
-                  const parsed = JSON.parse(sanitizedJson);
-                  if (parsed.solution) {
-                    batchMathData = parsed.solution;
-                    processedBatchContent = processedBatchContent.replace(bMatch[0], '').trim();
-                  }
-                } catch (e) {
-                  console.error('Failed to parse batch math solution JSON', e);
-                }
-              }
+              const parsedBatch = parseMathSolution(processedBatchContent);
+              const batchMathData = parsedBatch.data;
+              processedBatchContent = parsedBatch.remainingText;
 
               return (
                 <div key={index} className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
@@ -309,7 +337,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                     >
                       {processedBatchContent}
                     </ReactMarkdown>
-                    {batchMathData && <MathSolution data={batchMathData} />}
+                    {batchMathData && <SolutionRenderer data={batchMathData} />}
                   </motion.div>
                 </div>
               );
@@ -410,7 +438,7 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                   >
                     {processedContent}
                   </ReactMarkdown>
-                  {mathJsonData && <MathSolution data={mathJsonData} />}
+                  {mathJsonData && <SolutionRenderer data={mathJsonData} />}
                 </motion.div>
               )}
             </AnimatePresence>
