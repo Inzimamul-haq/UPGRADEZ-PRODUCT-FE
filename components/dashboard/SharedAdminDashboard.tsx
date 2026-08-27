@@ -52,7 +52,11 @@ export const SharedAdminDashboard = ({ collegeId, collegeName }: { collegeId?: s
     fetchAdminData();
   }, [collegeId]);
 
-  const formatK = (num: number) => `${Math.floor(num / 1000)}k`;
+  const formatTokens = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return num.toString();
+  };
   const displayName = collegeName || user?.college?.name || "College Name";
 
   return (
@@ -77,8 +81,8 @@ export const SharedAdminDashboard = ({ collegeId, collegeName }: { collegeId?: s
             <StatCard value={data.facultyAndAdmin.count.toString()} label="faculty" subtext="active" />
             <StatCard value={data.subjects.count.toString()} label="subjects" subtext="uploaded" />
             <StatCard
-              value={formatK(data.tokenUsage.used)}
-              label={`of ${formatK(data.tokenUsage.limit)} limit`}
+              value={formatTokens(data.tokenUsage.used)}
+              label={`of ${formatTokens(data.tokenUsage.limit)} limit`}
               subtext="this month"
               valueColor={data.tokenUsage.used / data.tokenUsage.limit > 0.9 ? 'text-red-400' : undefined}
             />

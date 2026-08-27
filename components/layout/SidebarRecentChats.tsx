@@ -181,8 +181,8 @@ export function SidebarRecentChats() {
                       }}
                       className={`flex items-center justify-center text-[#5A5A58] transition-all duration-200 ease-out hover:text-[#ECECEA]
                       ${isPressed || menuOpenId === session.id
-                          ? 'pointer-events-auto scale-100 opacity-100'
-                          : 'pointer-events-none scale-75 opacity-0 md:group-hover:pointer-events-auto md:group-hover:scale-100 md:group-hover:opacity-100'
+                          ? 'scale-100 opacity-100'
+                          : 'md:pointer-events-none md:scale-75 md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:scale-100 md:group-hover:opacity-100'
                         }`}
                     >
                       <MoreVertical size={14} />

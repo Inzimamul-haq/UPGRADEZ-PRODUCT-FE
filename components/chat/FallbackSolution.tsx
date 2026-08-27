@@ -17,13 +17,10 @@ function RecursiveRender({ data }: { data: any }) {
 
   if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
     const content = String(data);
-    const isText = content.includes('\n') || content.includes('\\n') || content.includes('$') || content.split(/\s+/).filter(w => /^[a-zA-Z]{3,}$/.test(w)).length >= 3;
-    const displayContent = isText ? content.replace(/\\n/g, '\n\n').replace(/\n/g, '\n\n').replace(/\n\n\n\n/g, '\n\n') : `$$${content}$$`;
-
     return (
-      <div className={`w-full py-2 px-3 overflow-x-auto text-[13px] text-[#D1D1C7] ${isText ? 'text-left whitespace-pre-wrap leading-relaxed flex flex-col gap-2' : 'flex justify-center'}`}>
+      <div className="w-full py-2 px-3 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col text-left prose prose-invert prose-p:my-1 prose-math:justify-center">
         <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-          {displayContent}
+          {content}
         </ReactMarkdown>
       </div>
     );
@@ -68,11 +65,11 @@ function RecursiveRender({ data }: { data: any }) {
 export function FallbackSolution({ data }: { data: any }) {
   return (
     <div className="flex flex-col gap-4 mt-4 mb-2 w-full max-w-full">
-      <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+      {/* <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
         <span className="text-[13px] font-semibold text-amber-500">Solution (Fallback Layout)</span>
-      </div>
+      </div> */}
       
-      <div className="flex flex-col gap-3 relative border-l-2 border-amber-500/30 ml-3 pl-5 w-full max-w-full">
+      <div className="flex flex-col gap-3 relative ml-3 pl-5 w-full max-w-full">
         <RecursiveRender data={data} />
       </div>
     </div>
