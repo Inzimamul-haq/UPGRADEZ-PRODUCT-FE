@@ -4,6 +4,7 @@ import { DerivationSolution, DerivationSolutionData } from './DerivationSolution
 import { NumericalSolution, NumericalSolutionData } from './NumericalSolution';
 import { LegacySolution, LegacySolutionData } from './LegacySolution';
 import { FallbackSolution } from './FallbackSolution';
+import { GraphTraversalSolution, GraphTraversalSolutionData } from './GraphTraversalSolution';
 
 export interface MultiSchemaData {
   ui_type?: string;
@@ -21,6 +22,10 @@ export function SolutionRenderer({ data }: { data: MultiSchemaData }) {
   
   if (data.ui_type === 'legacy') {
     return <LegacySolution data={data.solution as LegacySolutionData} />;
+  }
+  
+  if (data.ui_type === 'graph_traversal') {
+    return <GraphTraversalSolution data={data.solution as GraphTraversalSolutionData} />;
   }
   
   // Ultimate Fallback for unknown ui_types or poorly formatted data

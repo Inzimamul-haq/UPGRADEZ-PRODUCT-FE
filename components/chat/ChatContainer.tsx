@@ -157,7 +157,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           // Does the IQ paper tied to THIS chat already have an exam paper
           // linked to it — possibly assigned from a completely different chat?
           const linkedExamPaper = hasPaperIQ ? chat.paper?.linkedFrom?.[0] : undefined;
-          const hasLinkedExamPaper = Boolean(linkedExamPaper);
+          
+          // Bug Fix: If this chat generated an EXAM_PAPER, then an exam paper IS assigned!
+          const hasLinkedExamPaper = Boolean(linkedExamPaper) || chat.paper?.kind === 'EXAM_PAPER';
+          
           const examCreatorName = linkedExamPaper?.creator?.name;
 
           const assignment = chat.paper?.paperAssignments?.[0];
@@ -910,6 +913,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           }
         }
       }, 600);
+    } else if (assignedKind === 'EXAM_PAPER') {
+      setSessionData(prev => prev ? { ...prev, hasLinkedExamPaper: true } : prev);
     }
   };
 

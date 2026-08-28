@@ -1,6 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { cleanQuestionText, getMarksColor } from '@/lib/utils';
+import { extractGraphPrefix, stripGraphPrefix } from '@/lib/qpParser';
+import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
 interface QuestionsPanelProps {
   isOpen: boolean;
@@ -48,14 +50,24 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
           {questions.length === 0 ? (
             <p className="text-[13px] text-[#8C8C8A] text-center mt-10">No questions available.</p>
           ) : (
-            questions.map((q, i) => (
-              <div key={q.id || i} className="bg-[#2C2C2A] p-4 rounded-xl border border-[#3A3A38]">
-                <p className="text-[13px] text-[#ECECEA] leading-relaxed">
-                  <span className={`font-medium mr-2 ${getMarksColor(q.marks)}`}>Q{i + 1}.</span>
-                  {cleanQuestionText(q.text)}
-                </p>
-              </div>
-            ))
+            questions.map((q, i) => {
+              const graphDef = extractGraphPrefix(q.text);
+              const cleanText = stripGraphPrefix(q.text);
+              
+              return (
+                <div key={q.id || i} className="bg-[#2C2C2A] p-4 rounded-xl border border-[#3A3A38]">
+                  <p className="text-[13px] text-[#ECECEA] leading-relaxed">
+                    <span className={`font-medium mr-2 ${getMarksColor(q.marks)}`}>Q{i + 1}.</span>
+                    {cleanQuestionText(cleanText)}
+                  </p>
+                  {graphDef && (
+                    <div className="mt-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                      <GraphDisplay graph={graphDef} width={250} height={250} />
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
