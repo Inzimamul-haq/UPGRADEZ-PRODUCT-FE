@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { isCodeContent } from '@/lib/mathFormat';
 
 export interface DerivationOperation {
   type: string;
@@ -133,9 +134,15 @@ function DerivationStepCard({ step, equations }: { step: DerivationStep, equatio
               
               {op.result && (
                 <div className="flex justify-center w-full py-2 overflow-x-auto bg-[#1C1C1B]/50 rounded border border-[#3A3A38]/30">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${op.result}$$`}
-                  </ReactMarkdown>
+                  {isCodeContent(op.result) ? (
+                    <pre className="w-full text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words px-2 py-1 leading-relaxed">
+                      <code>{op.result.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                    </pre>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`$$${op.result}$$`}
+                    </ReactMarkdown>
+                  )}
                 </div>
               )}
 
@@ -164,9 +171,15 @@ function DerivationStepCard({ step, equations }: { step: DerivationStep, equatio
               {/* New Schema Support */}
               {showBefore && op.before && op.before.trim() !== '' && (
                 <div className="flex justify-center w-full py-2 mb-3 overflow-x-auto bg-[#1C1C1B]/30 rounded border border-[#3A3A38]/20">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${op.before}$$`}
-                  </ReactMarkdown>
+                  {isCodeContent(op.before) ? (
+                    <pre className="w-full text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words px-2 py-1 leading-relaxed">
+                      <code>{op.before.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                    </pre>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`$$${op.before}$$`}
+                    </ReactMarkdown>
+                  )}
                 </div>
               )}
               
@@ -178,9 +191,15 @@ function DerivationStepCard({ step, equations }: { step: DerivationStep, equatio
 
               {op.after && op.after.trim() !== '' && (
                 <div className="flex justify-center w-full py-2 overflow-x-auto bg-[#1C1C1B]/50 rounded border border-[#3A3A38]/30">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$${op.after}$$`}
-                  </ReactMarkdown>
+                  {isCodeContent(op.after) ? (
+                    <pre className="w-full text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words px-2 py-1 leading-relaxed">
+                      <code>{op.after.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                    </pre>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`$$${op.after}$$`}
+                    </ReactMarkdown>
+                  )}
                 </div>
               )}
             </div>

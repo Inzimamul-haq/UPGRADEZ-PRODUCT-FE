@@ -3,6 +3,62 @@ export interface MathExecutionLine {
   isImplies: boolean;
 }
 
+/**
+ * Returns true when the string looks like programming code rather than a
+ * LaTeX/math expression. Used to short-circuit the KaTeX rendering path
+ * and fall back to a <pre><code> display instead.
+ */
+export function isCodeContent(text: string): boolean {
+  if (!text || text.trim().length === 0) return false;
+
+  // Fenced code block markers
+  if (/^```/.test(text.trim())) return true;
+
+  // HTML / XML tags  e.g.  <!DOCTYPE  <html  <div  </body>
+  if (/<[!/a-zA-Z][^>]{0,80}>/.test(text)) return true;
+
+  // Literal \n escape sequences inside the string (not actual newline chars)
+  // LLMs often write  \n<head>...  in code equations
+  if (/\\n/.test(text)) return true;
+
+  // Escaped quotes that appear in HTML attributes:  \"stylesheet\"
+  if (/\\"/. test(text)) return true;
+
+  // Programming language keywords that would never appear in a math formula
+  if (/\b(function|class|const|let|var|import|export|return|if\s*\(|for\s*\(|while\s*\(|def |public |private |static |void |int |String |#include|printf|scanf|System\.out|cout|cin)\b/.test(text)) return true;
+
+  // CSS property patterns:  property: value;  or  selector { ... }
+  if (/[a-z-]{2,}:\s*[a-z#0-9"'(]{1,}/.test(text) && text.includes(';')) return true;
+
+  // URL-like content
+  if (/https?:\/\/|www\./.test(text)) return true;
+
+  return false;
+}
+
+/**
+ * Returns true when the string is likely a plain English sentence or phrase,
+ * rather than a math expression. Used to prevent KaTeX from eating spaces
+ * and rendering text as cursive math variables.
+ */
+export function isPlainText(text: string): boolean {
+  if (!text || text.trim().length === 0) return false;
+
+  // If it contains LaTeX macros (e.g. \frac, \text, \implies)
+  if (/\\[a-zA-Z]+/.test(text)) return false;
+
+  // If it contains typical math operators (equal, plus, asterisk, caret, etc)
+  if (/[=\+\*\^\_\{\}\<\>\|]/.test(text)) return false;
+
+  // If it has a sequence of 3 normal words (length 2+), it's almost certainly a sentence
+  if (/\b[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\b/.test(text)) return true;
+
+  // If it has spaces but no math symbols at all
+  if (/\s/.test(text) && !/[+\-*/=<>^_{}\\]/.test(text)) return true;
+
+  return false;
+}
+
 export function parseMathLines(raw: string): MathExecutionLine[] {
   if (!raw) return [];
   
