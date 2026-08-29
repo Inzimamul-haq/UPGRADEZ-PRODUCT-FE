@@ -166,7 +166,7 @@ export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionD
         {/* Content Area */}
         <div className="p-5 flex flex-col md:flex-row gap-6">
           {/* Graph Visualization */}
-          <div className="flex-1 flex items-center justify-center bg-[#222220] rounded-xl border border-[#3A3A38] p-4 min-h-[300px]">
+          <div className="w-full md:w-1/2 min-w-0 flex items-center justify-center bg-[#222220] rounded-xl border border-[#3A3A38] p-4 min-h-[300px]">
             {Object.keys(layout).length > 0 && (
               <GraphDisplay 
                 graph={data.graph}
@@ -180,12 +180,14 @@ export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionD
           </div>
 
           {/* Explanation & Data Structures */}
-          <div className="flex-1 flex flex-col">
+          <div className="w-full md:w-1/2 min-w-0 flex flex-col">
             <div className="mb-4 flex-1">
               <span className="text-[11px] font-bold text-[#EAB308] uppercase mb-2 block tracking-wider">Action</span>
-              <p className="text-[15px] leading-relaxed text-[#ECECEA]">
-                {stepData.explanation}
-              </p>
+              <div className="text-[15px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-1">
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                  {stepData.explanation}
+                </ReactMarkdown>
+              </div>
             </div>
             
             {renderDataStructures()}

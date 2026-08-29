@@ -61,54 +61,88 @@ export function isPlainText(text: string): boolean {
 
 export function parseMathLines(raw: string): MathExecutionLine[] {
   if (!raw) return [];
-  
-  // Split on delimiters: \implies, \Rightarrow, ⇒, ;, \n, ,, and :
-  const tokens = raw.split(/(\\implies|\\Rightarrow|⇒|;|\n|,|:)/g);
-  
+
+  // Normalize line-break artifacts BEFORE splitting:
+  // - a real LaTeX line break "\\" right before a newline/end -> becomes an actual \n
+  // - a stray single trailing "\" (not a real LaTeX command) -> strip it so it
+  //   can't glue onto the next segment (this was the "m = 2.4\" + "mm" -> "mmmm" bug)
+  const normalized = raw
+  // "\<newline>unit" where "unit" is a short unit token (mm, cm, m, kg, N, Ω, °C...)
+  // -> not a real line break, just glue it back: "2.4\<nl>mm" -> "2.4 mm"
+  // (this is what was producing the "mmmm" orphan-line duplication)
+  .replace(/\\\s*\n\s*([a-zA-Zµ°Ω]{1,4})\b/g, ' $1')
+  // real LaTeX line break "\\" before newline/end -> actual newline
+  .replace(/\\\\(?=\s*\n|\s*$)/g, '\n')
+  // any remaining stray single trailing backslash -> strip
+  .replace(/\\(?=\s*\n|\s*$)/g, '');
+
+  // Added '=' to the delimiter set so chained computations break into steps.
+  const tokens = normalized.split(/(\\implies|\\Rightarrow|⇒|;|\n|,|:|=)/g);
+
   const lines: MathExecutionLine[] = [];
   let currentContent = '';
   let currentIsImplies = false;
   let envDepth = 0;
   let parenDepth = 0;
-  
+  let equalsSeenAtTopLevel = 0; // keep "lhs = firstStep" together, break on every '=' after that
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    
-    // Track environment depth to avoid splitting inside matrices, etc.
+
     const begins = (token.match(/\\begin\{[^}]+\}/g) || []).length;
     const ends = (token.match(/\\end\{[^}]+\}/g) || []).length;
     envDepth += (begins - ends);
     if (envDepth < 0) envDepth = 0;
-    
-    // Track parenthesis/bracket depth to avoid splitting inside (x, y), [0, 1], \text{...}
+
     const openParens = (token.match(/[\(\[\{]/g) || []).length;
     const closeParens = (token.match(/[\)\]\}]/g) || []).length;
     parenDepth += (openParens - closeParens);
     if (parenDepth < 0) parenDepth = 0;
-    
+
+    const isEquals = token === '=' && envDepth === 0 && parenDepth === 0;
+
+    if (isEquals) {
+      equalsSeenAtTopLevel++;
+      if (equalsSeenAtTopLevel === 1) {
+        currentContent += token; // "x1 = ..." stays on one line
+        continue;
+      }
+      if (currentContent.trim()) {
+        lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
+      }
+      currentContent = '= '; // continuation lines keep the '=' for readability
+      currentIsImplies = false;
+      continue;
+    }
+
     const isDelimiter = token.match(/^(\\implies|\\Rightarrow|⇒|;|\n|,|:)$/);
-    
     if (isDelimiter && envDepth === 0 && parenDepth === 0) {
       if (currentContent.trim()) {
         lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
         currentContent = '';
       }
-      
-      if (token === '\\implies' || token === '\\Rightarrow' || token === '⇒') {
-        currentIsImplies = true;
-      } else {
-        currentIsImplies = false;
-      }
+      currentIsImplies = token === '\\implies' || token === '\\Rightarrow' || token === '⇒';
     } else {
       currentContent += token;
     }
   }
-  
+
   if (currentContent.trim()) {
     lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
   }
-  
-  return lines;
+
+  // After building `lines`, merge a short unit-only line (e.g. "mm", "m", "cm", "N", "kg")
+  // into the previous line instead of leaving it as its own centered block.
+  const UNIT_ONLY = /^[a-zA-Zµ°Ω]{1,4}$/;
+  const merged: MathExecutionLine[] = [];
+  for (const line of lines) {
+    if (merged.length > 0 && UNIT_ONLY.test(line.content)) {
+      merged[merged.length - 1].content += ' \\, ' + line.content;
+    } else {
+      merged.push(line);
+    }
+  }
+  return merged;
 }
 
 export function ensureBoxedIsMath(text: string): string {
