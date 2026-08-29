@@ -703,6 +703,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     try {
       if (isFaculty) {
+        if (!difficultyMode || !difficultyConfirmed) {
+          toast.error("Please confirm the difficulty mode on top to start generating.");
+          setIsStreaming(false);
+          setMessages(prev => prev.slice(0, -1)); // Remove the optimistically added message
+          return;
+        }
+
         let effectivePaperKind = sessionData?.paperKind || 'EXAM_PAPER';
         // Auto-transition to EXAM_PAPER if they ask for one, even if they reload the chat later
         if (effectivePaperKind === 'IMPORTANT_QUESTIONS' && /\b(?:exam|exam paper|qp|question paper)\b/i.test(content)) {
@@ -720,7 +727,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           branch: sessionData?.branch || '',
           instruction: content,
           paperKind: effectivePaperKind,
-          difficultyMode: difficultyMode || 'MEDIUM',
+          difficultyMode: difficultyMode,
           linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
           linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
