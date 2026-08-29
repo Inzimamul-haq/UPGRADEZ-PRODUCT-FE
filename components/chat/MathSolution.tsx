@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -116,6 +116,28 @@ function MathStepCard({ step }: { step: MathStep }) {
           return (
             <div key={i} className={`flex flex-col w-full ${i > 0 ? 'mt-5' : ''}`}>
               {(() => {
+                // Code content → plain pre/code block, never KaTeX
+                if (isCodeContent(eq)) {
+                  return (
+                    <div className="w-full py-2 px-4 bg-[#1C1C1B]/60 border border-[#3A3A38]/50 rounded-lg overflow-x-auto">
+                      <pre className="text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words leading-relaxed">
+                        <code>{eq.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                      </pre>
+                    </div>
+                  );
+                }
+
+                // Plain text → standard text rendering, no KaTeX $$ wrapper
+                if (isPlainText(eq)) {
+                  return (
+                    <div className="w-full py-2 px-4 text-[13.5px] text-[#D1D1C7] leading-relaxed">
+                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        {eq}
+                      </ReactMarkdown>
+                    </div>
+                  );
+                }
+
                 const lines = parseMathLines(eq);
                 if (lines.length === 0) return null;
                 
@@ -145,6 +167,27 @@ function MathStepCard({ step }: { step: MathStep }) {
           <div className="text-[14px] font-semibold text-[#D1D1C7] relative z-10 overflow-x-auto">
             {(() => {
               const res = step.result;
+
+              // Code content → plain pre/code, no KaTeX
+              if (isCodeContent(res)) {
+                return (
+                  <pre className="w-full text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words leading-relaxed">
+                    <code>{res.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                  </pre>
+                );
+              }
+
+              // Plain text → standard text rendering, no KaTeX $$ wrapper
+              if (isPlainText(res)) {
+                return (
+                  <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed pb-1">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {res}
+                    </ReactMarkdown>
+                  </div>
+                );
+              }
+
               const lines = parseMathLines(res);
               if (lines.length === 0) return null;
               

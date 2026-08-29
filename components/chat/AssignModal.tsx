@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
-import type {  PaperKind , AssignModalProps, GateState } from "@/lib/types";
+import type {  PaperKind , AssignModalProps, GateState, Department } from "@/lib/types";
 import { parseQPStructure, encodeQPPrefix } from '@/lib/qpParser';
 
 import { useAuth } from '@/context/AuthContext';
@@ -27,7 +27,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
 
   const defaultYear = isFlow2B && sessionData.linkedIQAssignment?.assignedToYear
     ? sessionData.linkedIQAssignment.assignedToYear.toString()
-    : sessionData.year || '';
+    : sessionData.subject?.year?.toString() || sessionData.year || '';
 
   const defaultSection = isFlow2B && sessionData.linkedIQAssignment?.assignedToSection
     ? sessionData.linkedIQAssignment.assignedToSection
@@ -35,19 +35,49 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
 
   const [branch, setBranch] = useState(defaultBranch);
   const [section, setSection] = useState(defaultSection);
+  const [year] = useState(defaultYear || '1'); // read-only now
   const [loading, setLoading] = useState(false);
+  const [currentKind, setCurrentKind] = useState<PaperKind>(sessionData.paperKind as PaperKind || 'EXAM_PAPER');
   const [gateState, setGateState] = useState<GateState>(isFlow2B ? 'loading' : 'ready');
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
   const [examDateInput, setExamDateInput] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [directExamDate, setDirectExamDate] = useState('');
-  const needsDirectDate = gateState === 'ready' && sessionData.paperKind === 'EXAM_PAPER' && !isFlow2B;
+  const [justAssigned, setJustAssigned] = useState(false);
+  const needsDirectDate = gateState === 'ready' && currentKind === 'EXAM_PAPER' && !isFlow2B;
+
+  const [fetchingDepts, setFetchingDepts] = useState(true);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentId, setDepartmentId] = useState<string>(sessionData.departmentId || '');
 
   // Evaluate gate on mount for Flow 2B
   useEffect(() => {
     if (!isFlow2B) return;
     evaluateGate(sessionData.linkedIQExamDate ?? null);
   }, [isFlow2B]);
+
+  useEffect(() => {
+    setFetchingDepts(true);
+    api.get('/api/subjects')
+      .then(res => {
+        const subject = res.data.subjects?.find((s: any) => s.id === sessionData.subjectId);
+        const depts = subject?.departments || [];
+        setDepartments(depts);
+        if (depts.length > 0 && !departmentId) {
+          setDepartmentId(depts[0].id);
+        }
+      })
+      .catch(() => setDepartments([]))
+      .finally(() => setFetchingDepts(false));
+  }, [sessionData.subjectId]);
+
+  const selectedDept = departments.find(d => d.id === departmentId) || departments[0];
+
+  useEffect(() => {
+    if (selectedDept) {
+      setBranch(selectedDept.branch);
+    }
+  }, [selectedDept]);
 
   const evaluateGate = (examDate: string | null) => {
     if (!examDate) {
@@ -100,12 +130,12 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
         subjectId: sessionData.subjectId,
         examType: sessionData.examType,
         academicYear: acYear,
-        assignedToYear: defaultYear ? parseInt(defaultYear) : 2,
-        assignedToDepartmentId: sessionData.departmentId || null,
+        assignedToYear: year ? parseInt(year) : 2,
+        assignedToDepartmentId: departmentId || sessionData.departmentId || null,
         assignedToSection: section || null,
         rawQuestions: questions,
-        kind: sessionData.paperKind || 'EXAM_PAPER',
-        linkedPaperId: sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !isUniversity
+        kind: currentKind,
+        linkedPaperId: currentKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !isUniversity
           ? sessionData.linkedIQPaperId || null
           : null,
         examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
@@ -116,8 +146,10 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
       const res = await api.post('/api/question-papers/save-and-assign', payload);
       const { paper, assignment, questions: savedQ } = res.data.data;
 
+      setJustAssigned(true);
+
       // Download PDF for exam papers
-      if (sessionData.paperKind === 'EXAM_PAPER') {
+      if (currentKind === 'EXAM_PAPER') {
         const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
         const pdfParams = { 
           paper, 
@@ -135,10 +167,10 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
         }
       }
 
-      const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
-      const successMsg = `[ASSIGN_SUCCESS]\n${kindLabel} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${defaultYear}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;
+      const kindLabelText = currentKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
+      const successMsg = `[ASSIGN_SUCCESS]\n${kindLabelText} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${year}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;
 
-      onSuccess(successMsg, sessionData.paperKind as PaperKind, paper.id);
+      onSuccess(successMsg, currentKind, paper.id);
       onClose();
     } catch (err: any) {
       const code = err?.response?.data?.code;
@@ -160,7 +192,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
     }
   };
 
-  const kindLabel = sessionData.paperKind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper';
+  const kindLabel = currentKind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper';
 
   return (
     <div
@@ -185,12 +217,24 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
           </div>
           <div className="flex justify-between">
             <span className="text-[#8C8C8A]">Kind</span>
-            <span className={sessionData.paperKind === 'IMPORTANT_QUESTIONS'
+            <span className={currentKind === 'IMPORTANT_QUESTIONS'
               ? 'text-amber-400' : 'text-blue-400'}>
               {kindLabel}
             </span>
           </div>
         </div>
+
+        {currentKind === 'EXAM_PAPER' && !sessionData.hasLinkedIQ && !sessionData.hasLinkedExamPaper && !justAssigned && (
+          <div className="flex items-center justify-between bg-[#30302E] border border-[#3A3A38] rounded-xl px-4 py-3 mb-5">
+            <span className="text-[12px] text-[#ECECEA]">Assign as Important Questions instead?</span>
+            <button
+              onClick={() => setCurrentKind('IMPORTANT_QUESTIONS')}
+              className="text-[12px] font-medium text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              Swap to IQ
+            </button>
+          </div>
+        )}
 
         {/* ── Flow 2B: Gate Loading ── */}
         {gateState === 'loading' && (
@@ -276,39 +320,65 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Department</label>
-                  <input
-                    readOnly
-                    value={sessionData.department || sessionData.subject?.department || ''}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
-                  />
+                  {fetchingDepts ? (
+                     <div className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]">Loading...</div>
+                  ) : departments.length > 0 ? (
+                    <select
+                      value={departmentId}
+                      onChange={(e) => setDepartmentId(e.target.value)}
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
+                    >
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      readOnly
+                      value={sessionData.department || sessionData.subject?.department || ''}
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Branch</label>
                   <input
-                    readOnly
                     value={branch}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
+                    readOnly={departments.length > 0}
+                    onChange={(e) => setBranch(e.target.value)}
+                    placeholder="e.g. CSE, ECE"
+                    className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] ${departments.length > 0 ? 'opacity-70 cursor-not-allowed' : ''}`}
                   />
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Year</label>
-                  <input
-                    readOnly
-                    value={defaultYear}
-                    className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
-                  />
+                  <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                    Year {year}
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
-                  {isUniversity && sessionData.paperKind === 'EXAM_PAPER' ? (
+                  {isUniversity && currentKind === 'EXAM_PAPER' ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
                        All Sections (Common Paper)
                      </div>
+                  ) : departments.length > 0 && selectedDept?.sections ? (
+                    <select
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
+                    >
+                      <option value="">All Sections</option>
+                      {selectedDept.sections.map((s: string) => (
+                        <option key={s} value={s}>Section {s}</option>
+                      ))}
+                    </select>
                   ) : (
                     <input
-                      readOnly
-                      value={section || 'All Sections'}
-                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]"
+                      value={section}
+                      onChange={(e) => setSection(e.target.value)}
+                      placeholder="e.g. A, B, All"
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
                     />
                   )}
                 </div>

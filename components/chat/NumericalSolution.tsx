@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent } from '@/lib/mathFormat';
 
 export interface NumericalExecutionStep {
   step_title?: string;
@@ -133,7 +133,18 @@ function NumericalStepCard({ step, idx }: { step: NumericalExecutionStep; idx: n
         {(() => {
           const calc = step.calculation;
           if (!calc || calc === 'undefined') return null;
-          
+
+          // Code content → render as pre/code, never KaTeX
+          if (isCodeContent(calc)) {
+            return (
+              <div className="w-full py-3 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto">
+                <pre className="text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words leading-relaxed">
+                  <code>{calc.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                </pre>
+              </div>
+            );
+          }
+
           const lines = parseMathLines(calc);
           const containerClass = "w-full py-3 px-4 bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto text-[13px] text-[#D1D1C7]";
           

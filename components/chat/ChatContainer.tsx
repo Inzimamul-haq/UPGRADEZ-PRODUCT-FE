@@ -157,7 +157,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           // Does the IQ paper tied to THIS chat already have an exam paper
           // linked to it — possibly assigned from a completely different chat?
           const linkedExamPaper = hasPaperIQ ? chat.paper?.linkedFrom?.[0] : undefined;
-          const hasLinkedExamPaper = Boolean(linkedExamPaper);
+          
+          // Bug Fix: If this chat generated an EXAM_PAPER, then an exam paper IS assigned!
+          const hasLinkedExamPaper = Boolean(linkedExamPaper) || chat.paper?.kind === 'EXAM_PAPER';
+          
           const examCreatorName = linkedExamPaper?.creator?.name;
 
           const assignment = chat.paper?.paperAssignments?.[0];
@@ -700,6 +703,13 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     try {
       if (isFaculty) {
+        if (!difficultyMode || !difficultyConfirmed) {
+          toast.error("Please confirm the difficulty mode on top to start generating.");
+          setIsStreaming(false);
+          setMessages(prev => prev.slice(0, -1)); // Remove the optimistically added message
+          return;
+        }
+
         let effectivePaperKind = sessionData?.paperKind || 'EXAM_PAPER';
         // Auto-transition to EXAM_PAPER if they ask for one, even if they reload the chat later
         if (effectivePaperKind === 'IMPORTANT_QUESTIONS' && /\b(?:exam|exam paper|qp|question paper)\b/i.test(content)) {
@@ -717,7 +727,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           branch: sessionData?.branch || '',
           instruction: content,
           paperKind: effectivePaperKind,
-          difficultyMode: difficultyMode || 'MEDIUM',
+          difficultyMode: difficultyMode,
           linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
           linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
@@ -910,6 +920,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           }
         }
       }, 600);
+    } else if (assignedKind === 'EXAM_PAPER') {
+      setSessionData(prev => prev ? { ...prev, hasLinkedExamPaper: true } : prev);
     }
   };
 

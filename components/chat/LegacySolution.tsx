@@ -1,11 +1,10 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Lightbulb, ArrowRight, CheckCircle2, Zap } from 'lucide-react';
+import { Lightbulb, CheckCircle2, } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -29,23 +28,17 @@ export interface LegacySolutionData {
 
 export function LegacySolution({ data }: { data: LegacySolutionData }) {
   return (
-    <div className="flex flex-col gap-6 mt-6 mb-4 w-full">
+    <div className="flex flex-col gap-4 mt-4 mb-2">
       {/* Concept Header */}
       {data.method && (
-        <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl shadow-inner relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
-          <Lightbulb size={18} className="text-indigo-400" />
-          <span className="text-[14px] font-semibold text-indigo-100 tracking-wide">
-            Concept: {data.method}
-          </span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-[#2C2C2A]/60 border border-[#3A3A38] rounded-lg">
+          <Lightbulb size={16} className="text-[#818CF8]" />
+          <span className="text-[13px] font-semibold text-[#E5E5E5]">Concept: {data.method}</span>
         </div>
       )}
       
-      {/* Timeline Steps */}
-      <div className="relative pl-6 flex flex-col gap-8 w-full mt-2">
-        {/* Vertical Timeline Line */}
-        <div className="absolute left-0 top-2 bottom-6 w-[2px] bg-gradient-to-b from-indigo-500/40 via-purple-500/30 to-emerald-500/20 rounded-full"></div>
-        
+      {/* Steps */}
+      <div className="flex flex-col gap-3 relative border-l-2 border-[#3A3A38]/50 ml-3 pl-5">
         {data.steps.map((step, idx) => (
           <LegacyStepCard key={idx} step={step} />
         ))}
@@ -53,13 +46,12 @@ export function LegacySolution({ data }: { data: LegacySolutionData }) {
 
       {/* Final Conclusion */}
       {data.final_answer && data.final_answer.display && (
-        <div className="mt-4 bg-[#1C1C1B] border border-[#3A3A38] rounded-xl px-5 py-4 shadow-xl relative overflow-hidden flex flex-col items-center justify-center text-center">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500"></div>
-          <div className="absolute opacity-5 -right-4 -bottom-4">
-            <CheckCircle2 size={100} />
+        <div className="mt-2 bg-[#2C2C2A] border-l-[3px] border-[#10B981] rounded-r-lg px-4 py-3 shadow-md relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-2 opacity-10">
+            <CheckCircle2 size={48} />
           </div>
-          <h4 className="text-[11px] font-bold text-gray-400 tracking-[0.2em] uppercase mb-2">Final Conclusion</h4>
-          <div className="text-[16px] font-medium text-[#ECECEA] relative z-10 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
+          <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Conclusion</h4>
+          <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
             {(() => {
               const ans = ensureBoxedIsMath(data.final_answer.display);
               if (!ans || ans === 'undefined') return null;
@@ -81,42 +73,60 @@ export function LegacySolution({ data }: { data: LegacySolutionData }) {
 
 function LegacyStepCard({ step }: { step: MathStep }) {
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="relative flex flex-col gap-3 w-full group"
-    >
-      {/* Timeline Dot */}
-      <div className="absolute -left-[31px] top-0.5 w-7 h-7 rounded-full bg-[#1C1C1B] border-2 border-indigo-500/50 flex items-center justify-center text-[12px] font-bold text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)] z-10 group-hover:border-indigo-400 group-hover:text-indigo-200 transition-colors">
+    <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 relative group hover:border-[#4A4A48] transition-colors">
+      {/* Step Badge */}
+      <div className="absolute -left-[30px] top-4 w-6 h-6 rounded-full bg-[#2C2C2A] border-2 border-[#3A3A38] flex items-center justify-center text-[10px] font-bold text-[#8C8C8A] group-hover:border-[#818CF8] group-hover:text-[#818CF8] transition-colors">
         {step.step}
       </div>
 
-      <h3 className="text-[15px] font-semibold text-indigo-50 mb-1 ml-1 tracking-wide flex items-center gap-2">
-        {step.title}
-      </h3>
+      <div className="flex justify-between items-start gap-4 mb-3">
+        <h3 className="text-[14px] font-semibold text-[#ECECEA]">{step.title}</h3>
+      </div>
 
-      <div className="flex flex-col gap-3 w-full ml-1">
+      <div className="flex flex-col w-full math-solution-container mt-2 text-[14px] text-[#E5E5E5]">
         {step.work.map((workItem, i) => (
-          <div key={i} className="flex flex-col gap-2 w-full">
+          <div key={i} className={`flex flex-col w-full ${i > 0 ? 'mt-5' : ''}`}>
             {/* Explanation text */}
             {workItem.explanation && (
-              <div className="text-[13.5px] text-[#A1A1AA] leading-relaxed">
+              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed mb-3">
                 {workItem.explanation}
               </div>
             )}
             
             {/* Equation / Formulation box */}
             {workItem.equation && workItem.equation !== 'undefined' && (
-              <div className="bg-[#181817] border border-[#2A2A28] rounded-lg p-3 w-full shadow-inner">
+              <div className="w-full">
                 {(() => {
                   const eq = workItem.equation;
                   if (!eq || eq === 'undefined') return null;
-                  
+
+                  // Code content → plain pre/code block, never KaTeX
+                  if (isCodeContent(eq)) {
+                    return (
+                      <div className="w-full py-2 px-4 bg-[#1C1C1B]/60 border border-[#3A3A38]/50 rounded-lg overflow-x-auto">
+                        <pre className="text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words leading-relaxed">
+                          <code>{eq.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                        </pre>
+                      </div>
+                    );
+                  }
+
+                  // Plain text → standard text rendering, no KaTeX $$ wrapper
+                  if (isPlainText(eq)) {
+                    return (
+                      <div className="w-full py-2 px-4 text-[13.5px] text-[#D1D1C7] leading-relaxed">
+                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          {eq}
+                        </ReactMarkdown>
+                      </div>
+                    );
+                  }
+
                   const lines = parseMathLines(eq);
                   if (lines.length === 0) return null;
                   
                   return (
-                    <div className="w-full overflow-x-auto flex flex-col gap-2 items-center text-[15px] text-indigo-200">
+                    <div className="w-full py-2 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col gap-2 items-center">
                       {lines.map((line, i) => (
                         <div key={i} className="flex justify-center w-full">
                           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
@@ -131,33 +141,54 @@ function LegacyStepCard({ step }: { step: MathStep }) {
             )}
           </div>
         ))}
+      </div>
 
-        {/* Step Result Outcome */}
-        {step.result && (
-          <div className="mt-1 flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 rounded-lg p-2.5 w-max max-w-full">
-            <ArrowRight size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-            <div className="text-[13px] font-medium text-indigo-300/90 italic">
-              {(() => {
-                const res = step.result;
-                const lines = parseMathLines(res);
-                if (lines.length === 0) return null;
-                
+      {/* Step Result Outcome */}
+      {step.result && (
+        <div className="mt-5 bg-[#252523] border-l-[3px] border-[#3A3A38] rounded-r-lg px-4 py-3 relative overflow-hidden">
+          <h4 className="text-[11px] font-bold text-[#A1A1AA] tracking-wider uppercase mb-2">Step Result</h4>
+          <div className="text-[14px] font-semibold text-[#D1D1C7] relative z-10 overflow-x-auto">
+            {(() => {
+              const res = step.result;
+
+              // Code content → plain pre/code, no italic/KaTeX
+              if (isCodeContent(res)) {
                 return (
-                  <div className="flex flex-col gap-2 items-start">
-                    {lines.map((line, i) => (
-                      <div key={i} className="flex justify-center w-full">
-                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                          {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
-                        </ReactMarkdown>
-                      </div>
-                    ))}
+                  <pre className="w-full text-left text-[12.5px] font-mono text-[#E5A05F] whitespace-pre-wrap break-words leading-relaxed">
+                    <code>{res.replace(/\\n/g, '\n').replace(/\\"/g, '"')}</code>
+                  </pre>
+                );
+              }
+
+              // Plain text → standard text rendering, no KaTeX $$ wrapper
+              if (isPlainText(res)) {
+                return (
+                  <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed pb-1">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {res}
+                    </ReactMarkdown>
                   </div>
                 );
-              })()}
-            </div>
+              }
+
+              const lines = parseMathLines(res);
+              if (lines.length === 0) return null;
+              
+              return (
+                <div className="flex flex-col gap-2 items-center">
+                  {lines.map((line, i) => (
+                    <div key={i} className="flex justify-center w-full">
+                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                      </ReactMarkdown>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
-        )}
-      </div>
-    </motion.div>
+        </div>
+      )}
+    </div>
   );
 }

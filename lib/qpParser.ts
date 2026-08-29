@@ -49,6 +49,32 @@ export function stripQPPrefix(raw: string): string {
 }
 
 /**
+ * Regex that matches the [[graph:...]] algorithm definition prefix.
+ */
+const GRAPH_PREFIX_RE = /^\[\[graph:(.*?)\]\]\s*/i;
+
+/**
+ * Strips the [[graph:...]] prefix from a stored questionText, returning only the
+ * clean display text. Safe to call on strings that have no prefix.
+ */
+export function stripGraphPrefix(raw: string): string {
+  return raw.replace(GRAPH_PREFIX_RE, '').trim();
+}
+
+/**
+ * Parses the [[graph:...]] prefix into a JSON object if present.
+ */
+export function extractGraphPrefix(raw: string): any | null {
+  const m = raw.match(GRAPH_PREFIX_RE);
+  if (!m) return null;
+  try {
+    return JSON.parse(m[1]);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parses the [[qp:...]] prefix from a stored questionText.
  * Returns null if the string has no prefix (legacy / PDF-uploaded questions).
  */
