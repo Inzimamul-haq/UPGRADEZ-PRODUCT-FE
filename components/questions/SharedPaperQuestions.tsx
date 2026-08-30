@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from '@/lib/qpParser';
+import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix, extractGraphPrefix, stripGraphPrefix } from '@/lib/qpParser';
 import { getMarksColor } from '@/lib/utils';
+import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,12 +60,22 @@ function QuestionBlock({
   question: DecodedQuestion;
   label: string;
 }) {
+  const graphDef = extractGraphPrefix(question.text);
+  const cleanText = stripGraphPrefix(question.text);
+
   return (
-    <div className="flex items-start gap-3 py-3">
-      <span className={`text-[12px] font-medium w-8 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
-        {label}
-      </span>
-      <p className="flex-1 text-[14px] text-[#ECECEA] leading-relaxed">{question.text}</p>
+    <div className="flex flex-col py-3">
+      <div className="flex items-start gap-3">
+        <span className={`text-[12px] font-medium w-8 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
+          {label}
+        </span>
+        <p className="flex-1 text-[14px] text-[#ECECEA] leading-relaxed">{cleanText}</p>
+      </div>
+      {graphDef && (
+        <div className="mt-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] ml-11">
+          <GraphDisplay graph={graphDef} width={250} height={250} />
+        </div>
+      )}
     </div>
   );
 }

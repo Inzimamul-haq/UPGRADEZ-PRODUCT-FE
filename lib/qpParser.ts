@@ -51,7 +51,7 @@ export function stripQPPrefix(raw: string): string {
 /**
  * Regex that matches the [[graph:...]] algorithm definition prefix.
  */
-const GRAPH_PREFIX_RE = /^\[\[graph:(.*?)\]\]\s*/i;
+const GRAPH_PREFIX_RE = /\[\[graph:([\s\S]*?)\]\]\s*/i;
 
 /**
  * Strips the [[graph:...]] prefix from a stored questionText, returning only the
@@ -68,7 +68,11 @@ export function extractGraphPrefix(raw: string): any | null {
   const m = raw.match(GRAPH_PREFIX_RE);
   if (!m) return null;
   try {
-    return JSON.parse(m[1]);
+    const parsed = JSON.parse(m[1]);
+    if (parsed && Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
+      return parsed;
+    }
+    return null;
   } catch {
     return null;
   }

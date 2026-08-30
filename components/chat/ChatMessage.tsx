@@ -10,10 +10,11 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
+import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
 import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
 
-type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData };
+type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
 
 function parseMathSolutions(text: string): SolutionSegment[] {
   const segments: SolutionSegment[] = [];
@@ -74,7 +75,9 @@ function parseMathSolutions(text: string): SolutionSegment[] {
         parsed = new Function('return ' + matchContent)();
       }
       if (parsed) {
-        if (parsed.solution === undefined) {
+        if (parsed.ui_type) {
+          data = parsed;
+        } else if (parsed.solution === undefined) {
           data = { ui_type: 'fallback', solution: parsed };
         } else {
           data = parsed;
@@ -119,7 +122,46 @@ function parseMathSolutions(text: string): SolutionSegment[] {
     }
   }
 
-  return finalSegments.length > 0 ? finalSegments : [{ type: 'text', content: text }];
+  const segmentsWithGraph: SolutionSegment[] = [];
+  const GRAPH_PREFIX_RE = /\[\[graph:([\s\S]*?)\]\]\s*/i;
+
+  for (const seg of finalSegments) {
+    if (seg.type === 'text') {
+      let currentText = seg.content;
+      while (currentText) {
+        const match = currentText.match(GRAPH_PREFIX_RE);
+        if (!match || match.index === undefined) {
+          if (currentText.trim()) {
+            segmentsWithGraph.push({ type: 'text', content: currentText });
+          }
+          break;
+        }
+
+        const textAfterMatch = currentText.substring(match.index + match[0].length);
+        let endOfBlock = textAfterMatch.indexOf('\n\n');
+        if (endOfBlock === -1) endOfBlock = textAfterMatch.indexOf('\n');
+        if (endOfBlock === -1) endOfBlock = textAfterMatch.length;
+
+        const textBeforeGraph = currentText.substring(0, match.index) + textAfterMatch.substring(0, endOfBlock);
+        
+        if (textBeforeGraph.trim()) {
+          segmentsWithGraph.push({ type: 'text', content: textBeforeGraph.trim() });
+        }
+
+        try {
+          segmentsWithGraph.push({ type: 'graph', data: JSON.parse(match[1]) });
+        } catch {
+          segmentsWithGraph.push({ type: 'text', content: match[0] });
+        }
+
+        currentText = textAfterMatch.substring(endOfBlock);
+      }
+    } else {
+      segmentsWithGraph.push(seg);
+    }
+  }
+
+  return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
 export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
@@ -392,6 +434,10 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                           >
                             {seg.content}
                           </ReactMarkdown>
+                        ) : seg.type === 'graph' ? (
+                          <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                            <GraphDisplay graph={seg.data} width={300} height={250} />
+                          </div>
                         ) : (
                           <SolutionRenderer data={seg.data} />
                         )}
@@ -500,6 +546,10 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                         >
                           {seg.content}
                         </ReactMarkdown>
+                      ) : seg.type === 'graph' ? (
+                        <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                          <GraphDisplay graph={seg.data} width={300} height={250} />
+                        </div>
                       ) : (
                         <SolutionRenderer data={seg.data} />
                       )}
