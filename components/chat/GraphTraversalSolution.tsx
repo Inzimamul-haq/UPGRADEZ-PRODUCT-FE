@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GraphDefinition, GraphDisplay, generateCircularLayout } from '@/components/ui/GraphDisplay';
 import { isTree, generateTreeLayout } from '@/lib/graphUtils';
-import { Play, Pause, SkipForward, SkipBack, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -27,61 +26,25 @@ export interface GraphTraversalSolutionData {
   finalAnswer: string;
 }
 
-export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionData }) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  // Initialize layout once
-  const [layout, setLayout] = useState<Record<string, { x: number; y: number }>>({});
-  const [isGraphTree, setIsGraphTree] = useState(false);
-
-  useEffect(() => {
-    if (data.graph) {
-      const tree = isTree(data.graph);
-      setIsGraphTree(tree);
-      if (tree) {
-        setLayout(generateTreeLayout(data.graph, 400, 300));
-      } else {
-        setLayout(generateCircularLayout(data.graph.nodes, 400, 300));
-      }
-    }
-  }, [data.graph]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlaying && currentStep < data.steps.length - 1) {
-      interval = setInterval(() => {
-        setCurrentStep((prev) => prev + 1);
-      }, 1500); // fixed speed play
-    } else if (currentStep >= data.steps.length - 1) {
-      setIsPlaying(false);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, currentStep, data.steps.length]);
-
-  const togglePlay = () => setIsPlaying(!isPlaying);
-  const reset = () => {
-    setIsPlaying(false);
-    setCurrentStep(0);
-  };
-  const prevStep = () => setCurrentStep(Math.max(0, currentStep - 1));
-  const nextStep = () => setCurrentStep(Math.min(data.steps.length - 1, currentStep + 1));
-
-  if (!data || !data.graph || !data.steps || data.steps.length === 0) {
-    return <div className="text-red-400">Invalid graph traversal data.</div>;
-  }
-
-  const stepData = data.steps[currentStep];
-  const state = stepData.state || {};
-
+function StepCard({ 
+  step, 
+  isLast, 
+  graph, 
+  layout 
+}: { 
+  step: GraphTraversalStep; 
+  isLast: boolean; 
+  graph: GraphDefinition; 
+  layout: Record<string, { x: number; y: number }>;
+}) {
+  const state = step.state || {};
   const activeNodes = new Set<string>();
   if (state.currentNode) activeNodes.add(state.currentNode);
-
   const visitedNodes = new Set<string>(state.visited || []);
 
   const renderDataStructures = () => {
     return (
-      <div className="flex flex-col gap-3 mt-4 w-full">
+      <div className="flex flex-col gap-3 w-full">
         {state.queue && (
           <div className="bg-[#2C2C2A] rounded p-3 border border-[#3A3A38]">
             <span className="text-[11px] font-bold text-[#8C8C8A] uppercase mb-2 block">Queue</span>
@@ -134,69 +97,96 @@ export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionD
   };
 
   return (
-    <div className="font-sans text-[#ECECEA] space-y-6">
-      <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl overflow-hidden shadow-lg">
-        {/* Header */}
-        <div className="bg-[#2C2C2A] px-5 py-3 border-b border-[#3A3A38] flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-            <span className="font-semibold text-sm tracking-wide">{data.algorithm} Traversal</span>
-          </div>
-          <span className="text-xs font-mono text-[#8C8C8A] bg-[#1C1C1B] px-2 py-1 rounded border border-[#3A3A38]">
-            Step {currentStep + 1} / {data.steps.length}
-          </span>
+    <div className="relative pl-8">
+      {/* Timeline line */}
+      {!isLast && (
+        <div className="absolute left-[11px] top-8 bottom-[-24px] w-[2px] bg-[#3A3A38]"></div>
+      )}
+      
+      {/* Step Node */}
+      <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-[#2C2C2A] border-2 border-[#3A3A38] flex items-center justify-center text-[10px] font-bold text-[#8C8C8A]">
+        {step.step}
+      </div>
+
+      <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 relative group hover:border-[#4A4A48] transition-colors mb-6 shadow-sm">
+        {/* Action Header */}
+        <div className="text-[14px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-0 mb-4">
+          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            {step.explanation}
+          </ReactMarkdown>
         </div>
 
-        {/* Player Controls */}
-        <div className="flex items-center justify-center gap-4 py-3 bg-[#222220] border-b border-[#3A3A38]">
-          <button onClick={reset} className="p-1.5 text-[#8C8C8A] hover:text-white transition-colors" title="Reset">
-            <RotateCcw size={16} />
-          </button>
-          <button onClick={prevStep} disabled={currentStep === 0} className="p-1.5 text-[#8C8C8A] hover:text-white disabled:opacity-30 transition-colors">
-            <SkipBack size={18} />
-          </button>
-          <button onClick={togglePlay} className="p-2 bg-[#EAB308] text-black rounded-full hover:bg-yellow-400 transition-colors shadow-md">
-            {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
-          </button>
-          <button onClick={nextStep} disabled={currentStep === data.steps.length - 1} className="p-1.5 text-[#8C8C8A] hover:text-white disabled:opacity-30 transition-colors">
-            <SkipForward size={18} />
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="p-5 flex flex-col md:flex-row gap-6">
-          {/* Graph Visualization */}
-          <div className="w-full md:w-1/2 min-w-0 flex items-center justify-center bg-[#222220] rounded-xl border border-[#3A3A38] p-4 min-h-[300px]">
+        {/* Visuals and Data */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="w-full md:w-1/2 min-w-0 flex items-center justify-center bg-[#222220] rounded-xl border border-[#3A3A38] p-4">
             {Object.keys(layout).length > 0 && (
               <GraphDisplay 
-                graph={data.graph}
-                width={400}
-                height={300}
+                graph={graph}
+                width={300}
+                height={220}
                 activeNodes={activeNodes}
                 visitedNodes={visitedNodes}
                 nodePositions={layout}
               />
             )}
           </div>
-
-          {/* Explanation & Data Structures */}
-          <div className="w-full md:w-1/2 min-w-0 flex flex-col">
-            <div className="mb-4 flex-1">
-              <span className="text-[11px] font-bold text-[#EAB308] uppercase mb-2 block tracking-wider">Action</span>
-              <div className="text-[15px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-1">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {stepData.explanation}
-                </ReactMarkdown>
-              </div>
-            </div>
-            
+          <div className="w-full md:w-1/2 min-w-0 flex flex-col justify-center">
             {renderDataStructures()}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionData }) {
+  const [layout, setLayout] = useState<Record<string, { x: number; y: number }>>({});
+
+  useEffect(() => {
+    if (data && data.graph) {
+      const tree = isTree(data.graph);
+      if (tree) {
+        setLayout(generateTreeLayout(data.graph, 300, 220));
+      } else {
+        setLayout(generateCircularLayout(data.graph.nodes, 300, 220));
+      }
+    }
+  }, [data?.graph]);
+
+  if (!data || !data.graph || !data.steps || data.steps.length === 0) {
+    return <div className="text-red-400">Invalid graph traversal data.</div>;
+  }
+
+  return (
+    <div className="font-sans text-[#ECECEA] space-y-6">
+      <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl overflow-hidden shadow-lg p-5">
+        
+        {/* Title */}
+        <div className="flex items-center gap-2 mb-6 border-b border-[#3A3A38] pb-3">
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+          <span className="font-semibold text-sm tracking-wide">{data.algorithm} Traversal</span>
+        </div>
+
+        {/* Steps List */}
+        <div className="mt-4">
+          <span className="text-[11px] font-bold text-[#8C8C8A] uppercase mb-4 block tracking-wider">Execution Steps</span>
+          <div className="flex flex-col">
+            {data.steps.map((step, idx) => (
+              <StepCard 
+                key={idx} 
+                step={step} 
+                isLast={idx === data.steps.length - 1} 
+                graph={data.graph}
+                layout={layout}
+              />
+            ))}
+          </div>
+        </div>
+
+      </div>
 
       {/* Final Answer */}
-      {currentStep === data.steps.length - 1 && data.finalAnswer && (
+      {data.finalAnswer && (
         <div className="bg-[#1C1C1B] p-5 rounded-xl border border-green-500/30">
           <span className="text-[11px] font-bold text-green-400 uppercase mb-2 block tracking-wider">Final Result</span>
           <div className="prose prose-invert max-w-none text-sm text-[#ECECEA]">
