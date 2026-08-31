@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Home, BookOpen, Users, GraduationCap, FileText, HelpCircle, CreditCard, Building2, Bell } from 'lucide-react';
+import { Home, BookOpen, Users, GraduationCap, FileText, HelpCircle, CreditCard, Building2, Bell, Info } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
@@ -17,6 +17,7 @@ const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> 
     { href: '/faculty/dashboard', icon: Home, label: 'Dashboard' },
     { href: '/faculty/papers', icon: FileText, label: 'My Papers' },
     { href: '/faculty/questions', icon: BookOpen, label: 'Questions' },
+    { href: '/faculty/rules', icon: Info, label: 'Rules' },
   ],
   admin: [
     { href: '/admin/dashboard', icon: Home, label: 'Dashboard' },
@@ -26,6 +27,7 @@ const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> 
     { href: '/admin/syllabus', icon: BookOpen, label: 'Syllabus' },
     { href: '/admin/papers', icon: FileText, label: 'Papers' },
     { href: '/admin/questions', icon: HelpCircle, label: 'Questions' },
+    { href: '/admin/rules', icon: Info, label: 'Rules' },
   ],
   super_admin: [
     { href: '/super-admin/dashboard', icon: Home, label: 'Dashboard' },
