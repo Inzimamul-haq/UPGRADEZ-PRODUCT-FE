@@ -164,7 +164,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
-export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProps) {
+export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
@@ -439,7 +439,13 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                             <GraphDisplay graph={seg.data} width={300} height={250} />
                           </div>
                         ) : (
-                          <SolutionRenderer data={seg.data} />
+                          <SolutionRenderer 
+                            data={seg.data} 
+                            messageId={message.id}
+                            chatId={chatId}
+                            stepExplanations={message.stepExplanations ?? []}
+                            batchQuestionNo={batch.questionNo ?? null}
+                          />
                         )}
                       </div>
                     ))}
@@ -551,7 +557,13 @@ export function ChatMessage({ message, onAction, onEditSubmit }: ChatMessageProp
                           <GraphDisplay graph={seg.data} width={300} height={250} />
                         </div>
                       ) : (
-                        <SolutionRenderer data={seg.data} />
+                        <SolutionRenderer 
+                          data={seg.data}
+                          messageId={message.id}
+                          chatId={chatId}
+                          stepExplanations={message.stepExplanations ?? []}
+                          batchQuestionNo={null}
+                        />
                       )}
                     </div>
                   ))}
