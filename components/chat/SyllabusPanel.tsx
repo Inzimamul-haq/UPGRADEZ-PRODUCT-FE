@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { X, BookOpen } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { X, BookOpen, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { TocEntry } from "@/lib/types";
 
 interface SyllabusPanelProps {
@@ -13,6 +13,20 @@ interface SyllabusPanelProps {
 
 export function SyllabusPanel({ open, onClose, subjectName, entries }: SyllabusPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(() => new Set(entries.map((e) => e.chapter)));
+
+  useEffect(() => {
+    setExpandedChapters(new Set(entries.map((e) => e.chapter)));
+  }, [entries]);
+
+  const toggleChapter = (chapter: number) => {
+    setExpandedChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(chapter)) next.delete(chapter);
+      else next.add(chapter);
+      return next;
+    });
+  };
 
   // Close on Escape
   useEffect(() => {
@@ -109,29 +123,67 @@ export function SyllabusPanel({ open, onClose, subjectName, entries }: SyllabusP
             </div>
           ) : (
             <ul className="p-3 flex flex-col gap-1.5">
-              {entries.map((entry) => (
-                <li
-                  key={entry.chapter}
-                  className="group flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-[#242422] transition-colors duration-150"
-                >
-                  {/* Chapter badge */}
-                  <span className="flex-shrink-0 w-6 h-6 rounded-md bg-[#2C2C2A] border border-[#3A3A38] flex items-center justify-center mt-0.5">
-                    <span className="text-[10px] font-semibold text-[#8C8C8A] leading-none">
-                      {entry.chapter}
-                    </span>
-                  </span>
+              {entries.map((entry) => {
+                const isExpanded = expandedChapters.has(entry.chapter);
+                const hasTopics = entry.topics && entry.topics.length > 0;
+                
+                return (
+                  <li
+                    key={entry.chapter}
+                    className="flex flex-col gap-1 px-3 py-2.5 rounded-lg hover:bg-[#242422] transition-colors duration-150"
+                  >
+                    <div 
+                      className={`flex items-start gap-3 ${hasTopics ? "cursor-pointer group" : ""}`}
+                      onClick={() => hasTopics && toggleChapter(entry.chapter)}
+                    >
+                      {/* Chapter badge */}
+                      <span className="flex-shrink-0 w-6 h-6 rounded-md bg-[#2C2C2A] border border-[#3A3A38] flex items-center justify-center mt-0.5">
+                        <span className="text-[10px] font-semibold text-[#8C8C8A] leading-none">
+                          {entry.chapter}
+                        </span>
+                      </span>
 
-                  {/* Title */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] sm:text-[13px] text-[#C4C4C2] leading-snug group-hover:text-[#ECECEA] transition-colors">
-                      {entry.title}
-                    </p>
-                    <p className="text-[10px] text-[#4A4A48] mt-0.5 leading-none">
-                      Unit {entry.chapter}
-                    </p>
-                  </div>
-                </li>
-              ))}
+                      {/* Title & Topic Count */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[12px] sm:text-[13px] text-[#C4C4C2] leading-snug group-hover:text-[#ECECEA] transition-colors">
+                            {entry.title}
+                          </p>
+                          {hasTopics && (
+                            <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                              <span className="text-[10px] text-[#6C6C6A] bg-[#1C1C1B] px-1.5 py-0.5 rounded border border-[#2E2E2C]">
+                                {entry.topics.length} topics
+                              </span>
+                              {isExpanded ? (
+                                <ChevronDown size={14} className="text-[#6C6C6A]" />
+                              ) : (
+                                <ChevronRight size={14} className="text-[#6C6C6A]" />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-[#4A4A48] mt-0.5 leading-none">
+                          Unit {entry.chapter}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Expandable Topics List */}
+                    {isExpanded && hasTopics && (
+                      <div className="mt-2 pl-9 pr-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <ul className="flex flex-col gap-1.5">
+                          {entry.topics.map((topic, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-[11px] text-[#8C8C8A]">
+                              <Check size={12} className="text-[#4A4A48] mt-0.5 flex-shrink-0" />
+                              <span className="leading-snug">{topic}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
