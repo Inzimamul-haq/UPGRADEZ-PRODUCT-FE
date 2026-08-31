@@ -626,38 +626,28 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const buildInstructionFromConfig = (config: ContextSetupConfig): string => {
     const kindLabel = sessionData?.paperKind === 'IMPORTANT_QUESTIONS'
       ? 'important questions'
-      : 'an exam paper';
+      : 'exam paper';
 
-    const chapterStr = config.chapters.length === 0
-      ? 'All Chapters'
-      : config.chapters.map(c => `Chapter ${c}`).join(', ');
-
-    const difficultyLabel: Record<string, string> = {
-      SIMPLE: 'Easy',
-      MEDIUM: 'Medium',
-      HARD: 'Hard',
-    };
+    let chapterStr = 'all chapters';
+    if (config.chapters.length > 0) {
+      if (config.chapters.length === 1) {
+        chapterStr = `chapter ${config.chapters[0]}`;
+      } else {
+        const last = config.chapters.slice(-1)[0];
+        const rest = config.chapters.slice(0, -1);
+        chapterStr = `chapter ${rest.join(', ')} and ${last}`;
+      }
+    }
 
     const { partA, partB, partC } = config.questionDistribution;
     const distLines: string[] = [];
-    if (partA.enabled) distLines.push(`Part A: ${partA.count} questions × ${partA.marks} marks`);
-    if (partB.enabled) distLines.push(`Part B: ${partB.count} questions × ${partB.marks} marks`);
-    if (partC.enabled) distLines.push(`Part C: ${partC.count} questions × ${partC.marks} marks`);
+    if (partA.enabled) distLines.push(`${partA.marks} marks ${partA.count} (part A)`);
+    if (partB.enabled) distLines.push(`${partB.marks} marks ${partB.count} (part B)`);
+    if (partC.enabled) distLines.push(`${partC.marks} marks ${partC.count} (part C)`);
 
-    return [
-      `Generate ${kindLabel} for:`,
-      ``,
-      `Subject: ${sessionData?.subjectName ?? ''}`,
-      `Exam Type: ${sessionData?.examType ?? ''}`,
-      ``,
-      `Chapters: ${chapterStr}`,
-      `Topics: All topics from selected chapters`,
-      ``,
-      `Distribution:`,
-      ...distLines,
-      ``,
-      `Difficulty: ${difficultyLabel[config.difficulty] ?? config.difficulty}`,
-    ].join('\n');
+    const markStr = distLines.length > 0 ? ` and mark is ${distLines.join(' , ')}` : '';
+
+    return `generate the ${kindLabel} from ${chapterStr} from topic${markStr}`;
   };
 
   // ── Context setup card generate handler ───────────────────────────────────

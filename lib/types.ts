@@ -51,7 +51,7 @@ export interface TocEntry {
   chapter: number;
   title: string;
   startPage?: number;
-  topics?: string[];
+  topics: string[];
 }
 
 export interface AssignModalProps {

@@ -452,7 +452,7 @@ export function ContextSetupCard({
                           <div className="p-3 animate-in fade-in duration-200">
                             {hasPills && (
                               <div className="flex flex-wrap gap-1.5 mb-3">
-                                {entry.topics!.map(t => {
+                                {entry.topics.map(t => {
                                   const selected = ts.selected.has(t);
                                   return (
                                     <button
