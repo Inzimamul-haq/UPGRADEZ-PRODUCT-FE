@@ -4,6 +4,25 @@ import { ReactNode } from "react";
 export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 export type DifficultyMode = 'SIMPLE' | 'MEDIUM' | 'HARD';
 
+export interface PartConfig {
+  enabled: boolean;
+  count: number;
+  marks: number; // e.g. 2, 13, 16, 14, 15
+}
+
+export interface QuestionDistribution {
+  partA: PartConfig;
+  partB: PartConfig;
+  partC: PartConfig;
+}
+
+export interface ContextSetupConfig {
+  chapters: number[]; // empty = all chapters
+  topics: Record<number, string[]>; // { 1: ['all'], 3: ['all'] }
+  questionDistribution: QuestionDistribution;
+  difficulty: DifficultyMode;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -32,6 +51,7 @@ export interface TocEntry {
   chapter: number;
   title: string;
   startPage?: number;
+  topics?: string[];
 }
 
 export interface AssignModalProps {

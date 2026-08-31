@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Subject, Message, TocEntry } from '@/lib/types';
+import { Subject, Message, TocEntry, ContextSetupConfig } from '@/lib/types';
 import { ChatStepOverlay } from './ChatStepOverlay';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
@@ -10,6 +10,7 @@ import { ChatInput } from './ChatInput';
 import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
 import { SyllabusPanel } from './SyllabusPanel';
+import { ContextSetupCard } from './ContextSetupCard';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
@@ -103,6 +104,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
   const [syllabusEntries, setSyllabusEntries] = useState<TocEntry[]>([]);
   const [syllabusSubjectName, setSyllabusSubjectName] = useState('');
+  // Context setup card state (faculty only)
+  const [showContextSetup, setShowContextSetup] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -495,25 +498,25 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             [{ id: 'start_new_session', label: 'Start a new session' }]
           )]);
         } else {
+          // IMPORTANT_QUESTIONS from overlay → show context setup card
           setDifficultyConfirmed(false);
-          setDifficultyMode('MEDIUM');
+          setDifficultyMode('');
           setMessages([
             pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
-            pushMsg(CHAT_MESSAGES.importantQuestionsPrompt)
           ]);
+          setShowContextSetup(true);
         }
       } else {
         setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
         setDifficultyConfirmed(false);
-        setDifficultyMode('MEDIUM');
+        setDifficultyMode('');
         const isUniversity = data.examType.toUpperCase().includes('UNIVERSITY');
-        const msgContent = isUniversity
-          ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
-          : CHAT_MESSAGES.examPaperPrompt;
         setMessages([
-          pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.`),
-          pushMsg(msgContent)
+          pushMsg(`Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.${
+            isUniversity ? '\n\n*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*' : ''
+          }`),
         ]);
+        setShowContextSetup(true);
       }
     } else if (hasLinkedIQ) {
       // 4. IQ exists, no exam paper yet (Standard branch)
@@ -538,30 +541,31 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   // ── Action buttons ───────────────────────────────────────────────────────
   const handleAction = (messageId: string, actionId: string) => {
     if (actionId === 'pick_iq') {
+      // Fresh session: show context setup card
       setSessionData(prev => prev ? { ...prev, paperKind: 'IMPORTANT_QUESTIONS' } : prev);
       setDifficultyConfirmed(false);
-      setDifficultyMode('MEDIUM');
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        CHAT_MESSAGES.importantQuestionsPrompt
-      )));
+      setDifficultyMode('');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m));
+      setShowContextSetup(true);
       return;
     }
 
     if (actionId === 'pick_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
       setDifficultyConfirmed(false);
-      setDifficultyMode('MEDIUM');
+      setDifficultyMode('');
 
-      const isUniversity = sessionData?.examType.toUpperCase().includes('UNIVERSITY');
       const hasIQ = sessionData?.hasLinkedIQ;
 
-      const messageContent = isUniversity
-        ? `*This is a Semester/University exam paper. It will be common for all sections of the department for this subject.*\n\n${CHAT_MESSAGES.examPaperPrompt}`
-        : hasIQ
-          ? CHAT_MESSAGES.examPaperFromIQ
-          : CHAT_MESSAGES.examPaperPrompt;
-
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
+      // If IQ already exists — use its context, skip setup card
+      if (hasIQ) {
+        const messageContent = CHAT_MESSAGES.examPaperFromIQ;
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
+      } else {
+        // Fresh session: show context setup card
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m));
+        setShowContextSetup(true);
+      }
       return;
     }
 
@@ -618,6 +622,55 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
   };
 
+  // ── Build structured instruction from context card config ─────────────────
+  const buildInstructionFromConfig = (config: ContextSetupConfig): string => {
+    const kindLabel = sessionData?.paperKind === 'IMPORTANT_QUESTIONS'
+      ? 'important questions'
+      : 'an exam paper';
+
+    const chapterStr = config.chapters.length === 0
+      ? 'All Chapters'
+      : config.chapters.map(c => `Chapter ${c}`).join(', ');
+
+    const difficultyLabel: Record<string, string> = {
+      SIMPLE: 'Easy',
+      MEDIUM: 'Medium',
+      HARD: 'Hard',
+    };
+
+    const { partA, partB, partC } = config.questionDistribution;
+    const distLines: string[] = [];
+    if (partA.enabled) distLines.push(`Part A: ${partA.count} questions × ${partA.marks} marks`);
+    if (partB.enabled) distLines.push(`Part B: ${partB.count} questions × ${partB.marks} marks`);
+    if (partC.enabled) distLines.push(`Part C: ${partC.count} questions × ${partC.marks} marks`);
+
+    return [
+      `Generate ${kindLabel} for:`,
+      ``,
+      `Subject: ${sessionData?.subjectName ?? ''}`,
+      `Exam Type: ${sessionData?.examType ?? ''}`,
+      ``,
+      `Chapters: ${chapterStr}`,
+      `Topics: All topics from selected chapters`,
+      ``,
+      `Distribution:`,
+      ...distLines,
+      ``,
+      `Difficulty: ${difficultyLabel[config.difficulty] ?? config.difficulty}`,
+    ].join('\n');
+  };
+
+  // ── Context setup card generate handler ───────────────────────────────────
+  const handleContextGenerate = async (config: ContextSetupConfig) => {
+    setShowContextSetup(false);
+    // Set difficulty from the card (header selector reflects this and stays editable)
+    setDifficultyMode(config.difficulty);
+    setDifficultyConfirmed(true);
+
+    const instruction = buildInstructionFromConfig(config);
+    await handleSend(instruction, undefined, config.difficulty);
+  };
+
   const handleEditSubmit = async (messageId: string, content: string) => {
     if (!chatId) return;
     const msg = messages.find(m => m.id === messageId);
@@ -670,7 +723,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string, editMessageId?: string) => {
+  const handleSend = async (content: string, editMessageId?: string, forceDifficulty?: DifficultyMode) => {
     if (!isFaculty && questionsToday >= 10) return;
     if (!isFaculty) setQuestionsToday(p => p + 1);
 
@@ -703,7 +756,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     try {
       if (isFaculty) {
-        if (!difficultyMode || !difficultyConfirmed) {
+        if (!forceDifficulty && (!difficultyMode || !difficultyConfirmed)) {
           toast.error("Please confirm the difficulty mode on top to start generating.");
           setIsStreaming(false);
           setMessages(prev => prev.slice(0, -1)); // Remove the optimistically added message
@@ -727,7 +780,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           branch: sessionData?.branch || '',
           instruction: content,
           paperKind: effectivePaperKind,
-          difficultyMode: difficultyMode,
+          difficultyMode: forceDifficulty || difficultyMode,
           linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
           linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
@@ -980,14 +1033,33 @@ return (
       />
     )}
 
-    {/* Remove the standalone DifficultySelector from here */}
+    {/* Context Setup Card — shown inline above ChatInput for faculty fresh sessions */}
+    {showContextSetup && isFaculty && sessionData && (
+      <div className="flex-shrink-0 overflow-y-auto max-h-[65vh] border-t border-[#2E2E2C]">
+        <ContextSetupCard
+          examType={sessionData.examType}
+          paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
+          subjectName={sessionData.subjectName ?? ''}
+          syllabusEntries={syllabusEntries}
+          onGenerate={handleContextGenerate}
+          difficulty={difficultyMode}
+          onDifficultyChange={(mode) => {
+            setDifficultyMode(mode);
+            setDifficultyConfirmed(true);
+            setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
+          }}
+        />
+      </div>
+    )}
 
     <ChatInput
       onSend={handleSend}
-      disabled={showOverlay || isStreaming || sessionLocked || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
+      disabled={showOverlay || isStreaming || sessionLocked || showContextSetup || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
       onDisabledClick={() => {
-        if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
-          toast.error("Please confirm the difficulty mode on top to start generating.");
+        if (showContextSetup) {
+          toast.info('Please complete the context setup above first.');
+        } else if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
+          toast.error('Please confirm the difficulty mode on top to start generating.');
         }
       }}
     />
