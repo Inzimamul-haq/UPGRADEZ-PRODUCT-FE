@@ -96,6 +96,13 @@ export interface ChatSession {
   created_at: string;
 }
 
+export interface StepExplanation {
+  id: string;
+  question: string;
+  answer: string;
+  createdAt: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -111,6 +118,7 @@ export interface Message {
     examType?: string;
   }[];
   isAssigned?: boolean;
+  stepExplanations?: StepExplanation[];
 }
 
 export interface Notification {
@@ -166,12 +174,14 @@ export interface ChatContainerProps {
 }
 export interface ChatMessageProps {
   message: Message;
+  chatId: string;
   onAction?: (messageId: string, actionId: string) => void;
   onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
 
 export interface ChatMessagesProps {
   messages: Message[];
+  chatId: string;
   isStreaming: boolean;
   onAction?: (messageId: string, actionId: string) => void;
   onEditSubmit?: (messageId: string, content: string) => Promise<void>;

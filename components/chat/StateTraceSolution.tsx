@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Loader2, User, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { StepExplanation } from '@/lib/types';
+import { useStepDoubt } from '@/hooks/useStepDoubt';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export interface StateTraceStep {
   step_number: number;
@@ -19,8 +22,45 @@ export interface StateTraceSolutionData {
   final_answer: string;
 }
 
-function StepCard({ step, isLast }: { step: StateTraceStep; isLast: boolean }) {
+function StepCard({ 
+  step, 
+  isLast,
+  messageId,
+  chatId,
+  stepExplanations = [],
+  batchQuestionNo
+}: { 
+  step: StateTraceStep; 
+  isLast: boolean;
+  messageId?: string;
+  chatId?: string;
+  stepExplanations?: StepExplanation[];
+  batchQuestionNo?: number | null;
+}) {
   const [showExplanation, setShowExplanation] = useState(false);
+  const [doubtOpen, setDoubtOpen] = useState(false);
+  const [doubtInput, setDoubtInput] = useState('');
+  
+  const stepLabel = step.step_number;
+  const { submitDoubt, loading } = useStepDoubt(chatId, messageId, batchQuestionNo);
+  
+  const [localDoubts, setLocalDoubts] = useState<StepExplanation[]>(() => {
+    return stepExplanations.filter(e => e.question.startsWith(`Step ${stepLabel}`));
+  });
+
+  const handleDoubtSubmit = async (text: string) => {
+    if (!text.trim() || loading) return;
+    
+    const stepContent = `${step.action}\n${step.reason}\n${step.state_after}`;
+    const doubtText = `Step ${stepLabel} — ${text}`;
+    
+    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    if (newRow) {
+      setLocalDoubts(prev => [...prev, newRow]);
+      setDoubtOpen(false);
+      setDoubtInput('');
+    }
+  };
 
   return (
     <div className="relative pl-8">
@@ -42,14 +82,54 @@ function StepCard({ step, isLast }: { step: StateTraceStep; isLast: boolean }) {
               {step.action}
             </ReactMarkdown>
           </div>
-          <button 
-            onClick={() => setShowExplanation(!showExplanation)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[11px] font-medium text-[#A1A1AA] shrink-0"
-          >
-            {showExplanation ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            Explanation
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowExplanation(!showExplanation)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[11px] font-medium text-[#A1A1AA] shrink-0 mt-0.5"
+            >
+              {showExplanation ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              Explanation
+            </button>
+            {messageId && (
+              <button 
+                onClick={() => setDoubtOpen(!doubtOpen)}
+                title="I have a doubt about this step"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[#818CF8] shrink-0 mt-0.5"
+              >
+                <HelpCircle size={14} />
+              </button>
+            )}
+          </div>
         </div>
+
+        {doubtOpen && (
+          <div className="mb-4 p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {["Didn't understand this step", "Explain more simply", "Why does state change like this?"].map(chip => (
+                <button
+                  key={chip}
+                  onClick={() => handleDoubtSubmit(chip)}
+                  disabled={loading}
+                  className="text-[11px] px-2.5 py-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-md text-[#D1D1C7] hover:bg-[#3A3A38] disabled:opacity-50"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={doubtInput}
+                onChange={e => setDoubtInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleDoubtSubmit(doubtInput)}
+                disabled={loading}
+                placeholder="Ask something specific..."
+                className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[12px] text-[#ECECEA] placeholder-[#8C8C8A] focus:outline-none focus:border-[#818CF8]"
+              />
+              {loading && <Loader2 size={14} className="animate-spin text-[#818CF8]" />}
+            </div>
+          </div>
+        )}
 
         {/* Expandable Reason */}
         <AnimatePresence>
@@ -77,12 +157,49 @@ function StepCard({ step, isLast }: { step: StateTraceStep; isLast: boolean }) {
             </ReactMarkdown>
           </div>
         </div>
+
+        {localDoubts.map(d => (
+          <motion.div 
+            key={d.id} 
+            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-[#252523] border border-[#3A3A38]/50 border-l-[3px] border-l-[#818CF8] rounded-xl flex flex-col gap-4"
+          >
+            <div className="flex items-start gap-2.5">
+              <div className="w-5 h-5 rounded bg-[#818CF8]/20 flex items-center justify-center shrink-0 mt-0.5">
+                <User size={12} className="text-[#818CF8]" />
+              </div>
+              <div className="text-[12.5px] text-[#ECECEA] font-medium leading-relaxed">
+                {d.question.replace(/^Step [^\s]+ — /, '')}
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="w-5 h-5 rounded bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Bot size={12} className="text-amber-500" />
+              </div>
+              <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
 }
 
-export function StateTraceSolution({ data }: { data: StateTraceSolutionData }) {
+export function StateTraceSolution({ 
+  data,
+  messageId,
+  chatId,
+  stepExplanations = [],
+  batchQuestionNo = null,
+}: { 
+  data: StateTraceSolutionData;
+  messageId?: string;
+  chatId?: string;
+  stepExplanations?: StepExplanation[];
+  batchQuestionNo?: number | null;
+}) {
   if (!data || !data.steps) {
     return <div className="text-red-400">Invalid state trace data.</div>;
   }
@@ -114,7 +231,15 @@ export function StateTraceSolution({ data }: { data: StateTraceSolutionData }) {
           <span className="text-[11px] font-bold text-[#8C8C8A] uppercase mb-4 block tracking-wider">Execution Steps</span>
           <div className="flex flex-col">
             {data.steps.map((step, idx) => (
-              <StepCard key={idx} step={step} isLast={idx === data.steps.length - 1} />
+              <StepCard 
+                key={idx} 
+                step={step} 
+                isLast={idx === data.steps.length - 1}
+                messageId={messageId}
+                chatId={chatId}
+                stepExplanations={stepExplanations}
+                batchQuestionNo={batchQuestionNo}
+              />
             ))}
           </div>
         </div>

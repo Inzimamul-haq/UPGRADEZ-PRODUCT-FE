@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { HelpCircle, Loader2, User, Bot } from 'lucide-react';
+import { StepExplanation } from '@/lib/types';
+import { useStepDoubt } from '@/hooks/useStepDoubt';
 import { GraphDefinition, GraphDisplay, generateCircularLayout } from '@/components/ui/GraphDisplay';
 import { isTree, generateTreeLayout } from '@/lib/graphUtils';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export interface GraphTraversalState {
   currentNode?: string;
@@ -28,15 +33,47 @@ export interface GraphTraversalSolutionData {
 
 function StepCard({ 
   step, 
-  isLast, 
+  isLast,
   graph, 
-  layout 
+  layout,
+  messageId,
+  chatId,
+  stepExplanations = [],
+  batchQuestionNo
 }: { 
   step: GraphTraversalStep; 
   isLast: boolean; 
   graph: GraphDefinition; 
   layout: Record<string, { x: number; y: number }>;
+  messageId?: string;
+  chatId?: string;
+  stepExplanations?: StepExplanation[];
+  batchQuestionNo?: number | null;
 }) {
+  const [doubtOpen, setDoubtOpen] = useState(false);
+  const [doubtInput, setDoubtInput] = useState('');
+  
+  const stepLabel = step.step;
+  const { submitDoubt, loading } = useStepDoubt(chatId, messageId, batchQuestionNo);
+  
+  const [localDoubts, setLocalDoubts] = useState<StepExplanation[]>(() => {
+    return stepExplanations.filter(e => e.question.startsWith(`Step ${stepLabel}`));
+  });
+
+  const handleDoubtSubmit = async (text: string) => {
+    if (!text.trim() || loading) return;
+    
+    // For graph step, stepContent is just the explanation
+    const stepContent = step.explanation;
+    const doubtText = `Step ${stepLabel} — ${text}`;
+    
+    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    if (newRow) {
+      setLocalDoubts(prev => [...prev, newRow]);
+      setDoubtOpen(false);
+      setDoubtInput('');
+    }
+  };
   const state = step.state || {};
   const activeNodes = new Set<string>();
   if (state.currentNode) activeNodes.add(state.currentNode);
@@ -110,11 +147,51 @@ function StepCard({
 
       <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 relative group hover:border-[#4A4A48] transition-colors mb-6 shadow-sm">
         {/* Action Header */}
-        <div className="text-[14px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-0 mb-4">
-          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {step.explanation}
-          </ReactMarkdown>
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <div className="text-[14px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-0">
+            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {step.explanation}
+            </ReactMarkdown>
+          </div>
+          {messageId && (
+            <button 
+              onClick={() => setDoubtOpen(!doubtOpen)}
+              title="I have a doubt about this step"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[#818CF8] shrink-0 mt-0.5"
+            >
+              <HelpCircle size={14} />
+            </button>
+          )}
         </div>
+
+        {doubtOpen && (
+          <div className="mb-4 p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {["Didn't understand this step", "Explain more simply", "Why traverse here?"].map(chip => (
+                <button
+                  key={chip}
+                  onClick={() => handleDoubtSubmit(chip)}
+                  disabled={loading}
+                  className="text-[11px] px-2.5 py-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-md text-[#D1D1C7] hover:bg-[#3A3A38] disabled:opacity-50"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={doubtInput}
+                onChange={e => setDoubtInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleDoubtSubmit(doubtInput)}
+                disabled={loading}
+                placeholder="Ask something specific..."
+                className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[12px] text-[#ECECEA] placeholder-[#8C8C8A] focus:outline-none focus:border-[#818CF8]"
+              />
+              {loading && <Loader2 size={14} className="animate-spin text-[#818CF8]" />}
+            </div>
+          </div>
+        )}
 
         {/* Visuals and Data */}
         <div className="flex flex-col md:flex-row gap-4">
@@ -134,12 +211,49 @@ function StepCard({
             {renderDataStructures()}
           </div>
         </div>
+
+        {localDoubts.map(d => (
+          <motion.div 
+            key={d.id} 
+            initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+            className="mt-4 p-4 bg-[#252523] border border-[#3A3A38]/50 border-l-[3px] border-l-[#818CF8] rounded-xl flex flex-col gap-4"
+          >
+            <div className="flex items-start gap-2.5">
+              <div className="w-5 h-5 rounded bg-[#818CF8]/20 flex items-center justify-center shrink-0 mt-0.5">
+                <User size={12} className="text-[#818CF8]" />
+              </div>
+              <div className="text-[12.5px] text-[#ECECEA] font-medium leading-relaxed">
+                {d.question.replace(/^Step [^\s]+ — /, '')}
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="w-5 h-5 rounded bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <Bot size={12} className="text-amber-500" />
+              </div>
+              <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
+                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
 }
 
-export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionData }) {
+export function GraphTraversalSolution({ 
+  data,
+  messageId,
+  chatId,
+  stepExplanations = [],
+  batchQuestionNo = null,
+}: { 
+  data: GraphTraversalSolutionData;
+  messageId?: string;
+  chatId?: string;
+  stepExplanations?: StepExplanation[];
+  batchQuestionNo?: number | null;
+}) {
   const [layout, setLayout] = useState<Record<string, { x: number; y: number }>>({});
 
   useEffect(() => {
@@ -178,6 +292,10 @@ export function GraphTraversalSolution({ data }: { data: GraphTraversalSolutionD
                 isLast={idx === data.steps.length - 1} 
                 graph={data.graph}
                 layout={layout}
+                messageId={messageId}
+                chatId={chatId}
+                stepExplanations={stepExplanations}
+                batchQuestionNo={batchQuestionNo}
               />
             ))}
           </div>

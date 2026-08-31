@@ -194,11 +194,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                   ...parsed,
                   figures: m.figures,
                   isAssigned: m.isAssigned,
-                  // Restore batchAnswers if the backend persisted them (keeps Q1/Q2 labels on reload)
                   ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
+                  ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}),
                 };
               }
-              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned };
+              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned, ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}) };
             });
 
             if (isFaculty && mapped.length > 0) {
@@ -967,7 +967,7 @@ return (
       entries={syllabusEntries}
     />
 
-    <ChatMessages messages={messages} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
+    <ChatMessages messages={messages} chatId={chatId || ''} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
     {assignModalOpen && sessionData && (
       <AssignModal
