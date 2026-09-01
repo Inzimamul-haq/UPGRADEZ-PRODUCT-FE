@@ -11,6 +11,7 @@ import { AssignModal } from './AssignModal';
 import { QuestionsPanel } from './QuestionsPanel';
 import { SyllabusPanel } from './SyllabusPanel';
 import { ContextSetupCard } from './ContextSetupCard';
+import { IQPickerPanel } from './IQPickerPanel';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
@@ -106,6 +107,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [syllabusSubjectName, setSyllabusSubjectName] = useState('');
   // Context setup card state (faculty only)
   const [showContextSetup, setShowContextSetup] = useState(false);
+  const [showIQPicker, setShowIQPicker] = useState(false);
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -552,31 +554,20 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     if (actionId === 'pick_exam_paper') {
       setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
+      // Reset unconditionally — the else branch (ContextSetupCard) needs these;
+      // handleIQPickerConfirm overwrites them again for the IQ branch.
       setDifficultyConfirmed(false);
       setDifficultyMode('');
-
+      
       const hasIQ = sessionData?.hasLinkedIQ;
 
-      // If IQ already exists — use its context, skip setup card
       if (hasIQ) {
-        const messageContent = CHAT_MESSAGES.examPaperFromIQ;
-        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(messageContent)));
+        setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m));
+        setShowIQPicker(true);
       } else {
-        // Fresh session: show context setup card
         setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m));
         setShowContextSetup(true);
       }
-      return;
-    }
-
-    if (actionId.startsWith('proceed_to_exam_paper')) {
-      const mode = actionId.endsWith('simple') ? 'SIMPLE' : actionId.endsWith('hard') ? 'HARD' : 'MEDIUM';
-      setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER', linkedIQDifficultyMode: difficultyMode || undefined } : prev);
-      setDifficultyConfirmed(true);
-      setDifficultyMode(mode);
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m).concat(pushMsg(
-        CHAT_MESSAGES.examPaperFromIQ
-      )));
       return;
     }
 
@@ -921,6 +912,49 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     }
   };
 
+  const handleIQPickerConfirm = async (paperMarkdown: string) => {
+    setShowIQPicker(false);
+    setDifficultyMode('MEDIUM');
+    setDifficultyConfirmed(true);
+  
+    // Start with a client UUID; reconcile with the real DB id after persist
+    // so AssignModal sends the correct messageId to save-and-assign
+    let persistedId = crypto.randomUUID();
+  
+    try {
+      const payload = { 
+        role: 'assistant', 
+        content: paperMarkdown,
+        chatId,
+        subjectId: sessionData?.subjectId,
+        examType: sessionData?.examType,
+        subjectName: sessionData?.subjectName,
+      };
+      
+      // Call the new lazy-create endpoint
+      const { data: saved } = await api.post(`/api/chats/save-message`, payload);
+      
+      if (saved?.data?.id) persistedId = saved.data.id;
+      if (saved?.chatId && !chatId) {
+        // Update local state + URL if a new chat was created
+        setChatId(saved.chatId);
+        refreshSessions();
+        window.history.replaceState(null, '', `/chat/${saved.chatId}?role=${role}`);
+      }
+    } catch (err) {
+      console.error('[IQPicker] Failed to persist paper message', err);
+      // Non-fatal — message still shows; assign will gracefully handle missing DB row
+    }
+  
+    const newMsg: Message = {
+      id: persistedId,
+      role: 'assistant',
+      content: paperMarkdown,
+      actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }],
+    };
+    setMessages(prev => [...prev, newMsg]);
+  };
+
   // ── After assign success ─────────────────────────────────────────────────
   const handleAssignSuccess = async (message: string, assignedKind: PaperKind, assignedPaperId: string) => {
     // Instantly update the assigned message in UI state so the green badge appears
@@ -944,25 +978,8 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         ? { ...prev, hasLinkedIQ: true, linkedIQPaperId: assignedPaperId, paperKind: null }
         : prev
       );
-      const followUp = `Ready to generate the actual **Exam Paper** now? Please select the target difficulty for the exam:`;
-      setTimeout(async () => {
-        setMessages(prev => [...prev, pushMsg(
-          followUp,
-          [
-            { id: 'proceed_to_exam_paper_simple', label: 'Simple Exam Paper' },
-            { id: 'proceed_to_exam_paper_medium', label: 'Medium Exam Paper' },
-            { id: 'proceed_to_exam_paper_hard', label: 'Hard Exam Paper' },
-          ]
-        )]);
-        // Persist the follow-up prompt too
-        if (chatId) {
-          try {
-            await api.post(`/api/chats/${chatId}/message`, { role: 'assistant', content: followUp });
-          } catch (err) {
-            console.error('Failed to persist follow-up message', err);
-          }
-        }
-      }, 600);
+      // Open the IQ picker so faculty can directly select which questions go into the exam paper
+      setTimeout(() => setShowIQPicker(true), 600);
     } else if (assignedKind === 'EXAM_PAPER') {
       setSessionData(prev => prev ? { ...prev, hasLinkedExamPaper: true } : prev);
     }
@@ -994,6 +1011,9 @@ return (
         // Syllabus props
         syllabusAvailable={syllabusEntries.length > 0}
         onOpenSyllabus={() => setIsSyllabusOpen(true)}
+        // IQ Picker
+        canOpenIQPicker={isFaculty && !!sessionData?.hasLinkedIQ && !sessionData?.hasLinkedExamPaper && !sessionLocked}
+        onOpenIQPicker={() => setShowIQPicker(true)}
       />
     )}
 
@@ -1009,7 +1029,6 @@ return (
       subjectName={syllabusSubjectName || sessionData?.subjectName || ''}
       entries={syllabusEntries}
     />
-
     <ChatMessages messages={messages} chatId={chatId || ''} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
     {assignModalOpen && sessionData && (
@@ -1042,9 +1061,22 @@ return (
       </div>
     )}
 
+    {/* IQ Picker Panel */}
+    {showIQPicker && isFaculty && sessionData?.linkedIQPaperId && (
+      <div className="flex-shrink-0 overflow-y-auto max-h-[65vh] border-t border-[#2E2E2C]">
+        <IQPickerPanel
+          paperId={sessionData.linkedIQPaperId}
+          examType={sessionData.examType}
+          subjectName={sessionData.subjectName ?? ''}
+          onConfirm={handleIQPickerConfirm}
+          onCancel={() => setShowIQPicker(false)}
+        />
+      </div>
+    )}
+
     <ChatInput
       onSend={handleSend}
-      disabled={showOverlay || isStreaming || sessionLocked || showContextSetup || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
+      disabled={showOverlay || isStreaming || sessionLocked || showContextSetup || showIQPicker || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
       onDisabledClick={() => {
         if (showContextSetup) {
           toast.info('Please complete the context setup above first.');
