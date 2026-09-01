@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   Zap,
   List,
+  ChevronDown,
 } from "lucide-react";
 import {
   TocEntry,
@@ -177,9 +178,9 @@ export function ContextSetupCard({
   };
 
   // ── Topic state ───────────────────────────────────────────────────────────
-  // chapter -> { all: boolean, selected: Set<string>, customText: string }
+  // chapter -> { all: boolean, selected: Set<string>, customText: string, expanded: boolean }
   const [topicStates, setTopicStates] = useState<
-    Record<number, { all: boolean; selected: Set<string>; customText: string }>
+    Record<number, { all: boolean; selected: Set<string>; customText: string; expanded?: boolean }>
   >({});
 
   // Initialize topic state for any newly selected chapters
@@ -189,7 +190,7 @@ export function ContextSetupCard({
       let changed = false;
       for (const ch of Array.from(selectedChapters)) {
         if (!next[ch]) {
-          next[ch] = { all: true, selected: new Set(), customText: "" };
+          next[ch] = { all: true, selected: new Set(), customText: "", expanded: true };
           changed = true;
         }
       }
@@ -197,10 +198,10 @@ export function ContextSetupCard({
     });
   }, [selectedChapters]);
 
-  const updateTopicState = (ch: number, patch: Partial<{ all: boolean; selected: Set<string>; customText: string }>) => {
+  const updateTopicState = (ch: number, patch: Partial<{ all: boolean; selected: Set<string>; customText: string; expanded: boolean }>) => {
     setTopicStates((prev) => ({
       ...prev,
-      [ch]: { ...(prev[ch] || { all: true, selected: new Set(), customText: "" }), ...patch },
+      [ch]: { ...(prev[ch] || { all: true, selected: new Set(), customText: "", expanded: true }), ...patch },
     }));
   };
 
@@ -432,14 +433,26 @@ export function ContextSetupCard({
                     return (
                       <div key={ch} className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
                         {/* Header for chapter */}
-                        <div className="flex items-center justify-between px-3 py-2 bg-[#2C2C2A] border-b border-[#3A3A38]">
-                          <span className="text-[12px] font-semibold text-[#ECECEA] truncate mr-2">
-                            Ch {entry.chapter}: {entry.title}
-                          </span>
+                        <div 
+                          className="flex items-center justify-between px-3 py-2 bg-[#2C2C2A] border-b border-[#3A3A38] cursor-pointer hover:bg-[#343432] transition-colors"
+                          onClick={() => updateTopicState(ch, { expanded: !ts.expanded })}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <ChevronDown 
+                              size={16} 
+                              className={`text-[#8C8C8A] transition-transform duration-200 ${!ts.expanded ? "-rotate-90" : ""}`} 
+                            />
+                            <span className="text-[12px] font-semibold text-[#ECECEA] truncate">
+                              Ch {entry.chapter}: {entry.title}
+                            </span>
+                          </div>
                           
                           <button
-                            onClick={() => updateTopicState(ch, { all: !ts.all })}
-                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ${
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateTopicState(ch, { all: !ts.all });
+                            }}
+                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ml-2 ${
                               ts.all ? "bg-[#1A2A1A] text-[#7AC87A]" : "bg-[#1C1C1B] text-[#6C6C6A] hover:text-[#ECECEA]"
                             }`}
                           >
@@ -448,7 +461,7 @@ export function ContextSetupCard({
                         </div>
                         
                         {/* Topic selection body */}
-                        {!ts.all && (
+                        {(!ts.all && ts.expanded !== false) && (
                           <div className="p-3 animate-in fade-in duration-200">
                             {hasPills && (
                               <div className="flex flex-wrap gap-1.5 mb-3">
@@ -575,7 +588,7 @@ export function ContextSetupCard({
           )}
 
           {/* ── Summary strip ─────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-[#242422] border border-[#2E2E2C] mt-2">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-[#242422] border border-[#2E2E2C] mb-4">
             <p
               className="text-[11px] text-[#6C6C6A] truncate flex-1"
               title={summaryLine}
@@ -583,64 +596,64 @@ export function ContextSetupCard({
               {summaryLine}
             </p>
           </div>
+        </div>
 
-          {/* ── Action buttons ───────────────────────────────────────────── */}
-          <div className="flex gap-2">
-            {step > 1 && (
-              <button
-                onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4)}
-                className="px-4 py-3 rounded-xl text-[13px] font-semibold bg-[#242422] border border-[#3A3A38] text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors"
-              >
-                Back
-              </button>
-            )}
+        {/* ── Action buttons ───────────────────────────────────────────── */}
+        <div className="sticky bottom-0 z-10 px-5 py-4 bg-[#1E1E1C] border-t border-[#2E2E2C] flex gap-2">
+          {step > 1 && (
+            <button
+              onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4)}
+              className="px-4 py-3 rounded-xl text-[13px] font-semibold bg-[#242422] border border-[#3A3A38] text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors shadow-sm"
+            >
+              Back
+            </button>
+          )}
 
-            {step < 4 ? (
-              <button
-                onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3 | 4)}
-                disabled={
-                  (step === 1 && !hasChapterSelection) ||
-                  (step === 2 && !hasValidTopics) ||
-                  (step === 3 && !hasAtLeastOnePart)
+          {step < 4 ? (
+            <button
+              onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3 | 4)}
+              disabled={
+                (step === 1 && !hasChapterSelection) ||
+                (step === 2 && !hasValidTopics) ||
+                (step === 3 && !hasAtLeastOnePart)
+              }
+              className={`
+                flex-1 flex items-center justify-center gap-2
+                py-3 rounded-xl text-[14px] font-semibold
+                border transition-all duration-200
+                ${
+                  ((step === 1 && hasChapterSelection) || (step === 2 && hasValidTopics) || (step === 3 && hasAtLeastOnePart))
+                    ? "bg-[#ECECEA] border-[#ECECEA] text-[#1A1710] hover:bg-white shadow-lg shadow-black/20"
+                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
                 }
-                className={`
-                  flex-1 flex items-center justify-center gap-2
-                  py-3 rounded-xl text-[14px] font-semibold
-                  border transition-all duration-200
-                  ${
-                    ((step === 1 && hasChapterSelection) || (step === 2 && hasValidTopics) || (step === 3 && hasAtLeastOnePart))
-                      ? "bg-[#ECECEA] border-[#ECECEA] text-[#1A1710] hover:bg-white shadow-lg"
-                      : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
-                  }
-                `}
-              >
-                Continue
-                <ChevronRight size={16} />
-              </button>
-            ) : (
-              <button
-                onClick={handleGenerate}
-                disabled={!canGenerate}
-                id="context-setup-generate-btn"
-                className={`
-                  flex-1 flex items-center justify-center gap-2
-                  py-3 rounded-xl text-[14px] font-semibold
-                  border transition-all duration-200
-                  ${
-                    canGenerate
-                      ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/10"
-                      : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
-                  }
-                `}
-              >
-                Generate Questions
-                <Sparkles size={16} />
-              </button>
-            )}
-          </div>
+              `}
+            >
+              Continue
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              id="context-setup-generate-btn"
+              className={`
+                flex-1 flex items-center justify-center gap-2
+                py-2.5 sm:py-3 rounded-xl text-[13px] font-semibold
+                border transition-all duration-200
+                ${
+                  canGenerate
+                    ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
+                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
+                }
+              `}
+            >
+              Compile Exam Paper
+              <Sparkles size={14} />
+            </button>
+          )}
+        </div>
         </div>
       </div>
-    </div>
   );
 }
 

@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import jsPDF from "jspdf";
-import { X, FileText, CheckCircle2 } from "lucide-react";
+import { X, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import api from "@/lib/api";
 
 interface SyllabusPdfGeneratorModalProps {
   open: boolean;
@@ -24,6 +25,7 @@ export default function SyllabusPdfGeneratorModal({
   const [text, setText] = useState("");
   const [parsedUnits, setParsedUnits] = useState<ParsedUnit[]>([]);
   const [error, setError] = useState("");
+  const [isParsing, setIsParsing] = useState(false);
   const [localSubjectName, setLocalSubjectName] = useState(
     subjectName || ""
   );
@@ -262,7 +264,7 @@ export default function SyllabusPdfGeneratorModal({
     };
   };
 
-  const handleParse = () => {
+  const handleParse = async () => {
     setError("");
 
     if (!text.trim()) {
@@ -270,60 +272,28 @@ export default function SyllabusPdfGeneratorModal({
       return;
     }
 
-    const cleanText = normalizeText(text);
+    try {
+      setIsParsing(true);
+      const { data } = await api.post('/api/subjects/parse-syllabus-text', { text });
 
-    const matches = [...cleanText.matchAll(unitRegex)];
+      if (!data.units || data.units.length === 0) {
+        setError("Could not parse syllabus from text. Please ensure the format is clear.");
+        return;
+      }
 
-    if (matches.length === 0) {
-      setError(
-        "Could not detect any units. Please ensure the syllabus contains UNIT I, UNIT II, etc."
-      );
-      return;
+      const mappedUnits: ParsedUnit[] = data.units.map((u: any) => ({
+        title: `UNIT ${u.chapter}`,
+        subtitle: u.title,
+        content: Array.isArray(u.topics) ? u.topics.join("\n") : u.topics,
+      }));
+
+      setParsedUnits(mappedUnits);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.error || "Failed to parse syllabus text. Please try again.");
+    } finally {
+      setIsParsing(false);
     }
-
-    const units: ParsedUnit[] = [];
-
-    for (let i = 0; i < matches.length; i++) {
-      const match = matches[i];
-
-      if (match.index === undefined) continue;
-
-      const start = match.index;
-
-      const end =
-        i + 1 < matches.length
-          ? matches[i + 1].index!
-          : cleanText.length;
-
-      const block = cleanText.slice(start, end).trim();
-
-      const type = match[1];
-      const number = match[2];
-
-      const parsed = extractUnitHeader(
-        block,
-        type,
-        number
-      );
-
-      units.push(parsed);
-    }
-
-    /*
-     * Remove accidental empty units.
-     */
-    const validUnits = units.filter(
-      (unit) =>
-        unit.title &&
-        (unit.subtitle || unit.content)
-    );
-
-    if (validUnits.length === 0) {
-      setError("Units were detected, but no syllabus content was found.");
-      return;
-    }
-
-    setParsedUnits(validUnits);
   };
 
   const handleGeneratePDF = () => {
@@ -630,8 +600,10 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
           {parsedUnits.length === 0 ? (
             <button
               onClick={handleParse}
-              className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-4 py-2 text-[13px] text-[#ECECEA] transition-colors hover:bg-[#333331]"
+              disabled={isParsing}
+              className="flex items-center gap-2 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-4 py-2 text-[13px] text-[#ECECEA] transition-colors hover:bg-[#333331] disabled:opacity-50"
             >
+              {isParsing && <Loader2 size={14} className="animate-spin" />}
               Preview PDF
             </button>
           ) : (

@@ -166,12 +166,12 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
       {/* Header */}
       <div className="px-5 py-4 border-b border-[#2E2E2C] flex items-center justify-between sticky top-0 bg-[#161615] z-10">
         <div>
-          <h3 className="text-[15px] font-semibold text-[#ECECEA]">Compile Exam Paper</h3>
-          <p className="text-[13px] text-[#A1A19A] mt-1">Select questions from the IQ pool for {subjectName}</p>
+          <h3 className="text-[12px] sm:text-[15px] font-semibold text-[#ECECEA]">Compile Exam Paper</h3>
+          <p className="text-[9px] sm:text-[13px] text-[#A1A19A] mt-1">Select questions from the IQ pool for {subjectName}</p>
         </div>
         
         {/* Stats summary */}
-        <div className="flex gap-4 text-[12px] font-medium">
+        <div className="flex gap-4 text-[8px] sm:text-[12px] font-medium">
           <div className={`px-3 py-1.5 rounded-md flex items-center gap-2 ${stats.count > 0 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-[#242422] text-[#8C8C8A] border border-transparent'}`}>
             <span>Selected:</span>
             <span className="font-semibold">{stats.count} Qs</span>

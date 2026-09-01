@@ -987,7 +987,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
 
 return (
-  <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B]">
+  <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B] pb-[70px] sm:pb-[80px]">
     {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
 
     {!showOverlay && (
