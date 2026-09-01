@@ -45,8 +45,7 @@ export function SolutionRenderer({
   }
   
   if (data.ui_type === 'state_trace') {
-    // Note: StateTrace schema uses flat structure, not wrapped in 'solution' key
-    return <StateTraceSolution data={data as unknown as StateTraceSolutionData} {...sharedProps} />;
+    return <StateTraceSolution data={(data.solution || data) as StateTraceSolutionData} {...sharedProps} />;
   }
   
   // Ultimate Fallback for unknown ui_types or poorly formatted data
