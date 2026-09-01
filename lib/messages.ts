@@ -70,10 +70,6 @@ Please confirm:
 **Example:**
 "Create an exam paper from Chapter 2 with Part A: 5×2 marks and Part B: 3×13 marks. Exam date: 25 August 2026."`,
 
-  examPaperFromIQ:
-    `Since we already have the chapters and marks from the important questions, how would you like to divide the questions in the actual exam paper (e.g., Part A, B, C)?
-
-And what is the exam date?`,
 
   iqAssigned:
     `Great! Important questions have been assigned.
