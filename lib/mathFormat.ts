@@ -177,3 +177,22 @@ export function ensureBoxedIsMath(text: string): string {
   
   return text;
 }
+
+/**
+ * Intelligently wraps English text words inside math mode with \text{} so KaTeX renders them correctly with spacing.
+ */
+export function formatMixedMath(content: string, isBlock: boolean = false): string {
+  if (!content) return '';
+  if (content.includes('$') || content.includes('\\[') || content.includes('\\(')) {
+    return isBlock ? (content.startsWith('$$') ? content : `$$${content}$$`) : (content.startsWith('$') ? content : `$${content}$`);
+  }
+  
+  if (isCodeContent(content)) {
+    return content;
+  }
+
+  let mathStr = content.replace(/(?<!\\)\b(?!sin\b|cos\b|tan\b|log\b|ln\b|exp\b|lim\b|max\b|min\b|dx\b|dy\b|dt\b|du\b|dv\b|dw\b|dz\b)[a-zA-Z]{2,}\b/g, '\\text{$&}');
+  mathStr = mathStr.replace(/ /g, '\\ ');
+
+  return isBlock ? `$$${mathStr}$$` : `$${mathStr}$`;
+}

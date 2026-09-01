@@ -67,13 +67,66 @@ function parseMathSolutions(text: string): SolutionSegment[] {
 
     let data: MultiSchemaData | null = null;
     try {
-      const sanitizedJson = matchContent.replace(/\\(?!")/g, '\\\\').replace(/\\\\\\\\/g, '\\\\');
       let parsed;
       try {
-        parsed = JSON.parse(sanitizedJson);
-      } catch (err) {
-        parsed = new Function('return ' + matchContent)();
+        parsed = JSON.parse(matchContent);
+      } catch (err1) {
+        let repaired = matchContent;
+        let inString = false;
+        let escapeNext = false;
+        let out = '';
+        for (let i = 0; i < repaired.length; i++) {
+          const c = repaired[i];
+          if (escapeNext) {
+            out += c;
+            escapeNext = false;
+            continue;
+          }
+          if (c === '\\') {
+            const nextChar = repaired[i+1];
+            // Only keep standard JSON escapes. Treat \f, \b, \t as raw backslashes (e.g. \frac, \begin, \text)
+            if (['n', 'r', '"', '\\', 'u'].includes(nextChar)) {
+              out += c;
+            } else {
+              out += '\\\\';
+            }
+            escapeNext = true;
+            continue;
+          }
+          if (c === '"') {
+            inString = !inString;
+            out += c;
+            continue;
+          }
+          if (c === '\n') {
+            if (inString) out += '\\n';
+            else out += c;
+            continue;
+          }
+          if (c === '\r') {
+            if (!inString) out += c;
+            continue;
+          }
+          if (c === '\t') {
+            if (inString) out += '\\t';
+            else out += c;
+            continue;
+          }
+          out += c;
+        }
+        out = out.replace(/,\s*([\}\]])/g, '$1');
+        
+        try {
+          parsed = JSON.parse(out);
+        } catch (err2) {
+          try {
+            parsed = new Function('return ' + matchContent)();
+          } catch(err3) {
+            throw err2;
+          }
+        }
       }
+      
       if (parsed) {
         if (parsed.ui_type) {
           data = parsed;

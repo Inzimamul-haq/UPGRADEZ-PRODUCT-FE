@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath, isCodeContent } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent, formatMixedMath } from '@/lib/mathFormat';
 
 export interface NumericalExecutionStep {
   step_title?: string;
@@ -51,28 +51,92 @@ export function NumericalSolution({
            <h3 className="text-[12px] font-bold text-[#A1A1AA] uppercase tracking-wider mb-3 flex items-center gap-2">
              <List size={14} /> Given Data
            </h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {data.given && data.given.length > 0 && (
-               <div className="flex flex-col gap-2">
-                 {data.given.map((g, i) => (
-                   <div key={i} className="text-[13px] text-[#D1D1C7] flex items-center gap-2">
-                     <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
-                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$${g}$`}</ReactMarkdown>
-                   </div>
-                 ))}
-               </div>
-             )}
-             {data.formulas_used && data.formulas_used.length > 0 && (
-               <div className="flex flex-col gap-2">
-                 {data.formulas_used.map((f, i) => (
-                   <div key={i} className="text-[13px] text-[#D1D1C7] flex items-center gap-2 border border-[#3A3A38]/50 bg-[#252523] px-2 py-1 rounded">
-                     <span className="text-[11px] text-[#8C8C8A] uppercase font-mono mr-1">Formula</span>
-                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$${f}$`}</ReactMarkdown>
-                   </div>
-                 ))}
-               </div>
-             )}
-           </div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+  {data.given && data.given.length > 0 && (
+    <div className="min-w-0 flex flex-col gap-2">
+      {data.given.map((g, i) => (
+        <div
+          key={i}
+          className="min-w-0 flex items-start gap-2 text-[13px] text-[#D1D1C7]"
+        >
+          <div className="w-1.5 h-1.5 shrink-0 rounded-full bg-[#F59E0B] mt-[7px]" />
+
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                p: ({ children }) => (
+                  <p className="m-0 min-w-0 break-words leading-relaxed">
+                    {children}
+                  </p>
+                ),
+              }}
+            >
+              {formatMixedMath(g)}
+            </ReactMarkdown>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {data.formulas_used && data.formulas_used.length > 0 && (
+    <div className="min-w-0 flex flex-col gap-2">
+      {data.formulas_used.map((f, i) => (
+        <div
+          key={i}
+          className="
+            min-w-0
+            w-full
+            flex
+            items-start
+            gap-2
+            border
+            border-[#3A3A38]/50
+            bg-[#252523]
+            px-2.5
+            py-2
+            rounded
+            overflow-hidden
+          "
+        >
+          <span
+            className="
+              shrink-0
+              text-[10px]
+              sm:text-[11px]
+              text-[#8C8C8A]
+              uppercase
+              font-mono
+              pt-[2px]
+            "
+          >
+            Formula
+          </span>
+
+          <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+            <div className="min-w-0 text-[13px] text-[#D1D1C7]">
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+                components={{
+                  p: ({ children }) => (
+                    <p className="m-0 min-w-0 leading-relaxed">
+                      {children}
+                    </p>
+                  ),
+                }}
+              >
+                {formatMixedMath(f)}
+              </ReactMarkdown>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
         </div>
       )}
       
@@ -254,7 +318,7 @@ function NumericalStepCard({
               {lines.map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
                   <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
+                    {formatMixedMath(`${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content}`, true)}
                   </ReactMarkdown>
                 </div>
               ))}
