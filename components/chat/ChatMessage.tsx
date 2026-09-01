@@ -129,7 +129,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
       
       if (parsed) {
         if (parsed.ui_type) {
-          data = parsed;
+          data = parsed.solution !== undefined ? parsed : { ui_type: parsed.ui_type, solution: parsed };
         } else if (parsed.solution === undefined) {
           data = { ui_type: 'fallback', solution: parsed };
         } else {
