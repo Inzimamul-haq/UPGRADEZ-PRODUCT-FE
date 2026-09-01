@@ -70,23 +70,16 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
     return { groups, sortedMarkKeys, noMarks };
   }, [questions]);
 
-  // Compute stats overall
+  // Compute stats overall (count only — marks total removed)
   const stats = useMemo(() => {
     let count = 0;
-    let marks = 0;
-    
-    Object.entries(selections).forEach(([qId, isSelected]) => {
-      if (isSelected) {
-        count += 1;
-        const q = questions.find(x => x.id === qId);
-        if (q && q.marks) {
-          marks += q.marks;
-        }
-      }
+
+    Object.values(selections).forEach(isSelected => {
+      if (isSelected) count += 1;
     });
-    
-    return { count, marks };
-  }, [selections, questions]);
+
+    return { count };
+  }, [selections]);
 
   const handleSelect = (qId: string) => {
     setSelections(prev => ({ ...prev, [qId]: !prev[qId] }));
@@ -152,8 +145,8 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
         <AlertCircle className="w-8 h-8 text-red-500/80" />
         <p className="text-[14px] text-red-400">{error}</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-[13px] font-medium text-[#A1A19A] bg-[#242422] rounded-md hover:bg-[#2C2C2A] transition-colors">Cancel</button>
-          <button onClick={() => window.location.reload()} className="px-4 py-2 text-[13px] font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">Retry</button>
+          <button onClick={onCancel} className="px-4 py-2 text-[13px] font-medium text-[#ECECEA] bg-[#1E1E1C] border border-[#3A3A38] rounded-md hover:bg-[#242422] hover:border-[#4A4A48] transition-colors">Cancel</button>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 text-[13px] font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors">Retry</button>
         </div>
       </div>
     );
@@ -163,7 +156,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
     return (
       <div className="p-6 bg-[#161615] flex flex-col items-center justify-center space-y-4">
         <p className="text-[14px] text-[#A1A19A]">No questions available in this Important Questions set.</p>
-        <button onClick={onCancel} className="px-4 py-2 text-[13px] font-medium text-[#ECECEA] bg-[#242422] rounded-md hover:bg-[#2C2C2A] transition-colors">Close</button>
+        <button onClick={onCancel} className="px-4 py-2 text-[13px] font-medium text-[#ECECEA] bg-[#1E1E1C] border border-[#3A3A38] rounded-md hover:bg-[#242422] hover:border-[#4A4A48] transition-colors">Close</button>
       </div>
     );
   }
@@ -179,11 +172,9 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
         
         {/* Stats summary */}
         <div className="flex gap-4 text-[12px] font-medium">
-          <div className={`px-3 py-1.5 rounded-md flex items-center gap-2 ${stats.count > 0 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-[#242422] text-[#8C8C8A] border border-transparent'}`}>
+          <div className={`px-3 py-1.5 rounded-md flex items-center gap-2 ${stats.count > 0 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-[#242422] text-[#8C8C8A] border border-transparent'}`}>
             <span>Selected:</span>
             <span className="font-semibold">{stats.count} Qs</span>
-            <span className="opacity-50">•</span>
-            <span>{stats.marks} M</span>
           </div>
         </div>
       </div>
@@ -233,7 +224,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
       <div className="px-5 py-4 border-t border-[#2E2E2C] flex items-center justify-between sticky bottom-0 bg-[#161615] z-10">
         <button 
           onClick={onCancel}
-          className="px-4 py-2 text-[13px] font-medium text-[#A1A19A] hover:text-[#ECECEA] transition-colors"
+          className="px-4 py-2 text-[13px] font-medium text-[#ECECEA] bg-[#1E1E1C] border border-[#3A3A38] rounded-md hover:bg-[#242422] hover:border-[#4A4A48] transition-colors"
         >
           Cancel
         </button>
@@ -242,7 +233,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
           disabled={!hasSelections}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[13px] font-semibold transition-all shadow-sm
             ${hasSelections 
-              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-900/20' 
+              ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/20' 
               : 'bg-[#242422] text-[#6C6C6A] cursor-not-allowed'
             }`}
         >
@@ -261,11 +252,11 @@ function QuestionRow({ question, selected, onSelect }: { question: IQQuestion, s
   return (
     <div 
       onClick={onSelect}
-      className={`flex items-start gap-4 p-3 rounded-lg border transition-colors cursor-pointer select-none ${selected ? 'bg-[#242422]/50 border-blue-500/30' : 'bg-transparent border-[#2E2E2C] hover:bg-[#1E1E1C]'}`}
+      className={`flex items-start gap-4 p-3 rounded-lg border transition-colors cursor-pointer select-none ${selected ? 'bg-[#242422]/50 border-green-500/30' : 'bg-transparent border-[#2E2E2C] hover:bg-[#1E1E1C]'}`}
     >
       <div className="flex items-center justify-center shrink-0 w-5 h-5 rounded border mt-0.5 transition-colors">
         {selected ? (
-          <div className="w-5 h-5 bg-blue-500 rounded border border-blue-500 flex items-center justify-center">
+          <div className="w-5 h-5 bg-green-500 rounded border border-green-500 flex items-center justify-center">
             <CheckCircle2 size={14} className="text-white" />
           </div>
         ) : (
