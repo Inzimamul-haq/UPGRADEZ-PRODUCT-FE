@@ -1074,17 +1074,19 @@ return (
       </div>
     )}
 
-    <ChatInput
-      onSend={handleSend}
-      disabled={showOverlay || isStreaming || sessionLocked || showContextSetup || showIQPicker || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
-      onDisabledClick={() => {
-        if (showContextSetup) {
-          toast.info('Please complete the context setup above first.');
-        } else if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
-          toast.error('Please confirm the difficulty mode on top to start generating.');
-        }
-      }}
-    />
+    {!showOverlay && (
+      <ChatInput
+        onSend={handleSend}
+        disabled={isStreaming || sessionLocked || showContextSetup || showIQPicker || (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed)}
+        onDisabledClick={() => {
+          if (showContextSetup) {
+            toast.info('Please complete the context setup above first.');
+          } else if (isFaculty && !!sessionData?.paperKind && !difficultyConfirmed) {
+            toast.error('Please confirm the difficulty mode on top to start generating.');
+          }
+        }}
+      />
+    )}
   </div>
 );
 }
