@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { isCodeContent } from '@/lib/mathFormat';
+import { isCodeContent, formatMixedMath } from '@/lib/mathFormat';
 
 export interface DerivationOperation {
   type: string;
@@ -88,7 +88,7 @@ export function DerivationSolution({
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
         <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 overflow-x-auto py-2">
           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {`$$${data.finalAnswer}$$`}
+            {formatMixedMath(data.finalAnswer, true)}
           </ReactMarkdown>
         </div>
       </div>
@@ -212,13 +212,13 @@ function DerivationStepCard({
                   {op.formula && (
                     <div className="flex gap-2 items-center text-[13px] text-[#818CF8]">
                       <span className="shrink-0 text-[#A1A1AA]">Using:</span>
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$${op.formula}$`}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{formatMixedMath(op.formula)}</ReactMarkdown>
                     </div>
                   )}
                   {op.substitution && (
                     <div className="flex gap-2 items-center text-[13px] text-[#F59E0B]">
                       <span className="shrink-0 text-[#A1A1AA]">Substitute:</span>
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{`$${op.substitution}$`}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{formatMixedMath(op.substitution)}</ReactMarkdown>
                     </div>
                   )}
                 </div>
@@ -238,7 +238,7 @@ function DerivationStepCard({
                     </pre>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {`$$${op.result}$$`}
+                      {formatMixedMath(op.result, true)}
                     </ReactMarkdown>
                   )}
                 </div>
@@ -256,7 +256,7 @@ function DerivationStepCard({
                         </div>
                         <div className="flex justify-center w-full overflow-x-auto text-[13px]">
                           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                            {`$$${eq.latex}$$`}
+                            {formatMixedMath(eq.latex, true)}
                           </ReactMarkdown>
                         </div>
                       </div>
@@ -273,7 +273,7 @@ function DerivationStepCard({
                     </pre>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {`$$${op.before}$$`}
+                      {formatMixedMath(op.before, true)}
                     </ReactMarkdown>
                   )}
                 </div>
@@ -293,7 +293,7 @@ function DerivationStepCard({
                     </pre>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                      {`$$${op.after}$$`}
+                      {formatMixedMath(op.after, true)}
                     </ReactMarkdown>
                   )}
                 </div>
