@@ -8,6 +8,8 @@ import { FallbackSolution } from './FallbackSolution';
 import { GraphTraversalSolution, GraphTraversalSolutionData } from './GraphTraversalSolution';
 import { StateTraceSolution, StateTraceSolutionData } from './StateTraceSolution';
 import { TreeSolution, TreeSolutionData } from './TreeSolution';
+import { TableSolution } from './TableSolution';
+import { TableSolutionData } from '@/lib/types';
 
 export interface MultiSchemaData {
   ui_type?: string;
@@ -51,6 +53,10 @@ export function SolutionRenderer({
   
   if (data.ui_type === 'tree') {
     return <TreeSolution data={(data.solution || data) as TreeSolutionData} {...sharedProps} />;
+  }
+  
+  if (data.ui_type === 'table') {
+    return <TableSolution data={(data.solution || data) as TableSolutionData} />;
   }
   
   // Ultimate Fallback for unknown ui_types or poorly formatted data

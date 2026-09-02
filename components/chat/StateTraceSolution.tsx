@@ -5,8 +5,10 @@ import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { fixFlattenedMarkdown } from '@/lib/mathFormat';
 
 export interface StateTraceStep {
   step_number: number;
@@ -77,7 +79,7 @@ function StepCard({
         {/* Action Header */}
         <div className="flex justify-between items-start gap-4 mb-4">
           <div className={`text-[14px] font-semibold text-[#ECECEA] prose prose-invert prose-p:my-0 flex-1 ${!showExplanation ? 'line-clamp-2' : ''}`}>
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
               {step.action}
             </ReactMarkdown>
           </div>
@@ -139,9 +141,9 @@ function StepCard({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-4"
             >
-              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {step.reason}
+              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  {fixFlattenedMarkdown(step.reason)}
                 </ReactMarkdown>
               </div>
             </motion.div>
@@ -151,7 +153,7 @@ function StepCard({
         {/* State After */}
         <div className="bg-[#222220] rounded-lg border border-[#3A3A38] p-4 flex items-center justify-center text-center">
           <div className="text-sm font-mono text-[#ECECEA]">
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
               {step.state_after}
             </ReactMarkdown>
           </div>
@@ -176,7 +178,7 @@ function StepCard({
                 <Bot size={12} className="text-amber-500" />
               </div>
               <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
               </div>
             </div>
           </motion.div>
@@ -218,7 +220,7 @@ export function StateTraceSolution({
           <span className="text-[11px] font-bold text-green-400 uppercase mb-2 block tracking-wider">Initial State</span>
           <div className="bg-[#222220] rounded-xl border border-[#3A3A38] p-5 flex items-center justify-center text-center">
             <div className="text-lg font-mono text-[#ECECEA]">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                 {data.initial_state}
               </ReactMarkdown>
             </div>
@@ -250,7 +252,7 @@ export function StateTraceSolution({
         <div className="bg-[#1C1C1B] p-5 rounded-xl border border-green-500/30">
           <span className="text-[11px] font-bold text-green-400 uppercase mb-2 block tracking-wider">Final Result</span>
           <div className="prose prose-invert max-w-none text-sm text-[#ECECEA]">
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
               {data.final_answer}
             </ReactMarkdown>
           </div>

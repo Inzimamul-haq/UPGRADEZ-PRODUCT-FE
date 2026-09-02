@@ -419,3 +419,17 @@ export interface ChatSearchParams {
   subjectCode?: string;
   examType?: string;
 }
+
+export interface TableSolutionData {
+  title: string;
+  description?: string;
+  headers: string[];
+  rows: string[][];
+  summary?: string;
+  diagram?: {
+    type: string;
+    gate: string;
+    inputs: string[];
+    output: string;
+  };
+}

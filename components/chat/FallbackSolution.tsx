@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
@@ -19,7 +20,7 @@ function RecursiveRender({ data }: { data: any }) {
     const content = String(data);
     return (
       <div className="w-full py-2 px-3 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col text-left prose prose-invert prose-p:my-1 prose-math:justify-center">
-        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
           {content}
         </ReactMarkdown>
       </div>

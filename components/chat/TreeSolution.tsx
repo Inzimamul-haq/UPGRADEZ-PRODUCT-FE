@@ -5,8 +5,10 @@ import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { fixFlattenedMarkdown } from '@/lib/mathFormat';
 
 export interface TreeNode {
   id: string;
@@ -166,7 +168,7 @@ function StepCard({
         {/* Action Header */}
         <div className="flex justify-between items-start gap-4 mb-4">
           <div className={`text-[14px] font-semibold text-[#ECECEA] prose prose-invert prose-p:my-0 flex-1 ${!showExplanation ? 'line-clamp-2' : ''}`}>
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
               {step.action}
             </ReactMarkdown>
           </div>
@@ -228,9 +230,9 @@ function StepCard({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-4"
             >
-              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                  {step.explanation}
+              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  {fixFlattenedMarkdown(step.explanation)}
                 </ReactMarkdown>
               </div>
             </motion.div>
