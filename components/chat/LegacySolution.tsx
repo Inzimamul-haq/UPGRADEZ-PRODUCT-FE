@@ -5,9 +5,10 @@ import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText, fixFlattenedMarkdown } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -68,19 +69,28 @@ export function LegacySolution({
 
       {/* Final Conclusion */}
       {data.final_answer && data.final_answer.display && (
-        <div className="mt-2 bg-[#2C2C2A] border-l-[3px] border-[#10B981] rounded-r-lg px-4 py-3 shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-2 opacity-10">
-            <CheckCircle2 size={48} />
-          </div>
+        <div className="mt-2 bg-[#2C2C2A]  rounded-lg px-4 py-3 shadow-md relative overflow-hidden">
           <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Conclusion</h4>
           <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
             {(() => {
-              const ans = ensureBoxedIsMath(data.final_answer.display);
+              let ans = ensureBoxedIsMath(data.final_answer.display);
               if (!ans || ans === 'undefined') return null;
+              
+              if (isPlainText(ans) || isCodeContent(ans)) {
+                ans = ans.replace(/^\s*\$\$?|\$\$?\s*$/g, '');
+                ans = fixFlattenedMarkdown(ans);
+                return (
+                  <div className="flex flex-col text-left w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] leading-relaxed">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {ans}
+                    </ReactMarkdown>
+                  </div>
+                );
+              }
               
               return (
                 <div className="flex flex-col text-left w-full overflow-x-auto">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                     {ans}
                   </ReactMarkdown>
                 </div>
@@ -183,8 +193,10 @@ function LegacyStepCard({
           <div key={i} className={`flex flex-col w-full ${i > 0 ? 'mt-5' : ''}`}>
             {/* Explanation text */}
             {workItem.explanation && (
-              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed mb-3">
-                {workItem.explanation}
+              <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed mb-3 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  {fixFlattenedMarkdown(workItem.explanation)}
+                </ReactMarkdown>
               </div>
             )}
             
@@ -210,7 +222,7 @@ function LegacyStepCard({
                   if (isPlainText(eq)) {
                     return (
                       <div className="w-full py-2 px-4 text-[13.5px] text-[#D1D1C7] leading-relaxed">
-                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                        <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                           {eq}
                         </ReactMarkdown>
                       </div>
@@ -224,7 +236,7 @@ function LegacyStepCard({
                     <div className="w-full py-2 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col gap-2 items-center">
                       {lines.map((line, i) => (
                         <div key={i} className="flex justify-center w-full">
-                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                             {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
                           </ReactMarkdown>
                         </div>
@@ -259,7 +271,7 @@ function LegacyStepCard({
               if (isPlainText(res)) {
                 return (
                   <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed pb-1">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                       {res}
                     </ReactMarkdown>
                   </div>
@@ -273,7 +285,7 @@ function LegacyStepCard({
                 <div className="flex flex-col gap-2 items-center">
                   {lines.map((line, i) => (
                     <div key={i} className="flex justify-center w-full">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                         {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
                       </ReactMarkdown>
                     </div>
@@ -304,7 +316,7 @@ function LegacyStepCard({
               <Bot size={12} className="text-amber-500" />
             </div>
             <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
-              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
             </div>
           </div>
         </motion.div>

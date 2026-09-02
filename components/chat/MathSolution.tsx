@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, CheckCircle2, Calculator } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText } from '@/lib/mathFormat';
+import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText, fixFlattenedMarkdown } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -99,9 +100,13 @@ function MathStepCard({ step }: { step: MathStep }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden mb-4"
           >
-            <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2">
+            <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
               {step.work.map((w, i) => w.explanation ? (
-                <div key={i}>{w.explanation}</div>
+                <div key={i}>
+                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                    {fixFlattenedMarkdown(w.explanation)}
+                  </ReactMarkdown>
+                </div>
               ) : null)}
             </div>
           </motion.div>
@@ -131,7 +136,7 @@ function MathStepCard({ step }: { step: MathStep }) {
                 if (isPlainText(eq)) {
                   return (
                     <div className="w-full py-2 px-4 text-[13.5px] text-[#D1D1C7] leading-relaxed">
-                      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                         {eq}
                       </ReactMarkdown>
                     </div>
@@ -162,7 +167,7 @@ function MathStepCard({ step }: { step: MathStep }) {
       </div>
 
       {step.result && (
-        <div className="mt-5 bg-[#252523] border-l-[3px] border-[#3A3A38] rounded-r-lg px-4 py-3 relative overflow-hidden">
+        <div className="mt-5 bg-[#252523] rounded-r-lg px-4 py-3 relative overflow-hidden">
           <h4 className="text-[11px] font-bold text-[#A1A1AA] tracking-wider uppercase mb-2">Step Result</h4>
           <div className="text-[14px] font-semibold text-[#D1D1C7] relative z-10 overflow-x-auto">
             {(() => {
@@ -181,7 +186,7 @@ function MathStepCard({ step }: { step: MathStep }) {
               if (isPlainText(res)) {
                 return (
                   <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed pb-1">
-                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                       {res}
                     </ReactMarkdown>
                   </div>

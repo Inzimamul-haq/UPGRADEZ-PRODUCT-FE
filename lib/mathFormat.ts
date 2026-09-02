@@ -89,12 +89,24 @@ export function isCodeContent(text: string): boolean {
 }
 
 /**
+ * Returns true when the string looks like a Markdown table.
+ * Markdown tables typically have a separator line containing hyphens and pipes.
+ */
+export function isMarkdownTable(text: string): boolean {
+  if (!text || text.trim().length === 0) return false;
+  // Matches the header separator line: |---| or |:---:| etc.
+  return /\|[\s]*[-:]+[\s]*\|/.test(text);
+}
+
+/**
  * Returns true when the string is likely a plain English sentence or phrase,
  * rather than a math expression. Used to prevent KaTeX from eating spaces
  * and rendering text as cursive math variables.
  */
 export function isPlainText(text: string): boolean {
   if (!text || text.trim().length === 0) return false;
+
+  if (isMarkdownTable(text)) return true;
 
   // If it contains LaTeX macros (e.g. \frac, \text, \implies)
   if (/\\[a-zA-Z]+/.test(text)) return false;
@@ -225,7 +237,13 @@ export function ensureBoxedIsMath(text: string): string {
   if (closeIdx !== -1) {
     const before = text.substring(0, idx);
     const boxed = text.substring(idx, closeIdx + 1);
+    const innerContent = text.substring(idx + 7, closeIdx);
     const after = text.substring(closeIdx + 1);
+    
+    if (isMarkdownTable(innerContent) || isPlainText(innerContent) || isCodeContent(innerContent)) {
+      return before + '\n\n' + innerContent + '\n\n' + ensureBoxedIsMath(after);
+    }
+    
     return before + '$$' + boxed + '$$' + ensureBoxedIsMath(after);
   }
   
@@ -250,4 +268,31 @@ export function formatMixedMath(content: string, isBlock: boolean = false): stri
   mathStr = mathStr.replace(/ /g, '\\ ');
 
   return isBlock ? `$$${mathStr}$$` : `$${mathStr}$`;
+}
+
+export function fixFlattenedMarkdown(text: string): string {
+  if (!text) return text;
+  
+  if (/\|[\s]*[-:]+[\s]*\|/.test(text)) {
+    let fixed = text.replace(/\|\|/g, '|\n|');
+    const lines = fixed.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (/\|[\s]*[-:]+[\s]*\|/.test(lines[i])) {
+        if (i > 0) {
+          const headerLine = lines[i - 1];
+          const firstPipeIdx = headerLine.indexOf('|');
+          if (firstPipeIdx > 0 && headerLine.substring(0, firstPipeIdx).trim().length > 0) {
+            const beforeText = headerLine.substring(0, firstPipeIdx);
+            const tableHeader = headerLine.substring(firstPipeIdx);
+            lines[i - 1] = beforeText + '\n\n' + tableHeader;
+          }
+        }
+      }
+    }
+    
+    return lines.join('\n');
+  }
+  
+  return text;
 }

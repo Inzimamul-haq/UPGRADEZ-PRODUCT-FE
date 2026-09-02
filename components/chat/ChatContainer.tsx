@@ -905,8 +905,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           }
         }
       }
-    } catch {
+    } catch (err: any) {
       setMessages(prev => [...prev, pushMsg('Unable to process your request. Please try again in a few moments.')]);
+      toast.error(err?.message || 'Server is Busy right now please try later');
     } finally {
       setIsStreaming(false);
     }

@@ -7,8 +7,10 @@ import { GraphDefinition, GraphDisplay, generateCircularLayout } from '@/compone
 import { isTree, generateTreeLayout } from '@/lib/graphUtils';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { fixFlattenedMarkdown } from '@/lib/mathFormat';
 
 export interface GraphTraversalState {
   currentNode?: string;
@@ -147,9 +149,9 @@ function StepCard({
       <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-4 relative group hover:border-[#4A4A48] transition-colors mb-6 shadow-sm">
         {/* Action Header */}
         <div className="flex justify-between items-start gap-4 mb-4">
-          <div className="text-[14px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-0">
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {step.explanation}
+          <div className="text-[14px] leading-relaxed text-[#ECECEA] prose prose-invert prose-p:my-0 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
+            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              {fixFlattenedMarkdown(step.explanation)}
             </ReactMarkdown>
           </div>
           {messageId && (
@@ -230,7 +232,7 @@ function StepCard({
                 <Bot size={12} className="text-amber-500" />
               </div>
               <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
-                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
               </div>
             </div>
           </motion.div>
