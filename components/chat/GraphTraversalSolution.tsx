@@ -64,10 +64,9 @@ function StepCard({
     if (!text.trim() || loading) return;
     
     // For graph step, stepContent is just the explanation
-    const stepContent = step.explanation;
     const doubtText = `Step ${stepLabel} — ${text}`;
     
-    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    const newRow = await submitDoubt(stepLabel, doubtText);
     if (newRow) {
       setLocalDoubts(prev => [...prev, newRow]);
       setDoubtOpen(false);
