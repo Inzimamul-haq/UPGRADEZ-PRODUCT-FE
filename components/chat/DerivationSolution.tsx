@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { isCodeContent, formatMixedMath } from '@/lib/mathFormat';
+import { isCodeContent, formatMixedMath, ensureBoxedIsMath } from '@/lib/mathFormat';
 
 export interface DerivationOperation {
   type: string;
@@ -88,7 +88,7 @@ export function DerivationSolution({
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
         <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 overflow-x-auto py-2">
           <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {formatMixedMath(data.finalAnswer, true)}
+            {ensureBoxedIsMath(data.finalAnswer)}
           </ReactMarkdown>
         </div>
       </div>

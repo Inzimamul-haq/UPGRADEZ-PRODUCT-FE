@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix, extractGraphPrefix, stripGraphPrefix } from '@/lib/qpParser';
@@ -64,15 +64,15 @@ function QuestionBlock({
   const cleanText = stripGraphPrefix(question.text);
 
   return (
-    <div className="flex flex-col py-3">
-      <div className="flex items-start gap-3">
-        <span className={`text-[12px] font-medium w-8 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
+    <div className="flex flex-col py-4 border-b border-[#2E2E2C] last:border-0">
+      <div className="flex items-start gap-4">
+        <span className={`text-[13px] font-medium w-10 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
           {label}
         </span>
-        <p className="flex-1 text-[14px] text-[#ECECEA] leading-relaxed">{cleanText}</p>
+        <p className="flex-1 text-[15px] text-[#ECECEA] leading-relaxed">{cleanText}</p>
       </div>
       {graphDef && (
-        <div className="mt-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] ml-11">
+        <div className="mt-4 flex justify-center bg-[#1C1C1B] rounded-lg p-3 border border-[#3A3A38] ml-14">
           <GraphDisplay graph={graphDef} width={250} height={250} />
         </div>
       )}
@@ -82,9 +82,9 @@ function QuestionBlock({
 
 function OrDivider() {
   return (
-    <div className="flex items-center gap-3 py-1 px-1">
+    <div className="flex items-center gap-4 py-2 px-1">
       <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
-      <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
+      <span className="text-[11px] font-semibold text-[#6C6C6A] tracking-wider">OR</span>
       <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
     </div>
   );
@@ -128,8 +128,8 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
     if (partA.length === 0) return null;
     return (
       <section>
-        <h2 className="text-[13px] font-semibold text-[#8C8C8A] uppercase tracking-wider mt-6 mb-1">Part A</h2>
-        <div className="divide-y divide-[#2E2E2C]">
+        <h2 className="text-[12px] font-semibold text-[#6C6C6A] uppercase tracking-wider mt-8 mb-3">Part A</h2>
+        <div>
           {partA.map((q, i) => (
             <QuestionBlock key={q.id} question={q} label={`Q${i + 1}`} />
           ))}
@@ -143,14 +143,14 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
     const groups = groupByIndex(questions);
     return (
       <section>
-        <h2 className="text-[13px] font-semibold text-[#8C8C8A] uppercase tracking-wider mt-6 mb-1">
+        <h2 className="text-[12px] font-semibold text-[#6C6C6A] uppercase tracking-wider mt-8 mb-3">
           Part {label}
         </h2>
         <div>
           {groups.map((grp, idx) => {
             const qNum = startQNum + idx;
             return (
-              <div key={grp.groupIndex} className="border-b border-[#2E2E2C]">
+              <div key={grp.groupIndex}>
                 {grp.a && (
                   <QuestionBlock
                     question={grp.a}
@@ -175,44 +175,69 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
   const partBGroups = groupByIndex(partB);
   const partCStartNum = partBStartNum + partBGroups.length;
 
+  const handleStudyChat = () => {
+    router.push(
+      `/chat/new${paperId ? `?paperId=${paperId}&subjectId=${subjectId}` : `?subjectId=${subjectId}`}`
+    );
+  };
+
   return (
-    <div className="max-w-3xl mx-auto px-6 py-6 pb-24 w-full">
-      <div className="flex items-center mt-8 sm:mt-0 gap-2 mb-2">
-        <button onClick={() => router.back()}>
-          <ChevronLeft size={16} className="text-[#8C8C8A]" />
-        </button>
-        <span className="text-[12px] text-[#8C8C8A]">Papers</span>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 pb-24 w-full">
+      {/* Header - Fixed alignment */}
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center mt-8 sm:mt-0 gap-2">
+          <button 
+            onClick={() => router.back()}
+            className="p-1.5 hover:bg-[#2E2E2C] rounded-lg transition-colors"
+          >
+            <ChevronLeft size={18} className="text-[#8C8C8A]" />
+          </button>
+          <span className="text-[12px] text-[#6C6C6A]">Papers</span>
+        </div>
+
+        {/* Study button - moved to top with proper alignment */}
+        {role === 'student' && (
+          <button
+            onClick={handleStudyChat}
+            className="flex items-center mt-6 gap-2 text-[13px] font-medium text-[#1C1C1B] bg-[#ECECEA] hover:bg-white rounded-lg px-4 py-2 transition-colors duration-150 shadow-sm hover:shadow whitespace-nowrap"
+          >
+            <MessageSquare size={16} />
+            Study in Chat
+          </button>
+        )}
       </div>
 
-      <div>
-        <h1 className="text-[16px] font-medium text-[#ECECEA]">
+      {/* Paper Info */}
+      <div className="mb-6">
+        <h1 className="text-[18px] font-semibold text-[#ECECEA]">
           {paper?.subject?.name || 'Subject'} — {paper?.examType} {paper?.academicYear}
         </h1>
         {paper?.creator?.name && (
-          <p className="text-[12px] text-[#8C8C8A] mt-0.5">Assigned by {paper.creator.name}</p>
+          <p className="text-[13px] text-[#6C6C6A] mt-1">Assigned by {paper.creator.name}</p>
         )}
 
         {/* Marks legend */}
         {!loading && rawQuestions.length > 0 && (
-          <div className="flex items-center gap-4 mt-4 text-[12px]">
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
-              <div className="w-2 h-2 rounded-full bg-green-500" /> ≤ 5 Marks
+          <div className="flex items-center gap-5 mt-4 text-[12px]">
+            <span className="flex items-center gap-1.5 text-[#6C6C6A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> ≤ 5 Marks
             </span>
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
-              <div className="w-2 h-2 rounded-full bg-orange-500" /> ≤ 10 Marks
+            <span className="flex items-center gap-1.5 text-[#6C6C6A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500" /> ≤ 10 Marks
             </span>
-            <span className="flex items-center gap-1.5 text-[#8C8C8A]">
-              <div className="w-2 h-2 rounded-full bg-red-500" /> 11+ Marks
+            <span className="flex items-center gap-1.5 text-[#6C6C6A]">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> 11+ Marks
             </span>
           </div>
         )}
       </div>
 
-      <div className="mt-4">
+      {/* Questions */}
+      <div className="mt-2">
         {loading ? (
-          <div className="py-8 text-[#5A5A58] text-[13px] text-center">Loading questions...</div>
+          <div className="py-12 text-[#5A5A58] text-[14px] text-center">Loading questions...</div>
         ) : rawQuestions.length === 0 ? (
-          <p className="text-[13px] text-[#8C8C8A] mt-4">No questions found.</p>
+          <p className="text-[14px] text-[#6C6C6A] mt-4">No questions found.</p>
         ) : hasStructure ? (
           <>
             {renderPartA()}
@@ -221,28 +246,13 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
           </>
         ) : (
           // Legacy flat render for papers with no structured prefix
-          <div className="divide-y divide-[#2E2E2C]">
+          <div>
             {decoded.map((q, i) => (
               <QuestionBlock key={q.id} question={q} label={`Q${i + 1}`} />
             ))}
           </div>
         )}
       </div>
-
-      {role === 'student' && (
-        <div className="mt-12 flex justify-center pb-8">
-          <button
-            onClick={() =>
-              router.push(
-                `/chat/new${paperId ? `?paperId=${paperId}&subjectId=${subjectId}` : `?subjectId=${subjectId}`}`
-              )
-            }
-            className="text-[14px] text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] font-medium rounded-lg px-6 py-2.5 hover:bg-white transition-colors duration-150 flex items-center gap-2"
-          >
-            Study this paper in chat
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar';
 import { PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/context/SidebarContext';
 import { useRouter } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, ChevronDown } from 'lucide-react';
 import { AppShellProps } from '@/lib/types';
 import api from '@/lib/api';
 
@@ -47,25 +47,23 @@ function SearchModal() {
           <button onClick={closeSearch} className="text-[#5A5A58] hover:text-[#8C8C8A] transition-colors"><X size={16} /></button>
         </div>
 
-        {/* Month filter chips */}
+        {/* Month filter select */}
         {availableMonths.length > 0 && (
-          <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-[#3A3A38] overflow-x-auto scrollbar-hide">
-            <span className="text-[10px] text-[#5A5A58] uppercase tracking-wider flex-shrink-0 mr-1">Month</span>
-            {availableMonths.map(ym => {
-              const isActive = selectedMonth === ym;
-              return (
-                <button
-                  key={ym}
-                  onClick={() => setSelectedMonth(isActive ? null : ym)}
-                  className={`flex-shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150 ${isActive
-                    ? 'bg-[#ECECEA] text-[#1C1C1B] border-[#ECECEA]'
-                    : 'text-[#8C8C8A] border-[#3A3A38] hover:border-[#5A5A58] hover:text-[#ECECEA]'
-                    }`}
-                >
-                  {formatMonthLabel(ym)}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#3A3A38]">
+            <span className="text-[11px] text-[#5A5A58] uppercase tracking-wider font-medium">Filter by Month</span>
+            <div className="relative">
+              <select
+                value={selectedMonth || ''}
+                onChange={(e) => setSelectedMonth(e.target.value || null)}
+                className="appearance-none bg-[#1C1C1B] hover:bg-[#2C2C2A] transition-colors border border-[#3A3A38] text-[#ECECEA] text-[13px] rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:border-[#5A5A58] cursor-pointer shadow-sm"
+              >
+                <option value="">All Months</option>
+                {availableMonths.map(ym => (
+                  <option key={ym} value={ym}>{formatMonthLabel(ym)}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8C8C8A] pointer-events-none" />
+            </div>
           </div>
         )}
 
@@ -111,7 +109,7 @@ function DeleteModal() {
       <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-2xl p-6 w-[340px] shadow-2xl mx-4" onClick={e => e.stopPropagation()}>
         <p className="text-[16px] font-medium text-[#ECECEA] mb-1">Delete chat?</p>
         <p className="text-[13px] text-[#8C8C8A] mb-6 leading-relaxed">
-          &ldquo;{pendingDelete.subject_name} — {pendingDelete.exam_type}&rdquo; will be permanently deleted.
+          &ldquo;{pendingDelete.subject_name} will be permanently deleted.
         </p>
         <div className="flex gap-3">
           <button onClick={cancelDelete} className="flex-1 border border-[#3A3A38] rounded-xl py-2.5 text-[13px] text-[#8C8C8A] hover:bg-[#333331] transition-colors">Cancel</button>
@@ -153,7 +151,7 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
 
       {/* Mobile backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* Main content — smoothly expands to full width when sidebar is closed */}

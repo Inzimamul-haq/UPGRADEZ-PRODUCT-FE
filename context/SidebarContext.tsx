@@ -39,12 +39,16 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     const params = month ? `?month=${month}` : '';
     api.get(`/api/chats${params}`).then(res => {
       if (res.data.success) {
-        setSessions(res.data.data.map((c: any) => ({
-          id: c.id,
-          subject_name: c.title || c.subject?.name || 'Untitled',
-          exam_type: c.examType,
-          created_at: c.createdAt,
-        })));
+        setSessions(res.data.data.map((c: any) => {
+          const rawTitle = c.title || c.subject?.name || 'Untitled';
+          const cleanTitle = rawTitle.replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{4}\)\s*$/, '').trim();
+          return {
+            id: c.id,
+            subject_name: cleanTitle,
+            exam_type: c.examType,
+            created_at: c.createdAt,
+          };
+        }));
       }
     }).catch(console.error);
   }, []);

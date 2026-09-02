@@ -3,6 +3,58 @@ export interface MathExecutionLine {
   isImplies: boolean;
 }
 
+// ── Defensive repair for corrupted LaTeX macro escapes ──────────────────────
+// If a raw "\<letter>..." LaTeX macro ever slips into a JSON string value
+// unescaped, JSON.parse silently interprets the JSON-reserved escape
+// letters ("n" "t" "r" "b" "f") as control characters, destroying the
+// backslash and the first letter with no parse error — e.g. "\neq" becomes
+// an actual newline followed by the literal text "eq".
+//
+// This is a best-effort, read-time repair for content generated before the
+// backend fix (cached/persisted answers) or any residual edge case. It only
+// reconstructs a small curated list of common macros and requires the
+// leftover letters to exactly match a known suffix, to avoid mangling real
+// prose newlines.
+const ESCAPE_CHAR_MAP: Record<string, string> = {
+  '\n': 'n', '\t': 't', '\r': 'r', '\b': 'b', '\f': 'f',
+};
+
+// Keyed by the JSON escape letter; each value is the macro name with its
+// first letter (the one JSON consumed) stripped off.
+const MACRO_SUFFIXES: Record<string, string[]> = {
+  n: ['eq', 'abla', 'otin', 'less', 'gtr', 'mid', 'parallel', 'subseteq', 'supseteq', 'subset', 'supset', 'equiv', 'Rightarrow', 'Leftarrow'],
+  t: ['imes', 'herefore', 'heta', 'ext', 'riangle', 'ilde', 'anh', 'extbf', 'extit', 'au'],
+  r: ['ightarrow', 'ho', 'ight', 'angle'],
+  b: ['eta', 'ar', 'inom', 'oxed', 'ullet', 'ig', 'mod', 'ackslash', 'oldsymbol'],
+  f: ['orall', 'rac', 'lat'],
+};
+
+export function repairCorruptedMacroEscapes(text: string): string {
+  if (!text) return text;
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const escChar = ESCAPE_CHAR_MAP[ch];
+    if (!escChar) { out += ch; continue; }
+
+    const rest = text.slice(i + 1);
+    const letterRun = rest.match(/^[a-zA-Z]+/)?.[0] ?? '';
+    const suffixes = MACRO_SUFFIXES[escChar] ?? [];
+    // Longest match wins (e.g. prefer "ightarrow" over any shorter overlap)
+    const match = suffixes
+      .filter(sfx => letterRun.startsWith(sfx))
+      .sort((a, b) => b.length - a.length)[0];
+
+    if (match) {
+      out += '\\' + escChar + match;
+      i += match.length; // skip the consumed letters
+    } else {
+      out += ch; // not a recognized macro — leave the control char alone
+    }
+  }
+  return out;
+}
+
 /**
  * Returns true when the string looks like programming code rather than a
  * LaTeX/math expression. Used to short-circuit the KaTeX rendering path
@@ -61,6 +113,7 @@ export function isPlainText(text: string): boolean {
 
 export function parseMathLines(raw: string): MathExecutionLine[] {
   if (!raw) return [];
+  raw = repairCorruptedMacroEscapes(raw);
 
   // Normalize line-break artifacts BEFORE splitting:
   // - a real LaTeX line break "\\" right before a newline/end -> becomes an actual \n
@@ -147,6 +200,7 @@ export function parseMathLines(raw: string): MathExecutionLine[] {
 
 export function ensureBoxedIsMath(text: string): string {
   if (!text) return text;
+  text = repairCorruptedMacroEscapes(text);
   // If \boxed is already inside math delimiters (naive check), ignore
   if (text.includes('$\\boxed') || text.includes('$$\\boxed')) {
     return text;
@@ -183,6 +237,7 @@ export function ensureBoxedIsMath(text: string): string {
  */
 export function formatMixedMath(content: string, isBlock: boolean = false): string {
   if (!content) return '';
+  content = repairCorruptedMacroEscapes(content);
   if (content.includes('$') || content.includes('\\[') || content.includes('\\(')) {
     return isBlock ? (content.startsWith('$$') ? content : `$$${content}$$`) : (content.startsWith('$') ? content : `$${content}$`);
   }
