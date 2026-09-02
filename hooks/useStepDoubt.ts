@@ -8,7 +8,6 @@ export function useStepDoubt(chatId?: string, messageId?: string, batchQuestionN
 
   const submitDoubt = async (
     stepNumber: number | string,
-    stepContent: string,
     doubtText: string
   ): Promise<StepExplanation | null> => {
     if (!chatId || !messageId) {
@@ -21,7 +20,7 @@ export function useStepDoubt(chatId?: string, messageId?: string, batchQuestionN
     try {
       const res = await api.post(
         `/api/chats/${chatId}/messages/${messageId}/step-doubt`,
-        { stepNumber, stepContent, doubtText, batchQuestionNo }
+        { stepNumber, doubtText, batchQuestionNo }
       );
       setLoading(false);
       return res.data.data as StepExplanation;

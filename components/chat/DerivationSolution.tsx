@@ -124,11 +124,9 @@ function DerivationStepCard({
   const handleDoubtSubmit = async (text: string) => {
     if (!text.trim() || loading) return;
     
-    const opsText = step.operations.map(op => `${op.type}: ${op.before || op.formula || ''} ${op.action || op.transformation || ''} ${op.after || op.result || ''}`).join('\n');
-    const stepContent = `${step.title}\n${step.explanation || ''}\n${opsText}`;
     const doubtText = `Step ${stepLabel} — ${text}`;
     
-    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    const newRow = await submitDoubt(stepLabel.toString(), doubtText);
     if (newRow) {
       setLocalDoubts(prev => [...prev, newRow]);
       setDoubtOpen(false);

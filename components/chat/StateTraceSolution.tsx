@@ -51,10 +51,9 @@ function StepCard({
   const handleDoubtSubmit = async (text: string) => {
     if (!text.trim() || loading) return;
     
-    const stepContent = `${step.action}\n${step.reason}\n${step.state_after}`;
     const doubtText = `Step ${stepLabel} — ${text}`;
     
-    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    const newRow = await submitDoubt(stepLabel, doubtText);
     if (newRow) {
       setLocalDoubts(prev => [...prev, newRow]);
       setDoubtOpen(false);

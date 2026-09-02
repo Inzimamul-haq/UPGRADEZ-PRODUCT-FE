@@ -151,7 +151,7 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
 
       {/* Mobile backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* Main content — smoothly expands to full width when sidebar is closed */}

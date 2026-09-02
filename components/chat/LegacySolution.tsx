@@ -119,11 +119,9 @@ function LegacyStepCard({
   const handleDoubtSubmit = async (text: string) => {
     if (!text.trim() || loading) return;
     
-    const workText = step.work.map(w => `${w.explanation || ''}\n${w.equation || ''}`).join('\n');
-    const stepContent = `${step.title}\n${workText}\n${step.result || ''}`;
     const doubtText = `Step ${stepLabel} — ${text}`;
     
-    const newRow = await submitDoubt(stepLabel, stepContent, doubtText);
+    const newRow = await submitDoubt(stepLabel, doubtText);
     if (newRow) {
       setLocalDoubts(prev => [...prev, newRow]);
       setDoubtOpen(false);
