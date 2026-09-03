@@ -264,7 +264,7 @@ export function formatMixedMath(content: string, isBlock: boolean = false): stri
     return content;
   }
 
-  let mathStr = content.replace(/(?<!\\)\b(?!sin\b|cos\b|tan\b|log\b|ln\b|exp\b|lim\b|max\b|min\b|dx\b|dy\b|dt\b|du\b|dv\b|dw\b|dz\b)[a-zA-Z]{2,}\b/g, '\\text{$&}');
+  let mathStr = content.replace(/(?<!\\)\b(?!sin\b|cos\b|tan\b|log\b|ln\b|exp\b|lim\b|max\b|min\b|dx\b|dy\b|dt\b|du\b|dv\b|dw\b|dz\b|pmatrix\b|bmatrix\b|Bmatrix\b|vmatrix\b|Vmatrix\b|matrix\b|align\b|aligned\b|cases\b|array\b|equation\b|split\b|gather\b|gathered\b|text\b|textbf\b|textit\b|textrm\b|textsf\b|mathtt\b|mathbf\b|mathit\b|mathrm\b)[a-zA-Z]{2,}\b/g, '\\text{$&}');
   mathStr = mathStr.replace(/ /g, '\\ ');
 
   return isBlock ? `$$${mathStr}$$` : `$${mathStr}$`;
