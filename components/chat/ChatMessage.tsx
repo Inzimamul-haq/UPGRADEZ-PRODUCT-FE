@@ -13,6 +13,7 @@ import { DiagramCard } from './DiagramCard';
 import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
 import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
+import { DiagramRenderer } from '../ui/DiagramRenderer';
 
 type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
 
@@ -176,13 +177,13 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   }
 
   const segmentsWithGraph: SolutionSegment[] = [];
-  const GRAPH_PREFIX_RE = /\[\[graph:([\s\S]*?)\]\]\s*/i;
+  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram):([\s\S]*?)\]\]\s*/i;
 
   for (const seg of finalSegments) {
     if (seg.type === 'text') {
       let currentText = seg.content;
       while (currentText) {
-        const match = currentText.match(GRAPH_PREFIX_RE);
+        const match = currentText.match(DIAGRAM_PREFIX_RE);
         if (!match || match.index === undefined) {
           if (currentText.trim()) {
             segmentsWithGraph.push({ type: 'text', content: currentText });
@@ -202,7 +203,15 @@ function parseMathSolutions(text: string): SolutionSegment[] {
         }
 
         try {
-          segmentsWithGraph.push({ type: 'graph', data: JSON.parse(match[1]) });
+          const rawTagType = match[1].toLowerCase();
+          const parsedData = JSON.parse(match[2]);
+          
+          // Normalize old tags to the new format
+          if (rawTagType !== 'diagram' && !parsedData.type) {
+            parsedData.type = rawTagType;
+          }
+
+          segmentsWithGraph.push({ type: 'graph', data: parsedData });
         } catch {
           segmentsWithGraph.push({ type: 'text', content: match[0] });
         }
@@ -489,9 +498,9 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                           </ReactMarkdown>
                         ) : seg.type === 'graph' ? (
                           <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                            <GraphDisplay graph={seg.data} width={300} height={250} />
+                            <DiagramRenderer type={seg.data.type} spec={seg.data} width={300} height={250} />
                           </div>
-                        ) : (
+                        ) : seg.type === 'solution' ? (
                           <SolutionRenderer 
                             data={seg.data} 
                             messageId={message.id}
@@ -499,7 +508,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             stepExplanations={message.stepExplanations ?? []}
                             batchQuestionNo={batch.questionNo ?? null}
                           />
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </motion.div>
@@ -607,7 +616,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                         </ReactMarkdown>
                       ) : seg.type === 'graph' ? (
                         <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                          <GraphDisplay graph={seg.data} width={300} height={250} />
+                          <DiagramRenderer type={seg.data.format} spec={seg.data} width={300} height={250} />
                         </div>
                       ) : (
                         <SolutionRenderer 
