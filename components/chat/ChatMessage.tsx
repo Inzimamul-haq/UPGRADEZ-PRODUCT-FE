@@ -191,12 +191,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
           break;
         }
 
-        const textAfterMatch = currentText.substring(match.index + match[0].length);
-        let endOfBlock = textAfterMatch.indexOf('\n\n');
-        if (endOfBlock === -1) endOfBlock = textAfterMatch.indexOf('\n');
-        if (endOfBlock === -1) endOfBlock = textAfterMatch.length;
-
-        const textBeforeGraph = currentText.substring(0, match.index) + textAfterMatch.substring(0, endOfBlock);
+        const textBeforeGraph = currentText.substring(0, match.index);
         
         if (textBeforeGraph.trim()) {
           segmentsWithGraph.push({ type: 'text', content: textBeforeGraph.trim() });
@@ -216,7 +211,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
           segmentsWithGraph.push({ type: 'text', content: match[0] });
         }
 
-        currentText = textAfterMatch.substring(endOfBlock);
+        currentText = currentText.substring(match.index + match[0].length);
       }
     } else {
       segmentsWithGraph.push(seg);
@@ -616,7 +611,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                         </ReactMarkdown>
                       ) : seg.type === 'graph' ? (
                         <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                          <DiagramRenderer type={seg.data.format} spec={seg.data} width={300} height={250} />
+                          <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
                         </div>
                       ) : (
                         <SolutionRenderer 

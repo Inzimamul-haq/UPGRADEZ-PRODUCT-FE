@@ -1,8 +1,8 @@
 import React from 'react';
 
 export interface TreeData {
-  nodes: { id: number; value: any }[];
-  edges: { parent: number; child: number }[];
+  nodes: { id: number | string; value: any }[];
+  edges: { from: number | string; to: number | string }[];
 }
 
 interface TreeDisplayProps {
@@ -14,29 +14,29 @@ interface TreeDisplayProps {
 export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProps) {
   const { nodes, edges } = tree;
 
-  function buildLevelOrder(nodes: {id:number,value:any}[], edges: {parent:number,child:number}[]) {
+  function buildLevelOrder(nodes: {id:number | string,value:any}[], edges: {from:number | string,to:number | string}[]) {
     const MAX_NODES = 50;
-    const childrenOf = new Map<number, number[]>();
-    const hasParent = new Set<number>();
+    const childrenOf = new Map<number | string, (number | string)[]>();
+    const hasParent = new Set<number | string>();
     const knownIds = new Set(nodes.map(n => n.id));
 
     for (const e of edges) {
-      if (!knownIds.has(e.parent) || !knownIds.has(e.child)) continue; // unknown id guard
-      if (!childrenOf.has(e.parent)) childrenOf.set(e.parent, []);
-      childrenOf.get(e.parent)!.push(e.child);
-      hasParent.add(e.child);
+      if (!knownIds.has(e.from) || !knownIds.has(e.to)) continue; // unknown id guard
+      if (!childrenOf.has(e.from)) childrenOf.set(e.from, []);
+      childrenOf.get(e.from)!.push(e.to);
+      hasParent.add(e.to);
     }
 
     const roots = nodes.filter(n => !hasParent.has(n.id));
     if (roots.length === 0) return []; // cycle or no valid root
 
-    const visited = new Set<number>();
-    const levels: number[][] = [];
+    const visited = new Set<number | string>();
+    const levels: (number | string)[][] = [];
     let queue = roots.map(r => r.id);
 
     while (queue.length > 0 && visited.size < MAX_NODES) {
       levels.push(queue);
-      const next: number[] = [];
+      const next: (number | string)[] = [];
       for (const id of queue) {
         if (visited.has(id)) continue;
         visited.add(id);
@@ -59,7 +59,7 @@ export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProp
   }
 
   // Assign positions
-  const nodePositions = new Map<number, { x: number, y: number }>();
+  const nodePositions = new Map<number | string, { x: number, y: number }>();
   const ySpacing = Math.min((height - 40) / (levels.length || 1), 60);
   const startY = 20;
 
@@ -79,8 +79,8 @@ export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProp
     <svg width={width} height={height} className="mx-auto block" style={{ background: 'transparent' }}>
       {/* Edges */}
       {(edges || []).map((e, idx) => {
-        const p1 = nodePositions.get(e.parent);
-        const p2 = nodePositions.get(e.child);
+        const p1 = nodePositions.get(e.from);
+        const p2 = nodePositions.get(e.to);
         if (!p1 || !p2) return null;
         return (
           <line
