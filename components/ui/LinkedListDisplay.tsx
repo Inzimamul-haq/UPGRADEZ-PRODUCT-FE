@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface LinkedListData {
-  nodes?: { id?: string | number; value: any }[];
+  nodes?: { id?: string | number; value?: any; label?: any }[];
   edges?: { from: string | number; to: string | number }[];
   values?: any[];
 }
@@ -19,7 +19,7 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
   } else if (list.nodes && Array.isArray(list.nodes)) {
     // try to order them if edges exist
     if (list.edges && Array.isArray(list.edges) && list.edges.length > 0) {
-      const nodeMap = new Map(list.nodes.map(n => [String(n.id), n.value !== undefined ? n.value : n.id]));
+      const nodeMap = new Map(list.nodes.map(n => [String(n.id), n.label !== undefined ? n.label : (n.value !== undefined ? n.value : n.id)]));
       const nextMap = new Map(list.edges.map(e => [String(e.from), String(e.to)]));
       const hasPrev = new Set(list.edges.map(e => String(e.to)));
       
@@ -37,7 +37,7 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
       values = ordered;
     } else {
       // just take as is
-      values = list.nodes.map(n => n.value !== undefined ? n.value : n.id);
+      values = list.nodes.map(n => n.label !== undefined ? n.label : (n.value !== undefined ? n.value : n.id));
     }
   }
 
