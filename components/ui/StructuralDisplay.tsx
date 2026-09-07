@@ -3,7 +3,7 @@ import { LinkedListDisplay } from './LinkedListDisplay';
 import { BucketsDisplay } from './BucketsDisplay';
 
 export function StructuralDisplay({ data, subtype, width = 300, height = 260 }: any) {
-  if (['linked_list', 'linked list', 'array', 'stack', 'queue'].includes(subtype)) {
+  if (['linked_list', 'doubly_linked_list', 'linked list', 'array', 'stack', 'queue'].includes(subtype)) {
     return <LinkedListDisplay list={data} width={width} height={height} />;
   }
   if (subtype === 'buckets' || subtype === 'hash table') {
@@ -24,3 +24,4 @@ export function StructuralDisplay({ data, subtype, width = 300, height = 260 }: 
     </div>
   );
 }
+

@@ -41,6 +41,13 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
     }
   }
 
+  // Detect doubly linked list: back-edges exist when edges go both A→B and B→A
+  const isDoubly = (() => {
+    if (!list.edges || list.edges.length < 2) return false;
+    const edgeSet = new Set(list.edges.map(e => `${e.from}->${e.to}`));
+    return list.edges.some(e => edgeSet.has(`${e.to}->${e.from}`));
+  })();
+
   if (values.length === 0) {
     return (
       <svg width={width} height={height} className="mx-auto block">
@@ -59,21 +66,62 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
   const startY = (height - boxH) / 2;
   const actualW = Math.max(width, totalW + 20);
 
+  const arrowColor = '#8C8C8A';
+  const ARROW_SIZE = 5;
+
   return (
     <svg width={actualW} height={height} className="mx-auto block" style={{ background: 'transparent' }}>
       {values.map((val, i) => {
         const x = startX + i * (boxW + gap);
         const y = startY;
+
+        // x coords for the connector segment between box i and box i+1
+        const lineX1 = x + boxW;
+        const lineX2 = x + boxW + gap;
+        const midY = y + boxH / 2;
+
         return (
           <g key={i}>
             <rect x={x} y={y} width={boxW} height={boxH} fill="#262626" stroke="#EBEBEA" strokeWidth="1.5" rx={4} />
             <text x={x + boxW / 2} y={y + boxH / 2} dy="4" textAnchor="middle" fill="#EBEBEA" fontSize={12} fontWeight="bold">
               {String(val)}
             </text>
+
             {i < values.length - 1 && (
               <g>
-                <line x1={x + boxW} y1={y + boxH / 2} x2={x + boxW + gap - 6} y2={y + boxH / 2} stroke="#8C8C8A" strokeWidth="1.5" />
-                <polygon points={`${x + boxW + gap - 6},${y + boxH / 2 - 4} ${x + boxW + gap},${y + boxH / 2} ${x + boxW + gap - 6},${y + boxH / 2 + 4}`} fill="#8C8C8A" />
+                {isDoubly ? (
+                  <>
+                    {/* Forward arrow (bottom lane) → */}
+                    <line
+                      x1={lineX1} y1={midY + 4}
+                      x2={lineX2 - ARROW_SIZE} y2={midY + 4}
+                      stroke={arrowColor} strokeWidth="1.5"
+                    />
+                    <polygon
+                      points={`${lineX2 - ARROW_SIZE},${midY + 4 - 3} ${lineX2},${midY + 4} ${lineX2 - ARROW_SIZE},${midY + 4 + 3}`}
+                      fill={arrowColor}
+                    />
+                    {/* Backward arrow (top lane) ← */}
+                    <line
+                      x1={lineX2} y1={midY - 4}
+                      x2={lineX1 + ARROW_SIZE} y2={midY - 4}
+                      stroke={arrowColor} strokeWidth="1.5"
+                    />
+                    <polygon
+                      points={`${lineX1 + ARROW_SIZE},${midY - 4 - 3} ${lineX1},${midY - 4} ${lineX1 + ARROW_SIZE},${midY - 4 + 3}`}
+                      fill={arrowColor}
+                    />
+                  </>
+                ) : (
+                  /* Single forward arrow */
+                  <>
+                    <line x1={lineX1} y1={midY} x2={lineX2 - ARROW_SIZE} y2={midY} stroke={arrowColor} strokeWidth="1.5" />
+                    <polygon
+                      points={`${lineX2 - ARROW_SIZE},${midY - 4} ${lineX2},${midY} ${lineX2 - ARROW_SIZE},${midY + 4}`}
+                      fill={arrowColor}
+                    />
+                  </>
+                )}
               </g>
             )}
           </g>
