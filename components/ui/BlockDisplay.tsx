@@ -1,6 +1,11 @@
 import React from 'react';
+import { GraphDisplay } from './GraphDisplay';
 
 export function BlockDisplay({ data, subtype, width = '100%', height = 200 }: any) {
+  if (data?.nodes && data?.edges) {
+    return <GraphDisplay graph={data} width={typeof width === 'number' ? width : 300} height={typeof height === 'number' ? height : 300} />;
+  }
+
   const blocks = data?.blocks || [];
 
   if (blocks.length === 0) {

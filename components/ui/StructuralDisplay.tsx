@@ -3,11 +3,16 @@ import { LinkedListDisplay } from './LinkedListDisplay';
 import { BucketsDisplay } from './BucketsDisplay';
 
 export function StructuralDisplay({ data, subtype, width = 300, height = 260 }: any) {
-  if (subtype === 'linked_list' || subtype === 'linked list') {
+  if (['linked_list', 'linked list', 'array', 'stack', 'queue'].includes(subtype)) {
     return <LinkedListDisplay list={data} width={width} height={height} />;
   }
   if (subtype === 'buckets' || subtype === 'hash table') {
     return <BucketsDisplay data={data} width={width} height={height} />;
+  }
+
+  // Fallback to LinkedListDisplay if we have structural nodes
+  if (data?.nodes && data.nodes.length > 0) {
+    return <LinkedListDisplay list={data} width={width} height={height} />;
   }
   
   // Default structural stub

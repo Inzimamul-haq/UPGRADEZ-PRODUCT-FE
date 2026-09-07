@@ -20,6 +20,14 @@ interface DiagramRendererProps {
 }
 
 export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260 }: DiagramRendererProps) {
+  if (!spec || Object.keys(spec).length === 0) {
+    return (
+      <div className="text-xs text-[#6C6C6A] italic flex items-center justify-center border border-dashed border-[#3A3A38] rounded-md h-[100px] w-full mt-2">
+        [Visual: {type} — no data provided]
+      </div>
+    );
+  }
+
   switch (type) {
     case 'graph':
       return <GraphDisplay graph={spec} width={width} height={height} />;

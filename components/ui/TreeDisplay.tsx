@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface TreeData {
-  nodes: { id: number | string; value: any }[];
+  nodes: { id: number | string; label?: any; value?: any }[];
   edges: { from: number | string; to: number | string }[];
 }
 
@@ -14,7 +14,7 @@ interface TreeDisplayProps {
 export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProps) {
   const { nodes, edges } = tree;
 
-  function buildLevelOrder(nodes: {id:number | string,value:any}[], edges: {from:number | string,to:number | string}[]) {
+  function buildLevelOrder(nodes: {id:number | string, label?: any, value?: any}[], edges: {from:number | string,to:number | string}[]) {
     const MAX_NODES = 50;
     const childrenOf = new Map<number | string, (number | string)[]>();
     const hasParent = new Set<number | string>();
@@ -113,7 +113,7 @@ export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProp
               fontSize={12}
               fontWeight="bold"
             >
-              {n.value}
+              {n.label ?? n.value ?? n.id}
             </text>
           </g>
         );
