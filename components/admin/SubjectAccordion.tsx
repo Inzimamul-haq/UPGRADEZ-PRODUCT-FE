@@ -10,12 +10,14 @@ import {
   Download,
   Ban,
   RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/context/ToastContext";
 import api from "@/lib/api";
 import { extractErrorMessage } from "@/lib/utils";
+import { SubjectConfigModal } from "@/components/admin/SubjectConfigModal";
 
 export type Subject = {
   id: string;
@@ -33,6 +35,8 @@ export type Subject = {
   stoppedAcademicYear?: string | null;
   tocPlan?: any;
   files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number; fileType?: string }[];
+  promptType?: string;
+  diagramTypes?: string[];
 };
 
 const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -42,12 +46,22 @@ const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string
   failed: { label: 'Failed', className: 'border-red-400/50 text-red-400' },
 };
 
+const PROMPT_TYPE_LABELS: Record<string, string> = {
+  PURE_THEORY: "Pure Theory",
+  TECHNICAL_THEORY: "Technical Theory",
+  COMPUTATION_DOMINANT: "Computation",
+  HYBRID_THEORY_PROBLEM: "Hybrid",
+  PROBLEM_FOCUSED: "Problem",
+  APPLIED_DESIGN: "Applied",
+};
+
 interface SubjectAccordionProps {
   subject: Subject;
   onDelete: (id: string) => Promise<void> | void;
   onEdit: (subject: Subject) => void;
   onTogglePublish: (id: string, academicYear?: string) => void;
   onRefresh?: () => void;
+  onConfigSave?: (id: string, promptType: string, diagramTypes: string[]) => Promise<void>;
 }
 
 export function SubjectAccordion({
@@ -56,6 +70,7 @@ export function SubjectAccordion({
   onEdit,
   onTogglePublish,
   onRefresh,
+  onConfigSave,
 }: SubjectAccordionProps) {
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -66,6 +81,8 @@ export function SubjectAccordion({
   const [isRetrying, setIsRetrying] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<{ id: string, name: string } | null>(null);
   const [isFileDeleting, setIsFileDeleting] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   const [isUploadingSyllabus, setIsUploadingSyllabus] = useState(false);
 
@@ -168,6 +185,12 @@ export function SubjectAccordion({
                 )}
               </span>
 
+              {subject.promptType && (
+                <span className="inline-flex rounded border border-[#3A3A38] px-1.5 py-0.5 text-[9px] sm:text-[10px] text-[#5A5A58] whitespace-nowrap">
+                  {PROMPT_TYPE_LABELS[subject.promptType] ?? subject.promptType}
+                </span>
+              )}
+
               {!subject.isPublished && subject.stoppedAcademicYear && (
                 <span className="inline-flex rounded border border-red-400/50 px-1.5 py-0.5 text-[9px] sm:text-[10px] text-red-400 whitespace-nowrap">
                   Stopped
@@ -220,6 +243,16 @@ export function SubjectAccordion({
                 onClick={handleRetry}
                 data-tooltip="Retry processing" />
             )}
+
+            <SlidersHorizontal
+              size={14}
+              className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+              title="AI Config"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowConfigModal(true);
+              }}
+            />
 
             <Pencil
               size={14}
@@ -377,6 +410,28 @@ export function SubjectAccordion({
           </div>
         )}
       </div>
+
+      {/* AI Config Modal */}
+      <SubjectConfigModal
+        open={showConfigModal}
+        subjectName={subject.name}
+        initialPromptType={subject.promptType || "TECHNICAL_THEORY"}
+        initialDiagramTypes={subject.diagramTypes || []}
+        isSaving={isSavingConfig}
+        onClose={() => setShowConfigModal(false)}
+        onSave={async (promptType, diagramTypes) => {
+          setIsSavingConfig(true);
+          try {
+            await onConfigSave?.(subject.id, promptType, diagramTypes);
+            setShowConfigModal(false);
+            toast.success(`AI config saved for "${subject.name}".`);
+          } catch (err: any) {
+            toast.error(extractErrorMessage(err, "Failed to save config"));
+          } finally {
+            setIsSavingConfig(false);
+          }
+        }}
+      />
 
       {/* Delete Subject Confirm Modal */}
       <ConfirmDeleteModal

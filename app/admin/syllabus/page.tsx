@@ -33,6 +33,8 @@ type SubjectApiRow = {
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
   files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number }[];
+  promptType?: string;
+  diagramTypes?: string[];
 };
 
 type DepartmentOption = {
@@ -62,6 +64,8 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
     s.embedding_status ??
     (s.pdfUrl || s.pdf_url ? 'completed' : 'queued')) as Subject['embeddingStatus'],
   files: s.files,
+  promptType: s.promptType,
+  diagramTypes: s.diagramTypes ?? [],
 });
 
 export default function AdminSyllabusPage() {
@@ -430,6 +434,17 @@ export default function AdminSyllabusPage() {
 
 
 
+  // AI Config save
+  const handleConfigSave = async (id: string, promptType: string, diagramTypes: string[]) => {
+    await api.patch(`/api/subjects/${id}/config`, { promptType, diagramTypes });
+    // Patch local state immediately — no full refetch needed
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, promptType, diagramTypes } : s
+      )
+    );
+  };
+
   // delete subject — now async for the modal loading state
   const handleDelete = async (id: string) => {
     const subject = subjects.find((s) => s.id === id);
@@ -538,6 +553,7 @@ export default function AdminSyllabusPage() {
               onEdit={handleOpenEdit}
               onTogglePublish={handleTogglePublish}
               onRefresh={fetchSubjects}
+              onConfigSave={handleConfigSave}
             />
           ))
         )}
