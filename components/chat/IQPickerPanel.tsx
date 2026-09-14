@@ -99,7 +99,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
       const partQs = selectedQs.filter(q => q.marks === mark);
       const partLabel = partLabels[index] || `Part ${index + 1}`;
       
-      markdown += `Part ${partLabel}\n\n`;
+      markdown += `## Part ${partLabel} — ${mark} Marks\n\n`;
       partQs.forEach(q => {
         let text = q.text;
         text = text.replace(/^\s*\d+[\.\)]\s*/, '');
@@ -115,7 +115,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
 
     const noMarkQs = selectedQs.filter(q => q.marks === null);
     if (noMarkQs.length > 0) {
-      markdown += `Unmarked Questions\n\n`;
+      markdown += `## Unmarked Questions\n\n`;
       noMarkQs.forEach(q => {
         let text = q.text;
         text = text.replace(/^\s*\d+[\.\)]\s*/, '');

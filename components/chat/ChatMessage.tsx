@@ -224,7 +224,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
 export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content || '');
+  const [editSegmentsState, setEditSegmentsState] = useState<SolutionSegment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -249,25 +249,53 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[400px] md:w-[500px]"
           >
-            <textarea
-              ref={el => {
-                if (el) {
-                  el.style.height = 'auto';
-                  el.style.height = el.scrollHeight + 'px';
+            <div className="flex flex-col">
+              {editSegmentsState.map((seg, i) => {
+                if (seg.type === 'text') {
+                  return (
+                    <textarea
+                      key={i}
+                      ref={el => {
+                        if (el) {
+                          el.style.height = 'auto';
+                          el.style.height = el.scrollHeight + 'px';
+                        }
+                      }}
+                      value={seg.content}
+                      onChange={e => {
+                        const newSegs = [...editSegmentsState];
+                        newSegs[i] = { type: 'text', content: e.target.value };
+                        setEditSegmentsState(newSegs);
+                      }}
+                      className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
+                      disabled={isSaving}
+                    />
+                  );
+                } else if (seg.type === 'graph') {
+                  return (
+                    <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
+                      <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                      <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
+                      <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                      <SolutionRenderer
+                        data={seg.data}
+                        messageId={message.id}
+                        chatId={chatId}
+                        stepExplanations={message.stepExplanations ?? []}
+                      />
+                    </div>
+                  );
                 }
-              }}
-              value={editContent}
-              onChange={e => {
-                setEditContent(e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              }}
-              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
-              disabled={isSaving}
-            />
+              })}
+            </div>
             <div className="flex justify-end gap-2 p-2 bg-[#1C1C1B] border-t border-[#3A3A38]">
               <button
-                onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }}
+                onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
                 className="px-3 py-1 text-[11px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
                 disabled={isSaving}
               >
@@ -278,7 +306,13 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                   if (onEditSubmit) {
                     setIsSaving(true);
                     try {
-                      await onEditSubmit(message.id, editContent);
+                      const newContent = editSegmentsState.map(seg => {
+                        if (seg.type === 'text') return seg.content;
+                        if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
+                        if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
+                        return '';
+                      }).join('\n\n');
+                      await onEditSubmit(message.id, newContent);
                       setIsEditing(false);
                     } catch (e) {
                       // err
@@ -287,7 +321,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                     }
                   }
                 }}
-                disabled={isSaving || !editContent.trim() || editContent === message.content}
+                disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
                 className="px-4 py-1 text-[11px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save & Resubmit'}
@@ -316,7 +350,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
 
             </button>
             {/* <button
-              onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+              onClick={() => { setIsEditing(true); setEditSegmentsState(parseMathSolutions(message.content || '')); }}
               title="Edit message"
               className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
             >
@@ -433,7 +467,26 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
     td: ({ node, ...props }: any) => <td className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed" {...props} />,
     strong: ({ node, ...props }: any) => <strong className="font-[600] text-[#BC676A] bg-[#1A1A19] border border-[#BC676A]/30 px-1.5 py-0.5 rounded mx-0.5" {...props} />,
     h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-4 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
-    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h2: ({ node, ...props }: any) => {
+      const extractText = (child: any): string => {
+        if (typeof child === 'string') return child;
+        if (Array.isArray(child)) return child.map(extractText).join('');
+        if (child?.props?.children) return extractText(child.props.children);
+        return '';
+      };
+      const text = extractText(props.children);
+      if (/^Part\s+[A-Z]/i.test(text) || text.includes('Unmarked Questions')) {
+        return (
+          <div className="flex items-center gap-3 mt-8 mb-4">
+            <span className="bg-[#242422] border border-[#4A4A48] text-[#ECECEA] px-3 py-1.5 rounded-md text-[13px] font-semibold tracking-wide">
+              {text}
+            </span>
+            <div className="flex-1 border-t border-[#3A3A38]" />
+          </div>
+        );
+      }
+      return <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />;
+    },
     h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 pb-1 border-b border-[#3A3A38]/50 text-white" {...props} />,
     blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
     img: ({ node, ...props }: any) => {
@@ -545,26 +598,54 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                       <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
                     </div>
                   </div>
-                  <textarea
-                    ref={el => {
-                      if (el) {
-                        el.style.height = 'auto';
-                        el.style.height = el.scrollHeight + 'px';
+                  <div className="flex flex-col">
+                    {editSegmentsState.map((seg, i) => {
+                      if (seg.type === 'text') {
+                        return (
+                          <textarea
+                            key={i}
+                            ref={el => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = el.scrollHeight + 'px';
+                              }
+                            }}
+                            value={seg.content}
+                            onChange={e => {
+                              const newSegs = [...editSegmentsState];
+                              newSegs[i] = { type: 'text', content: e.target.value };
+                              setEditSegmentsState(newSegs);
+                            }}
+                            className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
+                            disabled={isSaving}
+                            placeholder="Make changes to the AI generated content..."
+                          />
+                        );
+                      } else if (seg.type === 'graph') {
+                        return (
+                          <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
+                            <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                            <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
+                            <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                            <SolutionRenderer
+                              data={seg.data}
+                              messageId={message.id}
+                              chatId={chatId}
+                              stepExplanations={message.stepExplanations ?? []}
+                            />
+                          </div>
+                        );
                       }
-                    }}
-                    value={editContent}
-                    onChange={e => {
-                      setEditContent(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = e.target.scrollHeight + 'px';
-                    }}
-                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
-                    disabled={isSaving}
-                    placeholder="Make changes to the AI generated content..."
-                  />
+                    })}
+                  </div>
                   <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
                     <button
-                      onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }}
+                      onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
                       className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
                       disabled={isSaving}
                     >
@@ -575,7 +656,13 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                         if (onEditSubmit) {
                           setIsSaving(true);
                           try {
-                            await onEditSubmit(message.id, editContent);
+                            const newContent = editSegmentsState.map(seg => {
+                              if (seg.type === 'text') return seg.content;
+                              if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
+                              if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
+                              return '';
+                            }).join('\n\n');
+                            await onEditSubmit(message.id, newContent);
                             setIsEditing(false);
                           } catch (e) {
                             // Error toast handled by parent
@@ -584,7 +671,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                           }
                         }
                       }}
-                      disabled={isSaving || !editContent.trim() || editContent === message.content}
+                      disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
                       className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
                     >
                       {isSaving ? 'Saving...' : 'Save Changes'}
@@ -669,7 +756,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
 
             {isEditable && !isEditing && (
               <button
-                onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+                onClick={() => { setIsEditing(true); setEditSegmentsState(parseMathSolutions(message.content || '')); }}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
               >
                 Edit

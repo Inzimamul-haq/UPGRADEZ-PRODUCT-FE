@@ -22,7 +22,6 @@ const DIAGRAM_TYPE_OPTIONS = [
   { value: "block", label: "Block" },
   { value: "schematic", label: "Schematic" },
   { value: "table", label: "Table" },
-  { value: "linked_list", label: "Linked List" },
   { value: "geometry", label: "Geometry" },
   { value: "waveform", label: "Waveform" },
   { value: "architecture", label: "Architecture" },
