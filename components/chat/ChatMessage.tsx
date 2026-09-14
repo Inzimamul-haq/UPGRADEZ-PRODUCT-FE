@@ -177,7 +177,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   }
 
   const segmentsWithGraph: SolutionSegment[] = [];
-  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram):([\s\S]*?)\]\]\s*/i;
+  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]\s*/i;
 
   for (const seg of finalSegments) {
     if (seg.type === 'text') {
@@ -697,9 +697,21 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                           {seg.content}
                         </ReactMarkdown>
                       ) : seg.type === 'graph' ? (
-                        <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                          <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
-                        </div>
+                        (() => {
+                          const diagType = seg.data.type || seg.data.format || 'unknown';
+                          const diagSubtype = seg.data.subtype || '';
+                          const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform'].includes(diagType);
+                          const renderWidth = isWide ? 500 : 300;
+                          const renderHeight = isWide ? 320 : 250;
+                          return (
+                            <div className="my-4 flex flex-col items-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                              <div className="text-xs text-[#A1A1AA] mb-2 font-medium tracking-wide uppercase">
+                                {diagType} {diagSubtype ? `— ${diagSubtype.replace(/_/g, ' ')}` : ''}
+                              </div>
+                              <DiagramRenderer type={diagType} subtype={diagSubtype} spec={seg.data} width={renderWidth} height={renderHeight} />
+                            </div>
+                          );
+                        })()
                       ) : (
                         <SolutionRenderer
                           data={seg.data}

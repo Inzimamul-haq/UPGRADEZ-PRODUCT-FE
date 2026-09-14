@@ -4,9 +4,7 @@ import React, { useState } from "react";
 import { X, SlidersHorizontal, Check } from "lucide-react";
 
 const PROMPT_TYPE_OPTIONS = [
-  { value: "PURE_THEORY", label: "Pure Theory" },
-  { value: "TECHNICAL_THEORY", label: "Technical Theory" },
-  { value: "COMPUTATION_DOMINANT", label: "Computation Dominant" },
+  { value: "THEORY", label: "Theory" },
   { value: "HYBRID_THEORY_PROBLEM", label: "Hybrid (Theory + Problem)" },
   { value: "PROBLEM_FOCUSED", label: "Problem Focused" },
   { value: "APPLIED_DESIGN", label: "Applied Design" },

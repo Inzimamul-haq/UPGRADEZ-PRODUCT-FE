@@ -47,9 +47,7 @@ const EMBEDDING_STATUS_LABELS: Record<string, { label: string; className: string
 };
 
 const PROMPT_TYPE_LABELS: Record<string, string> = {
-  PURE_THEORY: "Pure Theory",
-  TECHNICAL_THEORY: "Technical Theory",
-  COMPUTATION_DOMINANT: "Computation",
+  THEORY: "Theory",
   HYBRID_THEORY_PROBLEM: "Hybrid",
   PROBLEM_FOCUSED: "Problem",
   APPLIED_DESIGN: "Applied",
@@ -244,15 +242,16 @@ export function SubjectAccordion({
                 data-tooltip="Retry processing" />
             )}
 
-            <SlidersHorizontal
-              size={14}
-              className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
-              title="AI Config"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowConfigModal(true);
-              }}
-            />
+            <span title="AI Config" className="flex items-center">
+              <SlidersHorizontal
+                size={14}
+                className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfigModal(true);
+                }}
+              />
+            </span>
 
             <Pencil
               size={14}

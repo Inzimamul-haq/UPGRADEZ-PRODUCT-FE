@@ -53,6 +53,13 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
       return <WaveformDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'table':
       return <TableDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    case 'logic_gate':
+      return <SchematicDisplay data={spec} subtype="logic_gate" width={width} height={height} />;
+    case 'free_body':
+      return <GeometryDisplay data={spec} subtype="free_body" width={width} height={height} />;
+    case 'linked_list':
+    case 'doubly_linked_list':
+      return <StructuralDisplay data={spec} subtype={type} width={width} height={height} />;
     default:
       // Unknown type — show a placeholder so the question isn't broken
       return (

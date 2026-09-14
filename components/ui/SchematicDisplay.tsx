@@ -1,11 +1,16 @@
 import React from 'react';
 import { LogicGateDisplay } from './LogicGateDisplay';
+import { BlockDisplay } from './BlockDisplay';
 
-export function SchematicDisplay({ data, subtype, width = 300, height = 260 }: any) {
-  if (subtype === 'logic_gate' || subtype === 'logic gate') {
+export function SchematicDisplay({ data, subtype, width = 500, height = 320 }: any) {
+  if (subtype === 'logic_gate' || subtype === 'logic gate' || (data?.components && data?.connections)) {
     return <LogicGateDisplay logic={data} width={width} height={height} />;
   }
   
+  if (data?.nodes && data?.edges) {
+    return <BlockDisplay data={data} subtype={subtype} width={width} height={height} />;
+  }
+
   // Default schematic stub
   return (
     <div className="flex items-center justify-center border border-dashed border-[#3A3A38] rounded-md mt-2 bg-[#1C1C1B]" style={{ width: '100%', height }}>
