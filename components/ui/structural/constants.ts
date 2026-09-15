@@ -1,0 +1,9 @@
+export const STRUCTURAL_STYLES = {
+  FONT_SIZE_NODE: "32",
+  FONT_WEIGHT_NODE: "bold",
+  FONT_SIZE_LOAD: "28",
+  FONT_WEIGHT_LOAD: "medium",
+  FONT_SIZE_DIMENSION: "28",
+  FONT_WEIGHT_DIMENSION: "normal",
+  MARKER_SIZE: "10",
+};

@@ -10,6 +10,7 @@ import { ArchitectureDisplay } from './ArchitectureDisplay';
 import { NetworkDisplay } from './NetworkDisplay';
 import { WaveformDisplay } from './WaveformDisplay';
 import { TableDisplay } from './TableDisplay';
+import { MechStructuralDisplay } from './MechStructuralDisplay';
 
 interface DiagramRendererProps {
   type: string;
@@ -39,6 +40,8 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
       return <SchematicDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'geometry':
       return <GeometryDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    case 'mech_structural':
+      return <MechStructuralDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'structural':
       return <StructuralDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'block':
