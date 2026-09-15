@@ -11,6 +11,7 @@ import { NetworkDisplay } from './NetworkDisplay';
 import { WaveformDisplay } from './WaveformDisplay';
 import { TableDisplay } from './TableDisplay';
 import { MechStructuralDisplay } from './MechStructuralDisplay';
+import { EngineeringDrawingDisplay } from './EngineeringDrawingDisplay';
 
 interface DiagramRendererProps {
   type: string;
@@ -30,6 +31,8 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
   }
 
   switch (type) {
+    case 'engineering_drawing':
+      return <EngineeringDrawingDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'graph':
       return <GraphDisplay graph={spec} width={width} height={height} />;
     case 'tree':

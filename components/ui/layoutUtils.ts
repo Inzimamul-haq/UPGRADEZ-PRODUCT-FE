@@ -282,3 +282,55 @@ export function collapseParallelGroups(edges: NormalizedEdge[]) {
 
   return { simplifiedEdges, parallelMap };
 }
+
+export function classifyAndRouteArcs(
+  edges: NormalizedEdge[],
+  positions: Record<string, { x: number; y: number }>,
+  direction: 'TB' | 'LR' = 'LR'
+) {
+  const routedEdges = edges.map(e => {
+    const fromPos = positions[e.from];
+    const toPos = positions[e.to];
+    
+    if (!fromPos || !toPos) {
+      return { ...e, isBackwardLayoutEdge: false, laneOffset: 0 };
+    }
+
+    // Determine if edge is backward based on positions
+    const isBackwardLayoutEdge = direction === 'LR' ? toPos.x <= fromPos.x : toPos.y <= fromPos.y;
+    return { ...e, isBackwardLayoutEdge, laneOffset: 0 };
+  });
+
+  // Calculate nested lane offsets for backward edges
+  const backwardEdges = routedEdges.filter(e => e.isBackwardLayoutEdge);
+  
+  // Sort backward edges by span (shortest span first, they get the innermost lane)
+  backwardEdges.sort((a, b) => {
+    const spanA = direction === 'LR' 
+      ? Math.abs(positions[a.from]!.x - positions[a.to]!.x)
+      : Math.abs(positions[a.from]!.y - positions[a.to]!.y);
+    const spanB = direction === 'LR'
+      ? Math.abs(positions[b.from]!.x - positions[b.to]!.x)
+      : Math.abs(positions[b.from]!.y - positions[b.to]!.y);
+    return spanA - spanB;
+  });
+
+  // Assign lanes (simple overlap avoidance: increment lane for each nested span)
+  const lanes: { start: number, end: number, lane: number }[] = [];
+  
+  for (const edge of backwardEdges) {
+    const start = direction === 'LR' ? positions[edge.to]!.x : positions[edge.to]!.y; // backward goes right-to-left
+    const end = direction === 'LR' ? positions[edge.from]!.x : positions[edge.from]!.y;
+    
+    let lane = 1;
+    // Find first available lane that doesn't overlap
+    while (lanes.some(l => l.lane === lane && !(end < l.start || start > l.end))) {
+      lane++;
+    }
+    
+    edge.laneOffset = lane;
+    lanes.push({ start, end, lane });
+  }
+
+  return routedEdges;
+}
