@@ -51,6 +51,7 @@ const PROMPT_TYPE_LABELS: Record<string, string> = {
   HYBRID_THEORY_PROBLEM: "Hybrid",
   PROBLEM_FOCUSED: "Problem",
   APPLIED_DESIGN: "Applied",
+  DIAGRAM_DRIVEN_PROBLEM: "Diagram Driven",
 };
 
 interface SubjectAccordionProps {

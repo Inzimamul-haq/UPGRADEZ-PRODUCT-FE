@@ -8,6 +8,7 @@ const PROMPT_TYPE_OPTIONS = [
   { value: "HYBRID_THEORY_PROBLEM", label: "Hybrid (Theory + Problem)" },
   { value: "PROBLEM_FOCUSED", label: "Problem Focused" },
   { value: "APPLIED_DESIGN", label: "Applied Design" },
+  { value: "DIAGRAM_DRIVEN_PROBLEM", label: "Diagram Driven" },
 ] as const;
 
 const DIAGRAM_TYPE_OPTIONS = [

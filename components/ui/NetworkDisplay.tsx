@@ -23,6 +23,11 @@ export function NetworkDisplay({ data, subtype, width = 400, height = 400 }: any
 
   return (
     <div className="relative mt-2" style={{ width: numWidth, height: numHeight }}>
+      {subtype && subtype !== 'generic' && (
+        <div className="absolute top-2 right-2 px-2 py-1 bg-[#2C2C2A] text-[#10B981] text-[10px] rounded border border-[#3A3A38] uppercase tracking-wider font-semibold shadow-sm z-10 pointer-events-none">
+          {subtype.replace(/_/g, ' ')}
+        </div>
+      )}
       <svg width={numWidth} height={numHeight} className="overflow-visible block">
         {/* Edges */}
         {edges.map((e: any, i: number) => {

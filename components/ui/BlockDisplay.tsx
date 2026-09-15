@@ -24,6 +24,11 @@ export function BlockDisplay({ data, subtype, width = 500, height = 320 }: any) 
 
   return (
     <div className="relative mt-2" style={{ width: numWidth, height: numHeight }}>
+      {subtype && subtype !== 'generic' && (
+        <div className="absolute top-2 right-2 px-2 py-1 bg-[#2C2C2A] text-[#E5A05F] text-[10px] rounded border border-[#3A3A38] uppercase tracking-wider font-semibold shadow-sm z-10 pointer-events-none">
+          {subtype.replace(/_/g, ' ')}
+        </div>
+      )}
       <svg width={numWidth} height={numHeight} className="overflow-visible block">
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">

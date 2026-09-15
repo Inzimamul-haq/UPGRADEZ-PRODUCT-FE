@@ -35,7 +35,7 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
     case 'tree':
       return <TreeDisplay tree={spec} width={width} height={height} />;
     case 'circuit':
-      return <CircuitDisplay circuit={spec} width={width} height={height} />;
+      return <CircuitDisplay circuit={spec} subtype={subtype} width={width} height={height} />;
     case 'schematic':
       return <SchematicDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'geometry':

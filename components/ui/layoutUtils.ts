@@ -250,3 +250,35 @@ export function buildLevelOrder(nodes: {id:number | string}[], edges: {from:numb
   }
   return levels;
 }
+
+export function findParallelGroups(edges: NormalizedEdge[]): NormalizedEdge[][] {
+  const groups = new Map<string, NormalizedEdge[]>();
+  for (const e of edges) {
+    const key = [e.from, e.to].sort().join('|');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(e);
+  }
+  return [...groups.values()].filter(g => g.length > 1);
+}
+
+export function collapseParallelGroups(edges: NormalizedEdge[]) {
+  const simplifiedEdges: NormalizedEdge[] = [];
+  const parallelMap = new Map<string, NormalizedEdge[]>();
+  const seen = new Set<string>();
+
+  for (const e of edges) {
+    const key = [e.from, e.to].sort().join('|');
+    if (seen.has(key)) continue;
+
+    const group = edges.filter(ed => [ed.from, ed.to].sort().join('|') === key);
+    if (group.length > 1) {
+      seen.add(key);
+      parallelMap.set(key, group);
+      simplifiedEdges.push(group[0]); // Pick the first as representative for layout
+    } else {
+      simplifiedEdges.push(e);
+    }
+  }
+
+  return { simplifiedEdges, parallelMap };
+}
