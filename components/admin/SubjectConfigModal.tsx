@@ -24,6 +24,8 @@ const DIAGRAM_TYPE_OPTIONS = [
   { value: "geometry", label: "Geometry" },
   { value: "waveform", label: "Waveform" },
   { value: "architecture", label: "Architecture" },
+  { value: "mech_structural", label: "Mech Structural" },
+  { value: "engineering_drawing", label: "Engineering Drawing" },
 ] as const;
 
 export type DiagramTypeValue = typeof DIAGRAM_TYPE_OPTIONS[number]["value"];
