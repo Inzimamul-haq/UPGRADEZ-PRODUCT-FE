@@ -15,7 +15,7 @@ import { GraphDisplay } from '@/components/ui/GraphDisplay';
 import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
 import { DiagramRenderer } from '../ui/DiagramRenderer';
 
-type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
+type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any } | { type: 'flagged'; qNum: number; reason: string };
 
 function parseMathSolutions(text: string): SolutionSegment[] {
   const segments: SolutionSegment[] = [];
@@ -218,7 +218,59 @@ function parseMathSolutions(text: string): SolutionSegment[] {
     }
   }
 
-  return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
+  // ── Human Fallback tag extraction ────────────────────────────────────────
+  // Strip [[flagged:N:reason]] tags from text segments and create 'flagged' segments
+  // immediately after the text segment they belong to.
+  const FLAGGED_TAG_RE = /\[\[flagged:(\d+):([^\]]+)\]\]/;
+  const finalSegmentsWithFallback: SolutionSegment[] = [];
+  for (const seg of segmentsWithGraph) {
+    if (seg.type === 'text') {
+      const match = seg.content.match(FLAGGED_TAG_RE);
+      if (match) {
+        const cleanedText = seg.content.replace(FLAGGED_TAG_RE, '').trim();
+        if (cleanedText) finalSegmentsWithFallback.push({ type: 'text', content: cleanedText });
+        finalSegmentsWithFallback.push({ type: 'flagged', qNum: parseInt(match[1], 10), reason: match[2].trim() });
+      } else {
+        finalSegmentsWithFallback.push(seg);
+      }
+    } else {
+      finalSegmentsWithFallback.push(seg);
+    }
+  }
+
+  return finalSegmentsWithFallback.length > 0 ? finalSegmentsWithFallback : [{ type: 'text', content: text }];
+}
+
+/**
+ * Inline warning banner shown for questions that could not be diagram-repaired.
+ * The question itself is still fully visible above — this banner appears below it.
+ */
+function FallbackBanner({ qNum, reason }: { qNum: number; reason: string }) {
+  const [dismissed, setDismissed] = React.useState(false);
+  if (dismissed) return null;
+  return (
+    <div className="mt-2 mb-1 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3">
+      <span className="mt-0.5 text-amber-400 flex-shrink-0 text-[16px]">⚠</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-semibold text-amber-400 mb-0.5">
+          Q{qNum} — Diagram could not be auto-fixed
+        </p>
+        <p className="text-[11px] text-amber-300/70 leading-relaxed break-words">
+          {reason}
+        </p>
+        <p className="text-[11px] text-[#8C8C8A] mt-1.5">
+          You can edit the question text manually before assigning, or keep it as-is.
+        </p>
+      </div>
+      <button
+        onClick={() => setDismissed(true)}
+        className="flex-shrink-0 text-[11px] text-[#6C6C6A] hover:text-[#ECECEA] transition-colors px-2 py-0.5 rounded hover:bg-[#2E2E2C]"
+        title="Dismiss this warning"
+      >
+        Got it
+      </button>
+    </div>
+  );
 }
 
 export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
@@ -278,7 +330,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                       <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
                     </div>
                   );
-                } else {
+                } else if (seg.type === 'solution') {
                   return (
                     <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
                       <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
@@ -290,6 +342,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                       />
                     </div>
                   );
+                } else if (seg.type === 'flagged') {
+                  return <FallbackBanner key={i} qNum={seg.qNum} reason={seg.reason} />;
+                } else {
+                  return null;
                 }
               })}
             </div>
@@ -628,7 +684,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
                           </div>
                         );
-                      } else {
+                      } else if (seg.type === 'solution') {
                         return (
                           <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
                             <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
@@ -640,6 +696,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             />
                           </div>
                         );
+                      } else if (seg.type === 'flagged') {
+                        return <FallbackBanner key={i} qNum={seg.qNum} reason={seg.reason} />;
+                      } else {
+                        return null;
                       }
                     })}
                   </div>
@@ -712,6 +772,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             </div>
                           );
                         })()
+                      ) : seg.type === 'flagged' ? (
+                        <FallbackBanner qNum={seg.qNum} reason={seg.reason} />
                       ) : (
                         <SolutionRenderer
                           data={seg.data}
