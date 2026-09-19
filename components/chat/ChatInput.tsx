@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowUp, Mic, Square, Loader2 } from "lucide-react";
+import { ArrowUp, Mic, Square, Loader2, Settings2 } from "lucide-react";
 import { ChatInputProps } from "@/lib/types";
 import api from "@/lib/api";
 
@@ -11,7 +11,13 @@ export function ChatInput({
   onSend,
   disabled,
   onDisabledClick,
-}: ChatInputProps & { onDisabledClick?: () => void }) {
+  showNewGenerationButton,
+  onNewGenerationClick,
+}: ChatInputProps & { 
+  onDisabledClick?: () => void;
+  showNewGenerationButton?: boolean;
+  onNewGenerationClick?: () => void;
+}) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -336,6 +342,30 @@ export function ChatInput({
           />
 
           <div className="flex items-center gap-0.5 sm:gap-1 pb-[1px]">
+            {showNewGenerationButton && onNewGenerationClick && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNewGenerationClick();
+                }}
+                className={`
+                  flex
+                  items-center
+                  justify-center
+                  w-8
+                  h-8
+                  rounded-lg
+                  transition-colors
+                  hover:bg-[#3A3A38]
+                  text-[#8C8C8A]
+                  hover:text-[#ECECEA]
+                `}
+                title="Context Setup / New Generation"
+              >
+                <Settings2 size={16} />
+              </button>
+            )}
+
             <button
               className={`
                 flex

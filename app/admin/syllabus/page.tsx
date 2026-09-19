@@ -85,6 +85,8 @@ export default function AdminSyllabusPage() {
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
   const [filterDeptMaxYears, setFilterDeptMaxYears] = useState(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [poFrameworkVersion, setPoFrameworkVersion] = useState("NBA_12PO_LEGACY");
+  const [isSavingFramework, setIsSavingFramework] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('lastSyllabusRegulation');
@@ -151,6 +153,21 @@ export default function AdminSyllabusPage() {
     };
     loadDepartments();
   }, []);
+
+  useEffect(() => {
+    const loadCollegeContext = async () => {
+      try {
+        const { data } = await api.get("/api/colleges/context");
+        if (data?.data?.poFrameworkVersion) {
+          setPoFrameworkVersion(data.data.poFrameworkVersion);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    loadCollegeContext();
+  }, []);
+
   // Open one SSE stream per subject that is queued or processing.
   // Each stream patches only that subject's local state — no full refetch.
   const activeSubjectIds = subjects
@@ -485,20 +502,44 @@ export default function AdminSyllabusPage() {
     }
   };
 
+  const handleFrameworkChange = async (val: string) => {
+    setIsSavingFramework(true);
+    try {
+      await api.patch('/api/colleges/me/config', { poFrameworkVersion: val });
+      setPoFrameworkVersion(val);
+      toast.success("PO Framework updated globally.");
+    } catch (err) {
+      toast.error("Failed to update PO Framework");
+    } finally {
+      setIsSavingFramework(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 py-4 sm:py-6">
       {/* Header - proper mobile responsive */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 mt-10 sm:mt-0">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Syllabus</h1>
 
-        <button
-          onClick={() => {
-            setShowAddModal(true);
-          }}
-          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
-        >
-          Add subject
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={poFrameworkVersion}
+            onChange={(e) => handleFrameworkChange(e.target.value)}
+            disabled={isSavingFramework}
+            className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors focus:border-[#4A4A48] focus:outline-none disabled:opacity-50 w-full sm:w-auto"
+          >
+            <option value="NBA_12PO_LEGACY">NBA 12-PO (Legacy)</option>
+            <option value="NBA_GAPC_V4_11PO">NBA 11-PO (GAPC v4.0)</option>
+          </select>
+          <button
+            onClick={() => {
+              setShowAddModal(true);
+            }}
+            className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
+          >
+            Add subject
+          </button>
+        </div>
       </div>
 
       {/* Filters - proper mobile responsive */}

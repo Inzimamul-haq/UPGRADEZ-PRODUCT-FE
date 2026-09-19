@@ -1043,22 +1043,25 @@ return (
       />
     )}
 
-    {/* Context Setup Card — shown inline above ChatInput for faculty fresh sessions */}
+    {/* Context Setup Card — shown connected to the input */}
     {showContextSetup && isFaculty && sessionData && (
-      <div className="flex-shrink-0 overflow-y-auto max-h-[65vh] border-t border-[#2E2E2C]">
-        <ContextSetupCard
-          examType={sessionData.examType}
-          paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
-          subjectName={sessionData.subjectName ?? ''}
-          syllabusEntries={syllabusEntries}
-          onGenerate={handleContextGenerate}
-          difficulty={difficultyMode}
-          onDifficultyChange={(mode) => {
-            setDifficultyMode(mode);
-            setDifficultyConfirmed(true);
-            setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
-          }}
-        />
+      <div className="absolute bottom-[80px] sm:bottom-[90px] left-0 right-0 z-30 flex justify-center px-2 sm:px-4 pointer-events-none">
+        <div className="w-full max-w-3xl pointer-events-auto max-h-[75vh] overflow-y-auto custom-scrollbar rounded-2xl">
+          <ContextSetupCard
+            examType={sessionData.examType}
+            paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
+            subjectName={sessionData.subjectName ?? ''}
+            syllabusEntries={syllabusEntries}
+            onGenerate={handleContextGenerate}
+            difficulty={difficultyMode}
+            onDifficultyChange={(mode) => {
+              setDifficultyMode(mode);
+              setDifficultyConfirmed(true);
+              setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
+            }}
+            onClose={() => setShowContextSetup(false)}
+          />
+        </div>
       </div>
     )}
 
@@ -1086,6 +1089,8 @@ return (
             toast.error('Please confirm the difficulty mode on top to start generating.');
           }
         }}
+        showNewGenerationButton={isFaculty && !!sessionData && !showContextSetup && !sessionLocked}
+        onNewGenerationClick={() => setShowContextSetup(true)}
       />
     )}
   </div>

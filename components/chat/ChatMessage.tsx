@@ -10,12 +10,13 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
-import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
 import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
 import { DiagramRenderer } from '../ui/DiagramRenderer';
+import { QuestionPaperRenderer } from './QuestionPaperRenderer';
+import { QuestionPaperEditor } from './QuestionPaperEditor';
 
-type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any } | { type: 'flagged'; qNum: number; reason: string };
+type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
 
 function parseMathSolutions(text: string): SolutionSegment[] {
   const segments: SolutionSegment[] = [];
@@ -218,59 +219,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
     }
   }
 
-  // ── Human Fallback tag extraction ────────────────────────────────────────
-  // Strip [[flagged:N:reason]] tags from text segments and create 'flagged' segments
-  // immediately after the text segment they belong to.
-  const FLAGGED_TAG_RE = /\[\[flagged:(\d+):([^\]]+)\]\]/;
-  const finalSegmentsWithFallback: SolutionSegment[] = [];
-  for (const seg of segmentsWithGraph) {
-    if (seg.type === 'text') {
-      const match = seg.content.match(FLAGGED_TAG_RE);
-      if (match) {
-        const cleanedText = seg.content.replace(FLAGGED_TAG_RE, '').trim();
-        if (cleanedText) finalSegmentsWithFallback.push({ type: 'text', content: cleanedText });
-        finalSegmentsWithFallback.push({ type: 'flagged', qNum: parseInt(match[1], 10), reason: match[2].trim() });
-      } else {
-        finalSegmentsWithFallback.push(seg);
-      }
-    } else {
-      finalSegmentsWithFallback.push(seg);
-    }
-  }
-
-  return finalSegmentsWithFallback.length > 0 ? finalSegmentsWithFallback : [{ type: 'text', content: text }];
-}
-
-/**
- * Inline warning banner shown for questions that could not be diagram-repaired.
- * The question itself is still fully visible above — this banner appears below it.
- */
-function FallbackBanner({ qNum, reason }: { qNum: number; reason: string }) {
-  const [dismissed, setDismissed] = React.useState(false);
-  if (dismissed) return null;
-  return (
-    <div className="mt-2 mb-1 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3">
-      <span className="mt-0.5 text-amber-400 flex-shrink-0 text-[16px]">⚠</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-semibold text-amber-400 mb-0.5">
-          Q{qNum} — Diagram could not be auto-fixed
-        </p>
-        <p className="text-[11px] text-amber-300/70 leading-relaxed break-words">
-          {reason}
-        </p>
-        <p className="text-[11px] text-[#8C8C8A] mt-1.5">
-          You can edit the question text manually before assigning, or keep it as-is.
-        </p>
-      </div>
-      <button
-        onClick={() => setDismissed(true)}
-        className="flex-shrink-0 text-[11px] text-[#6C6C6A] hover:text-[#ECECEA] transition-colors px-2 py-0.5 rounded hover:bg-[#2E2E2C]"
-        title="Dismiss this warning"
-      >
-        Got it
-      </button>
-    </div>
-  );
+  return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
 export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
@@ -342,8 +291,6 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                       />
                     </div>
                   );
-                } else if (seg.type === 'flagged') {
-                  return <FallbackBanner key={i} qNum={seg.qNum} reason={seg.reason} />;
                 } else {
                   return null;
                 }
@@ -640,6 +587,33 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
 
             <AnimatePresence mode="wait">
               {isEditing ? (
+                processedContent.includes('[[meta:{"co"') ? (
+                  <motion.div
+                    key="edit-qp"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  >
+                    <QuestionPaperEditor
+                      initialContent={message.content}
+                      isSaving={isSaving}
+                      onCancel={() => { setIsEditing(false); setEditSegmentsState([]); }}
+                      onSave={async (newContent) => {
+                        if (onEditSubmit) {
+                          setIsSaving(true);
+                          try {
+                            await onEditSubmit(message.id, newContent);
+                            setIsEditing(false);
+                          } catch (e) {
+                          } finally {
+                            setIsSaving(false);
+                          }
+                        }
+                      }}
+                    />
+                  </motion.div>
+                ) : (
                 <motion.div
                   key="edit"
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -696,8 +670,6 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             />
                           </div>
                         );
-                      } else if (seg.type === 'flagged') {
-                        return <FallbackBanner key={i} qNum={seg.qNum} reason={seg.reason} />;
                       } else {
                         return null;
                       }
@@ -738,6 +710,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                     </button>
                   </div>
                 </motion.div>
+                )
               ) : (
                 <motion.div
                   key="view"
@@ -746,8 +719,11 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {segmentsMain.map((seg, i) => (
-                    <div key={i} className="mb-4">
+                  {processedContent.includes('[[meta:{"co"') ? (
+                    <QuestionPaperRenderer content={processedContent} />
+                  ) : (
+                    segmentsMain.map((seg, i) => (
+                      <div key={i} className="mb-4">
                       {seg.type === 'text' ? (
                         <ReactMarkdown
                           remarkPlugins={[remarkMath, remarkGfm]}
@@ -772,8 +748,6 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                             </div>
                           );
                         })()
-                      ) : seg.type === 'flagged' ? (
-                        <FallbackBanner qNum={seg.qNum} reason={seg.reason} />
                       ) : (
                         <SolutionRenderer
                           data={seg.data}
@@ -784,7 +758,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                         />
                       )}
                     </div>
-                  ))}
+                  )))}
                 </motion.div>
               )}
             </AnimatePresence>
