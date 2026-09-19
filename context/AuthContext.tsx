@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register') || pathname?.startsWith('/forgot-password');
+      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register') || pathname?.startsWith('/forgot-password') || pathname?.startsWith('/print-qp') || pathname?.startsWith('/print-msg');
 
       // If the user just logged out, skip the /me check entirely for up to 30 seconds.
       // Uses localStorage (not sessionStorage) so it survives hard refreshes.

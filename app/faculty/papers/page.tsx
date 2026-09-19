@@ -139,26 +139,22 @@ export default function PapersPage() {
   };
 
   const handleDownloadPDF = async (paper: Paper) => {
+    toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
     try {
-      const res = await api.get(`/api/question-papers/${paper.id}/questions`);
-      const detail: PaperDetail = res.data.paper;
-      const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
-      const pdfParams = {
-        paper: { id: paper.id, examType: paper.examType, academicYear: paper.academicYear, subjectId: selectedSubject?.id || '' },
-        assignment: { assignedToYear: null, assignedToBranch: null, assignedToSection: null },
-        questions: detail.questions.map(q => ({ text: q.questionText })),
-        subject: selectedSubject ? { name: selectedSubject.name, code: selectedSubject.code } : undefined,
-        college: user?.college,
-        department: user?.department,
-      };
+      const res = await api.get(`/api/questionPapers/${paper.id}/generate-pdf`, { responseType: 'blob' });
       
-      if (isModelOrSemester) {
-        generateModelSemesterPaperPDF(pdfParams);
-      } else {
-        generateQuestionPaperPDF(pdfParams);
-      }
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `QuestionPaper_${paper.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF Generated successfully!');
     } catch (error: any) {
-      toast.error(extractErrorMessage(error, 'Failed to generate PDF'));
+      toast.error(extractErrorMessage(error, 'Failed to download PDF'));
     }
   };
 

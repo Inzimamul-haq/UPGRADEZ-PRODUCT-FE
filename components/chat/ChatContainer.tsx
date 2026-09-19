@@ -1030,7 +1030,7 @@ return (
       subjectName={syllabusSubjectName || sessionData?.subjectName || ''}
       entries={syllabusEntries}
     />
-    <ChatMessages messages={messages} chatId={chatId || ''} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
+    <ChatMessages messages={messages} chatId={chatId || ''} paperId={resolvedPaperId} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
     {assignModalOpen && sessionData && (
       <AssignModal

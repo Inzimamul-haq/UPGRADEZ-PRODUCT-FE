@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
+import api from '@/lib/api';
+import { useToast } from '@/context/ToastContext';
 import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -222,8 +224,9 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
-export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
+export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editSegmentsState, setEditSegmentsState] = useState<SolutionSegment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -240,6 +243,36 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
     if (message.isAssigned && (a.id === 'generate_pdf' || a.id === 'pick_exam_paper')) return false;
     return true;
   });
+
+  const isLikelyPaper = !!message.content?.includes('[[meta:{"co"');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
+    try {
+      const endpoint = paperId 
+        ? `/api/questionPapers/${paperId}/generate-pdf`
+        : `/api/chats/messages/${message.id}/generate-pdf`;
+      const res = await api.get(endpoint, { responseType: 'blob' });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', paperId ? `QuestionPaper_${paperId}.pdf` : `QuestionPaper_Draft.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF Generated successfully!');
+    } catch (error: any) {
+      toast.error('Failed to download PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   if (isUser) {
     if (isEditing) {
@@ -808,6 +841,16 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
               >
                 Edit
+              </button>
+            )}
+
+            {isLikelyPaper && !isEditing && (
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:bg-[#3A3A38] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileDown size={14} /> {isDownloading ? 'Downloading...' : 'Download PDF'}
               </button>
             )}
           </div>

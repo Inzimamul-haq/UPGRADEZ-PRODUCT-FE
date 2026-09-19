@@ -5,7 +5,7 @@ import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
 import { ChatMessagesProps } from '@/lib/types';
 
-export function ChatMessages({ messages, chatId, isStreaming, onAction, onEditSubmit }: ChatMessagesProps) {
+export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function ChatMessages({ messages, chatId, isStreaming, onAction, onEditSu
     <div className="min-h-0 flex-1 overflow-y-auto w-full custom-scrollbar">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 w-full">
         {messages.map(m => (
-          <ChatMessage key={m.id} message={m} chatId={chatId} onAction={onAction} onEditSubmit={onEditSubmit} />
+          <ChatMessage key={m.id} message={m} chatId={chatId} paperId={paperId} onAction={onAction} onEditSubmit={onEditSubmit} />
         ))}
         {isStreaming && <TypingIndicator />}
         <div ref={bottomRef} />
