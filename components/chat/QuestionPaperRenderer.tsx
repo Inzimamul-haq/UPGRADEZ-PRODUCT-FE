@@ -79,7 +79,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const renderQuestion = (q: ParsedQuestion) => (
-    <div key={q.qNo} className="flex flex-col py-3 border-b border-[#2E2E2C] last:border-b-0">
+    <div key={q.qNo} className="flex flex-col py-3 border-b border-[#2E2E2C] last:border-b-0 break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1 min-w-0 flex gap-2">
           <span className="text-[#ECECEA] font-medium text-[14.5px] mt-[1.5px]">{q.qNo}.</span>
@@ -92,7 +92,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
               const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
               const diagSubtype = q.diagramSpec.subtype || '';
               return (
-                <div className="mt-5 mb-2 flex justify-start rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] max-w-fit p-4 shadow-sm">
+                <div className="mt-5 mb-2 flex justify-start rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] max-w-fit p-4 shadow-sm diagram-card-wrapper">
                   <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={450} height={250} />
                 </div>
               );

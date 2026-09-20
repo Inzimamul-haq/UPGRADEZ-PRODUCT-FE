@@ -252,10 +252,22 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
     setIsDownloading(true);
     toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
     try {
-      const endpoint = paperId 
-        ? `/api/questionPapers/${paperId}/generate-pdf`
+      let endpoint = paperId 
+        ? `/api/question-papers/${paperId}/generate-pdf`
         : `/api/chats/messages/${message.id}/generate-pdf`;
-      const res = await api.get(endpoint, { responseType: 'blob' });
+      
+      let res;
+      try {
+        res = await api.get(endpoint, { responseType: 'blob' });
+      } catch (err: any) {
+        // If paper generation returns 404 (e.g. paper was soft-deleted), fallback to draft generation
+        if (paperId && err.response?.status === 404) {
+          endpoint = `/api/chats/messages/${message.id}/generate-pdf`;
+          res = await api.get(endpoint, { responseType: 'blob' });
+        } else {
+          throw err;
+        }
+      }
       
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
@@ -264,7 +276,11 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+
+      // Delay revocation to ensure download starts
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 5000);
       
       toast.success('PDF Generated successfully!');
     } catch (error: any) {

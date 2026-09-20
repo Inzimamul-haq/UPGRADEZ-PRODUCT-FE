@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import type {  PaperKind , AssignModalProps, GateState, Department } from "@/lib/types";
@@ -150,20 +149,28 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
 
       // Download PDF for exam papers
       if (currentKind === 'EXAM_PAPER') {
-        const isModelOrSemester = paper.examType.toUpperCase().includes('MODEL') || paper.examType.toUpperCase().includes('SEMESTER') || paper.examType.toUpperCase().includes('UNIVERSITY');
-        const pdfParams = { 
-          paper, 
-          assignment: { ...assignment, assignedToBranch: branch }, 
-          questions: savedQ, 
-          subject: sessionData.subject,
-          college: user?.college,
-          department: user?.department
-        };
-        
-        if (isModelOrSemester) {
-          await generateModelSemesterPaperPDF(pdfParams);
-        } else {
-          await generateQuestionPaperPDF(pdfParams);
+        const toastId = toast.loading('Generating 100% accurate PDF with diagrams... Please wait.');
+        console.log('[AssignModal] Starting PDF generation for paperId:', paper.id);
+        try {
+          console.log('[AssignModal] Fetching PDF from BE endpoint: /api/question-papers/' + paper.id + '/generate-pdf');
+          const pdfRes = await api.get(
+            `/api/question-papers/${paper.id}/generate-pdf`, 
+            { responseType: 'blob' }
+          );
+          console.log('[AssignModal] PDF fetched successfully, blob size:', pdfRes.data.size);
+          const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'application/pdf' }));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `QuestionPaper_${paper.id}.pdf`);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+          console.log('[AssignModal] PDF downloaded triggered successfully');
+          toast.success('PDF generated successfully!', { id: toastId });
+        } catch (err: any) {
+          console.error('[AssignModal] PDF generation failed:', err);
+          toast.error('Paper assigned successfully, but PDF download failed. Download from Papers page.', { id: toastId });
         }
       }
 
@@ -283,24 +290,21 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
               </button>
               <button
                 onClick={async () => {
-                  const rawQuestions = parseQPStructure(rawText);
-                  const questions = rawQuestions.map(q => ({
-                    ...q,
-                    questionText: encodeQPPrefix(q)
-                  }));
-                  const isModelOrSemester = sessionData.examType.toUpperCase().includes('MODEL') || sessionData.examType.toUpperCase().includes('SEMESTER') || sessionData.examType.toUpperCase().includes('UNIVERSITY');
-                  const pdfParams = {
-                    paper: { examType: sessionData.examType, academicYear: `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`, examDate: lockedUntil },
-                    assignment: { assignedToYear: defaultYear || '2', assignedToBranch: branch || 'All', assignedToSection: section || 'All' },
-                    questions,
-                    subject: sessionData.subject,
-                    college: user?.college,
-                    department: user?.department
-                  };
-                  if (isModelOrSemester) {
-                    await generateModelSemesterPaperPDF(pdfParams);
-                  } else {
-                    await generateQuestionPaperPDF(pdfParams);
+                  try {
+                    const pdfRes = await api.get(
+                      `/api/chats/messages/${messageId}/generate-pdf`, 
+                      { responseType: 'blob' }
+                    );
+                    const url = window.URL.createObjectURL(new Blob([pdfRes.data], { type: 'application/pdf' }));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `Preview.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                  } catch {
+                    toast.error('Failed to generate PDF. Please try again later.');
                   }
                 }}
                 className="flex-1 border border-blue-500/30 text-blue-400 bg-blue-500/10 rounded-xl py-2 text-[13px] hover:bg-blue-500/20 transition-colors flex justify-center items-center gap-1.5"

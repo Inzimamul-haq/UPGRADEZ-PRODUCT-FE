@@ -7,7 +7,6 @@ import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
 import { UploadQPModal } from '@/components/chat/UploadQPModal';
-import { generateQuestionPaperPDF, generateModelSemesterPaperPDF } from '@/lib/pdfGenerator';
 import { useAuth } from '@/context/AuthContext';
 import { extractErrorMessage } from '@/lib/utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -141,7 +140,7 @@ export default function PapersPage() {
   const handleDownloadPDF = async (paper: Paper) => {
     toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
     try {
-      const res = await api.get(`/api/questionPapers/${paper.id}/generate-pdf`, { responseType: 'blob' });
+      const res = await api.get(`/api/question-papers/${paper.id}/generate-pdf`, { responseType: 'blob' });
       
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
@@ -150,7 +149,7 @@ export default function PapersPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      setTimeout(() => window.URL.revokeObjectURL(url), 5000);
       
       toast.success('PDF Generated successfully!');
     } catch (error: any) {
