@@ -134,13 +134,13 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
     return <div className="p-10 text-black">Preparing Document for Print...</div>;
   }
 
-  const isUniversity = ['MODEL','SEMESTER','UNIVERSITY'].some(t =>
-    (paperData.examType || '').toUpperCase().includes(t)
+  const isCAT = ['CAT1','CAT2','CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].some(t =>
+    (paperData.examType || '').toUpperCase().replace(/\s+/g, '').includes(t.replace(/\s+/g, ''))
   );
 
   return (
     <div style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
-      {isUniversity
+      {!isCAT
         ? <UniversityLayout paper={paperData} questions={paperData.questions || []} />
         : <CATLayout paper={paperData} questions={paperData.questions || []} />}
     </div>

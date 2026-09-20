@@ -152,13 +152,13 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
           subjectDepartments: [{ department }]
         },
         examDate: new Date(),
-        durationMinutes: ['CAT1', 'CAT2', 'CAT3', 'MODEL'].includes(chat.examType || examType) ? 90 : 180,
-        totalMarks: calculatedMarks || (['CAT1', 'CAT2', 'CAT3', 'MODEL'].includes(chat.examType || examType) ? 50 : 100),
+        durationMinutes: ['CAT1', 'CAT2', 'CAT3'].includes(chat.examType || examType) ? 90 : 180,
+        totalMarks: calculatedMarks || (['CAT1', 'CAT2', 'CAT3'].includes(chat.examType || examType) ? 50 : 100),
       };
 
-      if (['CAT1', 'CAT2', 'CAT3', 'MODEL'].includes(mockPaper.examType)) {
+      if (['CAT1', 'CAT2', 'CAT3'].includes(mockPaper.examType)) {
         renderContent = <CATLayout paper={mockPaper} questions={questionsForLayout} />;
-      } else if (mockPaper.examType === 'UNIVERSITY') {
+      } else {
         renderContent = <UniversityLayout paper={mockPaper} questions={questionsForLayout} />;
       }
     } catch (e) {
