@@ -621,12 +621,21 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     let chapterStr = 'all chapters';
     if (config.chapters.length > 0) {
-      if (config.chapters.length === 1) {
-        chapterStr = `chapter ${config.chapters[0]}`;
+      const chapterParts = config.chapters.map(ch => {
+        const chTopics = config.topics[ch];
+        if (!chTopics || chTopics.length === 0 || chTopics.includes('all')) {
+          return `chapter ${ch} (all topics)`;
+        } else {
+          return `chapter ${ch} (strictly ONLY from topics: ${chTopics.join(', ')})`;
+        }
+      });
+
+      if (chapterParts.length === 1) {
+        chapterStr = chapterParts[0];
       } else {
-        const last = config.chapters.slice(-1)[0];
-        const rest = config.chapters.slice(0, -1);
-        chapterStr = `chapter ${rest.join(', ')} and ${last}`;
+        const last = chapterParts.slice(-1)[0];
+        const rest = chapterParts.slice(0, -1);
+        chapterStr = `${rest.join(', ')} and ${last}`;
       }
     }
 
@@ -638,7 +647,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     const markStr = distLines.length > 0 ? ` and mark is ${distLines.join(' , ')}` : '';
 
-    return `generate the ${kindLabel} from ${chapterStr} from topic${markStr}`;
+    return `generate the ${kindLabel} from ${chapterStr}${markStr}`;
   };
 
   // ── Context setup card generate handler ───────────────────────────────────

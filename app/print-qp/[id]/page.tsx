@@ -61,10 +61,13 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
         }
 
         /* Diagram wrapper: no border */
-        .diagram-card-wrapper {
+        .diagram-card-wrapper,
+        .diagram-card-wrapper * {
           background: white !important;
           border: none !important;
           box-shadow: none !important;
+        }
+        .diagram-card-wrapper {
           padding: 4px 0 !important;
         }
         
