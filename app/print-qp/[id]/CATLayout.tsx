@@ -116,8 +116,8 @@ export function CATLayout({ paper, questions }: any) {
 
       {/* Part B & C */}
       {[ 
-        { qs: partB, title: 'B', startIndex: 11, defaultFormula: isCAT ? '2 x 20 = 40' : '5 x 13 = 65' },
-        { qs: partC, title: 'C', startIndex: 11 + groupByIndex(partB).length, defaultFormula: isCAT ? '' : '1 x 15 = 15' } 
+        { qs: partB, title: 'B', startIndex: partA.length + 1, defaultFormula: isCAT ? '2 x 20 = 40' : '5 x 13 = 65' },
+        { qs: partC, title: 'C', startIndex: partA.length + groupByIndex(partB).length + 1, defaultFormula: isCAT ? '' : '1 x 15 = 15' } 
       ].map((part) => {
         if (part.qs.length === 0) return null;
         const groups = groupByIndex(part.qs);

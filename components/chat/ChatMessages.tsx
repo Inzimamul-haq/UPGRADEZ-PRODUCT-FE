@@ -8,9 +8,19 @@ import { ChatMessagesProps } from '@/lib/types';
 export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const prevLastMsgId = useRef<string | null>(null);
+
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === 'user') {
+    if (!lastMsg) return;
+
+    // Autoscroll if a brand new message is added (like the compiled paper)
+    if (lastMsg.id !== prevLastMsgId.current) {
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      prevLastMsgId.current = lastMsg.id;
+    } else if (lastMsg.role === 'user') {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);

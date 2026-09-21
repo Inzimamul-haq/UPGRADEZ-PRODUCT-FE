@@ -73,10 +73,12 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
   const selectedDept = departments.find(d => d.id === departmentId) || departments[0];
 
   useEffect(() => {
-    if (selectedDept) {
+    if (departmentId === 'ALL') {
+      setBranch('Common to All Branches');
+    } else if (selectedDept) {
       setBranch(selectedDept.branch);
     }
-  }, [selectedDept]);
+  }, [selectedDept, departmentId]);
 
   const evaluateGate = (examDate: string | null) => {
     if (!examDate) {
@@ -130,7 +132,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
         examType: sessionData.examType,
         academicYear: acYear,
         assignedToYear: year ? parseInt(year) : 2,
-        assignedToDepartmentId: departmentId || sessionData.departmentId || null,
+        assignedToDepartmentId: departmentId === 'ALL' ? null : (departmentId || sessionData.departmentId || null),
         assignedToSection: section || null,
         rawQuestions: questions,
         kind: currentKind,
@@ -332,6 +334,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                       onChange={(e) => setDepartmentId(e.target.value)}
                       className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
                     >
+                      {isUniversity && <option value="ALL">All Departments</option>}
                       {departments.map((d) => (
                         <option key={d.id} value={d.id}>{d.name}</option>
                       ))}
@@ -403,12 +406,14 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={onClose}
                 className="flex-1 border border-[#3A3A38] rounded-xl py-2.5 text-[13px] text-[#8C8C8A] hover:bg-[#333331] transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={loading || (needsDirectDate && !directExamDate) || (isFlow2B && !section)}
                 className="flex-1 bg-orange-500 rounded-xl py-2.5 text-[13px] font-medium text-white hover:bg-orange-400 disabled:opacity-40 transition-colors"

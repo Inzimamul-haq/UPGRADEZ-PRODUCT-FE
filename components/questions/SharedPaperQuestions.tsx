@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix, extractGraphPrefix, stripGraphPrefix } from '@/lib/qpParser';
+import { decodeQPPrefix, stripQPPrefix, extractGraphPrefix, stripGraphPrefix, stripMetaPrefix } from '@/lib/qpParser';
 import { getMarksColor } from '@/lib/utils';
-import { GraphDisplay } from '@/components/ui/GraphDisplay';
+import { DiagramRenderer } from '@/components/ui/DiagramRenderer';
+import { toDecoded, groupByIndex, type DecodedQuestion } from '@/lib/examFormat';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,39 +17,10 @@ interface RawQuestion {
   questionText: string;
   marks?: number;
 }
-
-interface DecodedQuestion extends DecodedQPPrefix {
-  id: string;
-  marks?: number;
-}
-
 interface PartGroup {
   groupIndex: number;
   a: DecodedQuestion | null;
   b: DecodedQuestion | null;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function decodeQuestion(q: RawQuestion): DecodedQuestion {
-  const raw = q.questionText ?? '';
-  const decoded = decodeQPPrefix(raw);
-  if (decoded) return { ...decoded, id: q.id, marks: q.marks };
-  // Legacy question (no prefix) → flat Part A
-  return { text: stripQPPrefix(raw), part: 'A', groupIndex: 1, subLabel: '', id: q.id, marks: q.marks };
-}
-
-function groupByIndex(questions: DecodedQuestion[]): PartGroup[] {
-  const map = new Map<number, PartGroup>();
-  for (const q of questions) {
-    if (!map.has(q.groupIndex)) {
-      map.set(q.groupIndex, { groupIndex: q.groupIndex, a: null, b: null });
-    }
-    const grp = map.get(q.groupIndex)!;
-    if (q.subLabel === 'b') grp.b = q;
-    else grp.a = q;
-  }
-  return Array.from(map.values()).sort((x, y) => x.groupIndex - y.groupIndex);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -60,20 +32,53 @@ function QuestionBlock({
   question: DecodedQuestion;
   label: string;
 }) {
-  const graphDef = extractGraphPrefix(question.text);
-  const cleanText = stripGraphPrefix(question.text);
-
   return (
-    <div className="flex flex-col py-4 border-b border-[#2E2E2C] last:border-0">
-      <div className="flex items-start gap-4">
-        <span className={`text-[13px] font-medium w-10 flex-shrink-0 mt-0.5 ${getMarksColor(question.marks as number)}`}>
-          {label}
-        </span>
-        <p className="flex-1 text-[15px] text-[#ECECEA] leading-relaxed">{cleanText}</p>
+    <div className="flex flex-col py-4 border-b border-[#2E2E2C] last:border-0 gap-3">
+      {/* Header: Label, Badges & Marks */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-[13px] font-semibold flex-shrink-0 ${getMarksColor(question.marks as number)}`}>
+            {label}.
+          </span>
+          {question.meta && (
+            <div className="flex gap-1.5">
+              {question.meta.co && (
+                <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium border border-blue-500/20">
+                  {question.meta.co.toUpperCase()}
+                </span>
+              )}
+              {question.meta.rbt && (
+                <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-medium border border-purple-500/20">
+                  {question.meta.rbt.toUpperCase()}
+                </span>
+              )}
+              {question.meta.po && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
+                  {question.meta.po.toUpperCase()}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        {question.marks && (
+          <span className={`text-[12px] font-medium ${getMarksColor(question.marks)}`}>
+            ({question.marks} Marks)
+          </span>
+        )}
       </div>
-      {graphDef && (
-        <div className="mt-4 flex justify-center bg-[#1C1C1B] rounded-lg p-3 border border-[#3A3A38] ml-14">
-          <GraphDisplay graph={graphDef} width={250} height={250} />
+
+      {/* Text */}
+      <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{question.text}</p>
+      
+      {/* Diagram */}
+      {question.diagramSpec && (
+        <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-3 border border-[#3A3A38]">
+          <DiagramRenderer 
+            type={question.diagramSpec.type || question.diagramType || 'unknown'} 
+            spec={question.diagramSpec} 
+            width={400} 
+            height={250} 
+          />
         </div>
       )}
     </div>
@@ -116,7 +121,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
   }, [paperId]);
 
   // Decode once — never re-parse raw text again after this point
-  const decoded = rawQuestions.map(decodeQuestion);
+  const decoded = rawQuestions.map(q => toDecoded({ ...q, questionText: q.questionText }));
   const partA = decoded.filter(q => q.part === 'A');
   const partB = decoded.filter(q => q.part === 'B');
   const partC = decoded.filter(q => q.part === 'C');

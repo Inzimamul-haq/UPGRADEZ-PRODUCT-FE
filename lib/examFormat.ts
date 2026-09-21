@@ -1,6 +1,7 @@
 import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from './qpParser';
 
 export type DecodedQuestion = DecodedQPPrefix & { 
+  id?: string;
   marks?: number;
   diagramSpec?: any;
   diagramType?: string;
@@ -38,9 +39,21 @@ export function toDecoded(q: any): DecodedQuestion {
     const metaMatch = decoded.text.match(META_PREFIX_RE);
     if (metaMatch) {
       try {
-        meta = JSON.parse(metaMatch[1]);
+        const parsed = JSON.parse(metaMatch[1]);
+        meta = {
+          co: parsed.co || parsed.CO || '',
+          rbt: parsed.rbt || parsed.RBT || '',
+          po: parsed.po || parsed.PO || ''
+        };
       } catch (e) {}
     }
+  }
+
+  // Extract the true marks from the text before we strip it, in case the DB has a corrupted sum (e.g. 28 instead of 15)
+  let displayMarks = q.marks;
+  const trueMarksMatch = decoded.text.match(/[\(\[]\s*(\d+)\s*marks?\s*[\)\]](?:\s*\[\[(?:meta|diagram|graph|flagged).*?\]\])*\s*$/i);
+  if (trueMarksMatch) {
+    displayMarks = parseInt(trueMarksMatch[1], 10);
   }
 
   // Also strip the meta prefix from text if it exists
@@ -54,7 +67,7 @@ export function toDecoded(q: any): DecodedQuestion {
 
   decoded.text = cleanText;
 
-  return { ...decoded, marks: q.marks, diagramSpec, diagramType, meta };
+  return { ...decoded, id: q.id, marks: displayMarks, diagramSpec, diagramType, meta };
 }
 
 export interface GroupedQuestion {

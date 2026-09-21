@@ -8,8 +8,10 @@ import { useToast } from '@/context/ToastContext';
 import { EditExamDateModal } from '@/components/chat/EditExamDateModal';
 import { UploadQPModal } from '@/components/chat/UploadQPModal';
 import { useAuth } from '@/context/AuthContext';
-import { extractErrorMessage } from '@/lib/utils';
+import { extractErrorMessage, cleanQuestionText } from '@/lib/utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { toDecoded } from '@/lib/examFormat';
+import { DiagramRenderer } from '@/components/ui/DiagramRenderer';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
 
@@ -397,12 +399,62 @@ export default function PapersPage() {
                 {questionModal.questions.length === 0 ? (
                   <p className="text-[13px] text-[#5A5A58] text-center py-6">No questions found.</p>
                 ) : (
-                  questionModal.questions.map((q, idx) => (
-                    <div key={q.id} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3">
-                      <span className="text-[10px] sm:text-[11px] text-[#5A5A58] font-medium">Q{idx + 1}</span>
-                      <p className="text-[12px] sm:text-[13px] text-[#ECECEA] mt-1 leading-relaxed">{q.questionText}</p>
-                    </div>
-                  ))
+                  questionModal.questions.map(toDecoded).map((q, idx) => {
+                    const hasQpPrefix = q.part && q.groupIndex;
+                    const label = hasQpPrefix && q.subLabel ? `${q.groupIndex}${q.subLabel}` : `Q${idx + 1}`;
+
+                    return (
+                      <div key={q.id || idx} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3 flex flex-col gap-3">
+                        {/* Header: Number & Marks & Badges */}
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[13px] text-[#ECECEA]">{label}.</span>
+                            {q.meta && (
+                              <div className="flex gap-1.5">
+                                {q.meta.co && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#2E2E2C] text-[#8C8C8A] text-[10px] font-medium border border-[#3A3A38]">
+                                    {q.meta.co.toUpperCase()}
+                                  </span>
+                                )}
+                                {q.meta.rbt && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#2E2E2C] text-[#8C8C8A] text-[10px] font-medium border border-[#3A3A38]">
+                                    {q.meta.rbt.toUpperCase()}
+                                  </span>
+                                )}
+                                {q.meta.po && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#2E2E2C] text-[#8C8C8A] text-[10px] font-medium border border-[#3A3A38]">
+                                    {q.meta.po.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {q.marks && (
+                            <span className="text-[12px] font-medium text-[#8C8C8A]">
+                              ({q.marks} Marks)
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Question Text */}
+                        <p className="text-[12px] sm:text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">
+                          {cleanQuestionText(q.text)}
+                        </p>
+
+                        {/* Diagram */}
+                        {q.diagramSpec && (
+                          <div className="mt-2 flex justify-center bg-[#1A1A19] rounded-lg p-2 border border-[#2E2E2C]">
+                            <DiagramRenderer 
+                              type={q.diagramSpec.type || q.diagramType || 'unknown'} 
+                              spec={q.diagramSpec} 
+                              width={280} 
+                              height={200} 
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}

@@ -89,8 +89,8 @@ export function UniversityLayout({ paper, questions }: any) {
 
       {/* Part B & C */}
       {[ 
-        { qs: partB, title: 'B', startIndex: partA.length > 0 ? partA.length + 1 : 1, defaultMarks: 13 },
-        { qs: partC, title: 'C', startIndex: partA.length > 0 ? partA.length + 1 + groupByIndex(partB).length : 1, defaultMarks: 15 } 
+        { qs: partB, title: 'B', startIndex: partA.length + 1, defaultMarks: 13 },
+        { qs: partC, title: 'C', startIndex: partA.length + groupByIndex(partB).length + 1, defaultMarks: 15 } 
       ].map((part) => {
         if (part.qs.length === 0) return null;
         const groups = groupByIndex(part.qs);

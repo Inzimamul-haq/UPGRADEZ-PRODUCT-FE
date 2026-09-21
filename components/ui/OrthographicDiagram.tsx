@@ -95,18 +95,54 @@ export function OrthographicDiagram({ data, width = 500, height = 320 }: any) {
           const y2 = offsetY - (toNode.y * sharedScale);
 
           const isHidden = e.hidden;
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          const dimensionText = e.dimension ? `${e.dimension.value}${e.dimension.unit || ''}` : '';
 
           return (
-            <line
-              key={`edge-${idx}`}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={isHidden ? "#52525B" : "#D4D4D8"}
-              strokeWidth={isHidden ? "1.5" : "2"}
-              strokeDasharray={isHidden ? "6 4" : "none"}
-            />
+            <g key={`edge-${idx}`}>
+              <line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={isHidden ? "#52525B" : "#D4D4D8"}
+                strokeWidth={isHidden ? "1.5" : "2"}
+                strokeDasharray={isHidden ? "6 4" : "none"}
+              />
+              {dimensionText && (
+                <text
+                  x={midX}
+                  y={midY - 8}
+                  fill="#A1A1AA"
+                  fontSize="10"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="font-medium"
+                >
+                  {dimensionText}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Nodes (optional display for labels) */}
+        {points.map((p: any, idx: number) => {
+          if (!p.label) return null;
+          const px = p.x * sharedScale + offsetX;
+          const py = offsetY - (p.y * sharedScale);
+          return (
+            <text
+              key={`node-label-${idx}`}
+              x={px + 4}
+              y={py - 4}
+              fill="#E5A05F"
+              fontSize="10"
+              fontWeight="bold"
+            >
+              {p.label}
+            </text>
           );
         })}
       </g>

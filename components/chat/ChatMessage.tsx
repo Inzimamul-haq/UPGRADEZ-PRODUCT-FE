@@ -244,7 +244,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
     return true;
   });
 
-  const isLikelyPaper = !!message.content?.includes('[[meta:{"co"');
+  const isLikelyPaper = /\[\[meta:\{/i.test(message.content || '');
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownloadPDF = async () => {
@@ -252,7 +252,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
     setIsDownloading(true);
     toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
     try {
-      let endpoint = paperId 
+      let endpoint = (paperId && message.isAssigned)
         ? `/api/question-papers/${paperId}/generate-pdf`
         : `/api/chats/messages/${message.id}/generate-pdf`;
       
@@ -636,7 +636,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
 
             <AnimatePresence mode="wait">
               {isEditing ? (
-                processedContent.includes('[[meta:{"co"') ? (
+                /\[\[meta:\{/i.test(processedContent) ? (
                   <motion.div
                     key="edit-qp"
                     initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -768,7 +768,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {processedContent.includes('[[meta:{"co"') ? (
+                  {/\[\[meta:\{/i.test(processedContent) ? (
                     <QuestionPaperRenderer content={processedContent} />
                   ) : (
                     segmentsMain.map((seg, i) => (
@@ -842,6 +842,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
             {visibleActions?.map(action => (
               <button
                 key={action.id}
+                type="button"
                 onClick={() => onAction && onAction(message.id, action.id)}
                 disabled={isEditing}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -853,6 +854,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
 
             {isEditable && !isEditing && (
               <button
+                type="button"
                 onClick={() => { setIsEditing(true); setEditSegmentsState(parseMathSolutions(message.content || '')); }}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
               >
@@ -862,6 +864,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
 
             {isLikelyPaper && !isEditing && (
               <button
+                type="button"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:bg-[#3A3A38] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

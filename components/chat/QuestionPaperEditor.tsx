@@ -32,7 +32,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
   useEffect(() => {
     const parsedQuestions: EditableQuestion[] = [];
-    const questionRegex = /^\s*(\d+)\.\s+(.*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
+    const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
     
     let match;
     while ((match = questionRegex.exec(initialContent)) !== null) {
@@ -44,7 +44,12 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       
       let meta = { co: "", rbt: "", po: "" };
       try {
-        meta = JSON.parse(metaStr);
+        const parsedMeta = JSON.parse(metaStr);
+        meta = {
+          co: parsedMeta.co || parsedMeta.CO || "",
+          rbt: parsedMeta.rbt || parsedMeta.RBT || "",
+          po: parsedMeta.po || parsedMeta.PO || ""
+        };
       } catch (e) {}
 
       let diagramSpec = undefined;
