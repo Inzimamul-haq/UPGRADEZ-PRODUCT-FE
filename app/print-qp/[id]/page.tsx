@@ -15,71 +15,6 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
   const token = searchParams.get('token');
 
   useEffect(() => {
-    // Inject print styles
-    const style = document.createElement('style');
-    style.innerHTML = `
-      * { animation: none !important; transition: none !important; }
-      body { background: white !important; color: black !important; }
-      
-      @media print {
-        body { background: white !important; color: black !important; }
-        * { 
-          color: black !important; 
-          border-color: #ccc !important; 
-          background: white !important;
-          background-color: white !important;
-        }
-        
-        /* Shape fills: white background, black outline — scoped to exclude <defs> */
-        svg > *:not(defs) circle,
-        svg > *:not(defs) ellipse,
-        svg > *:not(defs) rect,
-        svg > *:not(defs) polygon,
-        svg > *:not(defs) path,
-        svg > *:not(defs) polyline {
-          fill: white !important;
-          stroke: black !important;
-        }
-
-        /* Arrowhead markers must stay solid black */
-        svg marker polygon,
-        svg marker path,
-        svg marker circle {
-          fill: black !important;
-          stroke: black !important;
-        }
-
-        /* All SVG text: black, no stroke */
-        svg text, svg tspan {
-          fill: black !important;
-          stroke: none !important;
-        }
-
-        /* Edge lines */
-        svg line {
-          stroke: black !important;
-        }
-
-        /* Diagram wrapper: no border */
-        .diagram-card-wrapper,
-        .diagram-card-wrapper * {
-          background: white !important;
-          border: none !important;
-          box-shadow: none !important;
-        }
-        .diagram-card-wrapper {
-          padding: 4px 0 !important;
-        }
-        
-        /* Force any SVG or canvas diagrams to stay within max height on print */
-        canvas, svg, img {
-          max-height: 400px !important;
-          object-fit: contain;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-
     const fetchData = async () => {
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -142,10 +77,57 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
   );
 
   return (
-    <div style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
-      {!isCAT
-        ? <UniversityLayout paper={paperData} questions={paperData.questions || []} />
-        : <CATLayout paper={paperData} questions={paperData.questions || []} />}
-    </div>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        * { animation: none !important; transition: none !important; }
+        body { background: white !important; color: black !important; }
+        
+        @media print {
+          body { background: white !important; color: black !important; }
+          * { 
+            color: black !important; 
+            border-color: #ccc !important; 
+            background: white !important;
+            background-color: white !important;
+          }
+          
+          /* Shape fills: white background, black outline — scoped to exclude <defs> */
+          svg > *:not(defs) circle,
+          svg > *:not(defs) ellipse,
+          svg > *:not(defs) rect,
+          svg > *:not(defs) polygon,
+          svg > *:not(defs) path,
+          svg > *:not(defs) polyline {
+            fill: white !important;
+            stroke: black !important;
+          }
+
+          /* Arrowhead markers must stay solid black */
+          svg marker polygon,
+          svg marker path,
+          svg marker circle {
+            fill: black !important;
+            stroke: black !important;
+          }
+
+          /* All SVG text: black, no stroke */
+          svg text, svg tspan {
+            fill: black !important;
+            stroke: none !important;
+          }
+
+          /* Edge lines */
+          svg line {
+            stroke: black !important;
+            stroke-width: 1.5 !important;
+          }
+        }
+      `}} />
+      <div style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
+        {!isCAT
+          ? <UniversityLayout paper={paperData} questions={paperData.questions || []} />
+          : <CATLayout paper={paperData} questions={paperData.questions || []} />}
+      </div>
+    </>
   );
 }

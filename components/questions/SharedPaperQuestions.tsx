@@ -34,45 +34,23 @@ function QuestionBlock({
 }) {
   return (
     <div className="flex flex-col py-4 border-b border-[#2E2E2C] last:border-0 gap-3">
-      {/* Header: Label, Badges & Marks */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className={`text-[13px] font-semibold flex-shrink-0 ${getMarksColor(question.marks as number)}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-2">
+          <span className="text-[15px] font-semibold flex-shrink-0 text-white mt-[2px]">
             {label}.
           </span>
-          {question.meta && (
-            <div className="flex gap-1.5">
-              {question.meta.co && (
-                <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-medium border border-blue-500/20">
-                  {question.meta.co.toUpperCase()}
-                </span>
-              )}
-              {question.meta.rbt && (
-                <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-medium border border-purple-500/20">
-                  {question.meta.rbt.toUpperCase()}
-                </span>
-              )}
-              {question.meta.po && (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
-                  {question.meta.po.toUpperCase()}
-                </span>
-              )}
-            </div>
-          )}
+          <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{question.text}</p>
         </div>
         {question.marks && (
-          <span className={`text-[12px] font-medium ${getMarksColor(question.marks)}`}>
+          <span className={`text-[12px] font-medium flex-shrink-0 mt-[4px] ${getMarksColor(question.marks)}`}>
             ({question.marks} Marks)
           </span>
         )}
       </div>
-
-      {/* Text */}
-      <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{question.text}</p>
       
       {/* Diagram */}
       {question.diagramSpec && (
-        <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-3 border border-[#3A3A38]">
+        <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-3 ">
           <DiagramRenderer 
             type={question.diagramSpec.type || question.diagramType || 'unknown'} 
             spec={question.diagramSpec} 
