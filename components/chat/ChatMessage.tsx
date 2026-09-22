@@ -120,6 +120,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
         }
         out = out.replace(/,\s*([\}\]])/g, '$1');
 
+        
         try {
           parsed = JSON.parse(out);
         } catch (err2) {
