@@ -20,6 +20,7 @@ import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { stripQPPrefix } from '@/lib/qpParser';
+import { getAcademicYear } from '@/lib/academicYear';
 
 interface ChatContainerExtendedProps extends ChatContainerProps {
   initialSubjectId?: string;
@@ -105,9 +106,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [isSyllabusOpen, setIsSyllabusOpen] = useState(false);
   const [syllabusEntries, setSyllabusEntries] = useState<TocEntry[]>([]);
   const [syllabusSubjectName, setSyllabusSubjectName] = useState('');
-  // Context setup card state (faculty only)
   const [showContextSetup, setShowContextSetup] = useState(false);
   const [showIQPicker, setShowIQPicker] = useState(false);
+  const [activeTopicAssignment, setActiveTopicAssignment] = useState<any>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -138,6 +139,31 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       });
     return () => { cancelled = true; };
   }, [sessionData?.subjectId]);
+
+  // Fetch active topic assignment for pre-fill
+  useEffect(() => {
+    const subjectId = sessionData?.subjectId;
+    const examType = sessionData?.examType;
+    if (!subjectId || !examType || !isFaculty) return;
+    
+    let cancelled = false;
+    const acYear = getAcademicYear();
+    
+    api.get(`/api/topic-assignments/subject/${subjectId}/active`, {
+      params: { examType, academicYear: acYear }
+    }).then(({ data }) => {
+      if (cancelled) return;
+      if (data.success && data.data) {
+        setActiveTopicAssignment(data.data.content);
+      } else {
+        setActiveTopicAssignment(null);
+      }
+    }).catch(() => {
+      if (!cancelled) setActiveTopicAssignment(null);
+    });
+    
+    return () => { cancelled = true; };
+  }, [sessionData?.subjectId, sessionData?.examType, isFaculty]);
 
   useEffect(() => {
     if (initialSessionId) {
@@ -416,8 +442,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     let standaloneExamCreatorName: string | null = null;
 
     try {
-      const currentYear = new Date().getFullYear();
-      const acYear = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+      const acYear = getAcademicYear();
 
       const { data: iqRes } = await api.get('/api/question-papers/check-iq', {
         params: {
@@ -508,6 +533,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           ]);
           setShowContextSetup(true);
         }
+      } else if (data.paperKind === 'ASSIGN_TOPICS') {
+        setSessionData({ ...session, paperKind: 'ASSIGN_TOPICS' });
+        setDifficultyConfirmed(true);
+        setDifficultyMode('');
+        setMessages([
+          pushMsg(`Hello! 👋 Let's assign important topics for **${data.subject.name}** — ${data.examType}.`),
+        ]);
+        setShowContextSetup(true);
       } else {
         setSessionData({ ...session, paperKind: 'EXAM_PAPER' });
         setDifficultyConfirmed(false);
@@ -530,18 +563,34 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       )]);
     } else {
       // 5. Neither exist (Standard branch question)
+      const isUniversity = data.examType.toLowerCase().includes('university') || data.examType.toLowerCase().includes('semester');
+      const standardActions = [
+        { id: 'pick_iq', label: '(a) Assign Important Questions' },
+        { id: 'pick_exam_paper', label: '(b) Generate Direct Exam Paper' },
+      ];
+      
+      if (isUniversity) {
+        standardActions.push({ id: 'pick_assign_topics', label: '(c) Assign Important Topics' });
+      }
+
       setMessages([pushMsg(
         `Hello! 👋 Let's work on **${data.subject.name}** — ${data.examType}.\n\nWhat would you like to do?`,
-        [
-          { id: 'pick_iq', label: '(a) Assign Important Questions' },
-          { id: 'pick_exam_paper', label: '(b) Generate Direct Exam Paper' },
-        ]
+        standardActions
       )]);
     }
   };
 
   // ── Action buttons ───────────────────────────────────────────────────────
   const handleAction = (messageId: string, actionId: string) => {
+    if (actionId === 'pick_assign_topics') {
+      setSessionData(prev => prev ? { ...prev, paperKind: 'ASSIGN_TOPICS' } : prev);
+      setDifficultyConfirmed(true);
+      setDifficultyMode('');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, actions: undefined } : m));
+      setShowContextSetup(true);
+      return;
+    }
+
     if (actionId === 'pick_iq') {
       // Fresh session: show context setup card
       setSessionData(prev => prev ? { ...prev, paperKind: 'IMPORTANT_QUESTIONS' } : prev);
@@ -659,6 +708,38 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     const instruction = buildInstructionFromConfig(config);
     await handleSend(instruction, undefined, config.difficulty);
+  };
+
+  const handleSaveTopics = async (config: { chapters: number[]; topics: Record<number, string[]> }) => {
+    try {
+      const acYear = getAcademicYear();
+      const payload = {
+        subjectId: sessionData?.subjectId,
+        examType: sessionData?.examType,
+        academicYear: acYear,
+        content: config,
+      };
+
+      await api.post('/api/topic-assignments', payload);
+      
+      setShowContextSetup(false);
+      setSessionLocked(true);
+      
+      toast.success('Important topics assigned to students!');
+      setMessages(prev => [...prev, pushMsg(
+        `Important topics have been successfully assigned to students for **${sessionData?.subjectName}** (${sessionData?.examType}). They have been notified.\n\nWhat would you like to do next?`,
+        [
+          { id: 'pick_iq', label: '(a) Assign Important Questions' },
+          { id: 'pick_exam_paper', label: '(b) Generate Direct Exam Paper' },
+        ]
+      )]);
+    } catch (err: any) {
+      if (err.response?.status === 409) {
+        toast.error('Important topics have already been assigned for this combination.');
+      } else {
+        toast.error('Failed to assign important topics.');
+      }
+    }
   };
 
   const handleEditSubmit = async (messageId: string, content: string) => {
@@ -1069,6 +1150,9 @@ return (
               setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
             }}
             onClose={() => setShowContextSetup(false)}
+            mode={sessionData.paperKind === 'ASSIGN_TOPICS' ? 'topicsOnly' : 'full'}
+            onSaveTopics={handleSaveTopics}
+            prefillTopicsConfig={activeTopicAssignment}
           />
         </div>
       </div>

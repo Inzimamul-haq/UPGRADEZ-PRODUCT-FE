@@ -139,6 +139,9 @@ export interface ContextSetupCardProps {
   difficulty: DifficultyMode | '';
   onDifficultyChange: (mode: DifficultyMode) => void;
   onClose?: () => void;
+  mode?: 'full' | 'topicsOnly';
+  onSaveTopics?: (config: { chapters: number[]; topics: Record<number, string[]> }) => void;
+  prefillTopicsConfig?: { chapters: number[]; topics: Record<number, string[]> } | null;
 }
 
 export function ContextSetupCard({
@@ -150,6 +153,9 @@ export function ContextSetupCard({
   difficulty,
   onDifficultyChange,
   onClose,
+  mode = 'full',
+  onSaveTopics,
+  prefillTopicsConfig,
 }: ContextSetupCardProps) {
   const hasChapters = syllabusEntries.length > 0;
 
@@ -158,6 +164,49 @@ export function ContextSetupCard({
   // ── Chapter state ─────────────────────────────────────────────────────────
   const [allChapters, setAllChapters] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<Set<number>>(new Set());
+
+  // ── Topic state ───────────────────────────────────────────────────────────
+  // chapter -> { all: boolean, selected: Set<string>, customText: string, expanded: boolean }
+  const [topicStates, setTopicStates] = useState<
+    Record<number, { all: boolean; selected: Set<string>; customText: string; expanded?: boolean }>
+  >({});
+
+  const [prefilled, setPrefilled] = useState(false);
+
+  useEffect(() => {
+    if (prefillTopicsConfig && syllabusEntries.length > 0 && !prefilled && mode !== 'topicsOnly') {
+      const isAll = prefillTopicsConfig.chapters.length === 0;
+      const chToSelect = isAll ? syllabusEntries.map(e => e.chapter) : prefillTopicsConfig.chapters;
+      
+      setAllChapters(isAll);
+      setSelectedChapters(new Set(chToSelect));
+
+      const newTopicStates: Record<number, { all: boolean; selected: Set<string>; customText: string; expanded?: boolean }> = {};
+      
+      Object.entries(prefillTopicsConfig.topics).forEach(([chStr, topics]) => {
+        const ch = parseInt(chStr);
+        if (topics.includes('all')) {
+          newTopicStates[ch] = { all: true, selected: new Set(), customText: "", expanded: true };
+        } else {
+          const syllabusCh = syllabusEntries.find(e => e.chapter === ch);
+          const chTopics = syllabusCh?.topics || [];
+          const selectedSet = new Set<string>();
+          const customList: string[] = [];
+          
+          topics.forEach(t => {
+            if (chTopics.includes(t)) selectedSet.add(t);
+            else customList.push(t);
+          });
+          
+          newTopicStates[ch] = { all: false, selected: selectedSet, customText: customList.join(', '), expanded: true };
+        }
+      });
+      
+      setTopicStates(newTopicStates);
+      setStep(3);
+      setPrefilled(true);
+    }
+  }, [prefillTopicsConfig, syllabusEntries, prefilled, mode]);
 
   const toggleChapter = (ch: number) => {
     setAllChapters(false);
@@ -180,14 +229,11 @@ export function ContextSetupCard({
     setSelectedChapters(new Set(syllabusEntries.map((e) => e.chapter)));
   };
 
-  // ── Topic state ───────────────────────────────────────────────────────────
-  // chapter -> { all: boolean, selected: Set<string>, customText: string, expanded: boolean }
-  const [topicStates, setTopicStates] = useState<
-    Record<number, { all: boolean; selected: Set<string>; customText: string; expanded?: boolean }>
-  >({});
 
   // Initialize topic state for any newly selected chapters
   useEffect(() => {
+    if (prefillTopicsConfig && !prefilled) return; // Wait for prefill
+
     setTopicStates((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -241,13 +287,13 @@ export function ContextSetupCard({
     summaryParts.push(isAllTopics ? "All Topics" : "Specific Topics");
   }
 
-  if (step > 2) {
+  if (mode === 'full' && step > 2) {
     if (dist.partA.enabled) summaryParts.push(`${dist.partA.count}×2A`);
     if (dist.partB.enabled) summaryParts.push(`${dist.partB.count}×${dist.partB.marks}B`);
     if (dist.partC.enabled) summaryParts.push(`${dist.partC.count}×${dist.partC.marks}C`);
   }
   
-  if (step > 3 && difficulty) {
+  if (mode === 'full' && step > 3 && difficulty) {
     summaryParts.push(DIFFICULTY_LABELS[difficulty]);
   }
   
@@ -263,19 +309,24 @@ export function ContextSetupCard({
     return ts.selected.size > 0 || ts.customText.trim().length > 0;
   });
 
+  const canSaveTopics = hasChapterSelection && hasValidTopics;
+
   const hasAtLeastOnePart = dist.partA.enabled || dist.partB.enabled || dist.partC.enabled;
   const canGenerate = hasChapterSelection && hasValidTopics && hasAtLeastOnePart && !!difficulty;
 
-  // ── Handle generate ───────────────────────────────────────────────────────
-  const handleGenerate = () => {
-    if (!canGenerate || !difficulty) return;
+  // ── Helpers ───────────────────────────────────────────────────────
+  const extractTopicsConfig = () => {
     const chapters =
       !hasChapters || allChapters
         ? []
         : Array.from(selectedChapters).sort((a, b) => a - b);
 
     const topics: Record<number, string[]> = {};
-    chapters.forEach((c) => {
+    const chaptersToProcess = chapters.length === 0 && selectedChapters.size > 0 
+      ? Array.from(selectedChapters) 
+      : chapters;
+
+    chaptersToProcess.forEach((c) => {
       const ts = topicStates[c];
       if (!ts || ts.all) {
         topics[c] = ["all"];
@@ -285,18 +336,13 @@ export function ContextSetupCard({
       }
     });
 
-    // If 'all chapters' selected, but no chapters exist in syllabus, send empty topics
-    if (chapters.length === 0 && selectedChapters.size > 0) {
-       Array.from(selectedChapters).forEach((c) => {
-         const ts = topicStates[c];
-         if (!ts || ts.all) {
-           topics[c] = ["all"];
-         } else {
-           const customTopics = ts.customText.split(',').map(t => t.trim()).filter(Boolean);
-           topics[c] = [...Array.from(ts.selected), ...customTopics];
-         }
-       });
-    }
+    return { chapters, topics };
+  };
+
+  // ── Handle generate ───────────────────────────────────────────────────────
+  const handleGenerate = () => {
+    if (!canGenerate || !difficulty) return;
+    const { chapters, topics } = extractTopicsConfig();
 
     onGenerate({
       chapters,
@@ -304,6 +350,12 @@ export function ContextSetupCard({
       questionDistribution: dist,
       difficulty,
     });
+  };
+
+  const handleSaveTopics = () => {
+    if (!canSaveTopics || !onSaveTopics) return;
+    const { chapters, topics } = extractTopicsConfig();
+    onSaveTopics({ chapters, topics });
   };
 
   const kindLabel =
@@ -520,11 +572,18 @@ export function ContextSetupCard({
           {/* ── Step 3: Question Distribution ─────────────────────────── */}
           {step === 3 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="flex items-center gap-2 mb-3">
-                <Layers size={12} className="text-[#7A6A5A] flex-shrink-0" />
-                <span className="text-[11px] font-semibold text-[#8C8C8A] uppercase tracking-wider">
-                  Step 3: Question Distribution
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Layers size={12} className="text-[#7A6A5A] flex-shrink-0" />
+                  <span className="text-[11px] font-semibold text-[#8C8C8A] uppercase tracking-wider">
+                    Step 3: Question Distribution
+                  </span>
+                </div>
+                {prefillTopicsConfig && (
+                  <span className="text-[10px] font-medium text-[#7AC87A] bg-[#7AC87A]/10 px-2 py-0.5 rounded-full border border-[#7AC87A]/20">
+                    Important topics pre-filled
+                  </span>
+                )}
               </div>
 
               <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
@@ -623,7 +682,7 @@ export function ContextSetupCard({
             </button>
           )}
 
-          {step < 4 ? (
+          {step < 4 && !(mode === 'topicsOnly' && step === 2) ? (
             <button
               onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3 | 4)}
               disabled={
@@ -644,6 +703,24 @@ export function ContextSetupCard({
             >
               Continue
               <ChevronRight size={16} />
+            </button>
+          ) : mode === 'topicsOnly' && step === 2 ? (
+            <button
+              onClick={handleSaveTopics}
+              disabled={!canSaveTopics}
+              className={`
+                flex-1 flex items-center justify-center gap-2
+                py-2.5 sm:py-3 rounded-xl text-[13px] font-semibold
+                border transition-all duration-200
+                ${
+                  canSaveTopics
+                    ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
+                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
+                }
+              `}
+            >
+              Assign Topics to Students
+              <Sparkles size={14} />
             </button>
           ) : (
             <button

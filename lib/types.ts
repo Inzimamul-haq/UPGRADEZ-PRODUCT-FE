@@ -1,7 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
-export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
+export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' | 'ASSIGN_TOPICS';
 export type DifficultyMode = 'SIMPLE' | 'MEDIUM' | 'HARD';
 
 export interface PartConfig {
