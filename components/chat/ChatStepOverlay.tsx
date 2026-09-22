@@ -80,7 +80,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
 
   const goBack = () => {
     if (step === 4.5) setStep(4);
-    else if (step === 5 && isFaculty && examType.toUpperCase().includes('UNIVERSITY')) setStep(4.5);
+    else if (step === 5 && isFaculty) setStep(4.5);
     else if (step > initialStep) setStep(step - 1);
   };
 
@@ -90,8 +90,8 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const handleSelectExamType = (type: string) => { 
     setExamType(type); 
     if (isFaculty) {
-      if (type.toUpperCase().includes('UNIVERSITY')) {
-        setStep(4.5); // New step for University
+      if (type.toLowerCase().includes('university') || type.toLowerCase().includes('semester')) {
+        setStep(4.5);
       } else {
         setStep(5);
       }
@@ -104,7 +104,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
     if (kind === 'IMPORTANT_QUESTIONS') {
       setStep(5); // Proceed to section
     } else {
-      // University Exam Paper -> Skip section
+      // University Exam Paper or Important Topics -> Skip section
       if (selectedSubject) {
         onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType, paperKind: kind });
       }
@@ -225,6 +225,12 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
               className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
             >
               Direct Exam Paper (Common for Dept)
+            </button>
+            <button
+              onClick={() => handleSelectPaperKind('ASSIGN_TOPICS')}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+            >
+              Important Topics (Topics Only)
             </button>
           </div>
         </div>
