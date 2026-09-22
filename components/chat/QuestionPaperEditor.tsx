@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
-import { Plus, X } from 'lucide-react';
+import { DiagramEditor } from '../ui/QuestionDiagram/editor/DiagramEditor';
+import { Plus, X, Edit3 } from 'lucide-react';
 
 interface QuestionPaperEditorProps {
   initialContent: string;
@@ -55,7 +56,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       let diagramSpec = undefined;
       let diagramType = undefined;
 
-      const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
+      const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry|mech_structural|engineering_drawing|linked_list|doubly_linked_list|logic_gate|free_body|table):([\s\S]*?)\]\]/i;
       const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
       if (diagMatch) {
         diagramType = diagMatch[1].toLowerCase();
@@ -169,7 +170,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     const serialized = questions.map(q => {
       let block = `${q.qNo}. ${q.text.trim()} (${q.marks} Marks)`;
       if (q.diagramSpec) {
-        block += `\n[[${q.diagramType || 'diagram'}:${JSON.stringify(q.diagramSpec)}]]`;
+        block += `\n[[${q.diagramType || q.diagramSpec.type || q.diagramSpec.format || 'diagram'}:${JSON.stringify(q.diagramSpec)}]]`;
       }
       block += `\n[[meta:${JSON.stringify(q.meta)}]]`;
       return block;
@@ -230,16 +231,41 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           </div>
         </div>
 
-        {/* Diagram (Read-only for now) */}
+        {/* Diagram Area */}
         {q.diagramSpec && (() => {
-          const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
-          const diagSubtype = q.diagramSpec.subtype || '';
+          let diagType = (q.diagramType || q.diagramSpec.type || q.diagramSpec.format || 'unknown').toLowerCase();
+          if (diagType === 'diagram' && (q.diagramSpec.type || q.diagramSpec.format)) {
+            diagType = (q.diagramSpec.type || q.diagramSpec.format).toLowerCase();
+          }
+          const diagSubtype = (q.diagramSpec.subtype || '').toLowerCase();
+          const isEditingDiagram = q.selected && q.diagramSpec; // We'll just show the editor if the question is selected
+
           return (
-            <div className="flex justify-start ml-12 relative">
-              <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only</div>
-              <div className="rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-4 opacity-70 pointer-events-none shadow-sm">
-                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={400} height={200} />
-              </div>
+            <div className="flex justify-start ml-12 relative mt-3 mb-2">
+              {isEditingDiagram ? (
+                <div className="w-full">
+                  <div className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Edit3 size={12} /> Editing Diagram
+                  </div>
+                  <DiagramEditor 
+                    type={diagType} 
+                    subtype={diagSubtype} 
+                    initialSpec={q.diagramSpec} 
+                    width={500} 
+                    height={300}
+                    onChange={(newSpec) => handleUpdate(q.id, 'diagramSpec', newSpec)} 
+                  />
+                </div>
+              ) : (
+                <div className="relative group">
+                  <div className="absolute top-2 right-2 text-[10px] text-amber-500/70 bg-black/60 px-2 py-1 rounded z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Select question to edit diagram
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-4 opacity-70 pointer-events-none shadow-sm transition-opacity group-hover:opacity-100">
+                    <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={400} height={200} />
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}

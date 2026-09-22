@@ -12,6 +12,7 @@ export interface NormalizedEdge {
   to: string;
   label?: string;
   weight?: string;
+  sign?: string;
 }
 
 export interface NormalizedGraph {
@@ -60,6 +61,7 @@ export function normalizeDiagramSpec(spec: any): NormalizedGraph {
           to: String(c.to),
           label: c.label !== undefined ? String(c.label) : undefined,
           weight: c.weight !== undefined ? String(c.weight) : undefined,
+          sign: c.sign !== undefined ? String(c.sign) : undefined,
         });
       }
     });
@@ -71,6 +73,7 @@ export function normalizeDiagramSpec(spec: any): NormalizedGraph {
           to: String(e.to),
           label: e.label !== undefined ? String(e.label) : undefined,
           weight: e.weight !== undefined ? String(e.weight) : undefined,
+          sign: e.sign !== undefined ? String(e.sign) : undefined,
         });
       }
     });

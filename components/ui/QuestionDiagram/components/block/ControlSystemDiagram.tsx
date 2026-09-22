@@ -2,6 +2,8 @@ import React from 'react';
 import { normalizeDiagramSpec, computeLayerLayout, classifyAndRouteArcs } from '../../../layoutUtils';
 
 export function ControlSystemDiagram({ data, width = 500, height = 320 }: any) {
+  // Note: normalizeDiagramSpec now correctly preserves `sign` for control_system edges.
+  // The editor can safely manipulate `sign` on the edge object.
   const { nodes, edges } = normalizeDiagramSpec(data);
 
   if (nodes.length === 0) {

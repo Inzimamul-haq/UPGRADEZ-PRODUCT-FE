@@ -18,7 +18,7 @@ export function toDecoded(q: any): DecodedQuestion {
     decoded = { text: stripQPPrefix(raw), part: 'A', groupIndex: 1, subLabel: '' };
   }
 
-  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
+  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry|mech_structural|engineering_drawing|linked_list|doubly_linked_list|logic_gate|free_body|table):([\s\S]*?)\]\]/i;
   const diagMatch = decoded.text.match(DIAGRAM_PREFIX_RE);
   let diagramSpec = undefined;
   let diagramType = undefined;
@@ -59,7 +59,7 @@ export function toDecoded(q: any): DecodedQuestion {
   // Also strip the meta prefix from text if it exists
   let cleanText = decoded.text
     .replace(/\[\[meta:(\{.*?\})\]\]/gi, '')
-    .replace(/\[\[(?:graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/gi, '')
+    .replace(/\[\[(?:graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry|mech_structural|engineering_drawing|linked_list|doubly_linked_list|logic_gate|free_body|table):([\s\S]*?)\]\]/gi, '')
     .replace(/\[\[flagged:.*?\]\]/gi, '')
     .replace(/\(\s*\d+\s*marks?\s*\)\s*$/i, '')
     .replace(/\[\s*\d+\s*marks?\s*\]\s*$/i, '')

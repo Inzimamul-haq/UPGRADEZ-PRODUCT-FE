@@ -65,6 +65,8 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
       return <GeometryDisplay data={spec} subtype="free_body" width={width} height={height} />;
     case 'linked_list':
     case 'doubly_linked_list':
+    case 'queue':
+    case 'stack':
       return <StructuralDisplay data={spec} subtype={type} width={width} height={height} />;
     default:
       // Unknown type — show a placeholder so the question isn't broken
