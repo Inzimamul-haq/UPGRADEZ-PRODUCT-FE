@@ -57,42 +57,44 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Stats Grid - Responsive */}
-      <div className="mt-5 sm:mt-6 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
-        {loading ? (
-          <>
-            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
-            <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
-          </>
-        ) : stats ? (
-          <>
-            <StatCard 
-              value={`${Math.round(stats.degreeCompletion.percent)}%`} 
-              label="Degree completion" 
-              subtext={`Year ${stats.degreeCompletion.currentYear} of ${stats.degreeCompletion.totalYears}`}
-            />
-            <StatCard 
-              value={stats.subjectsEnrolled.toString()} 
-              label="Subjects enrolled" 
-            />
-            <StatCard 
-              value={stats.aiConversations.toString()} 
-              label="AI conversations" 
-            />
-            <StatCard 
-              value={stats.newPapers.toString()} 
-              label="New papers" 
-              valueColor={stats.newPapers > 0 ? "text-amber-400" : undefined}
-              subtext="This week"
-            />
-          </>
-        ) : (
-          <div className="col-span-full text-[#8C8C8A] text-[13px] py-4 text-center">
-            Failed to load stats.
-          </div>
-        )}
-      </div>
+   <div className="mt-5 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+  {loading ? (
+    <>
+      <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+      <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+      <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>
+    </>
+  ) : stats ? (
+    <>
+      <StatCard
+        value={`${Math.round(stats.degreeCompletion.percent)}%`}
+        label="Degree completion"
+        subtext={`Year ${stats.degreeCompletion.currentYear} of ${stats.degreeCompletion.totalYears}`}
+      />
+
+      <StatCard
+        value={stats.subjectsEnrolled.toString()}
+        label="Subjects enrolled"
+      />
+
+      {/* <StatCard
+        value={stats.aiConversations.toString()}
+        label="AI conversations"
+      /> */}
+
+      <StatCard
+        value={stats.newPapers.toString()}
+        label="New papers"
+        valueColor={stats.newPapers > 0 ? "text-amber-400" : undefined}
+        subtext="This week"
+      />
+    </>
+  ) : (
+    <div className="col-span-full text-[#8C8C8A] text-[13px] py-4 text-center">
+      Failed to load stats.
+    </div>
+  )}
+</div>
 
       {/* Activity Feed */}
       <div className="mt-6 sm:mt-8">

@@ -208,11 +208,15 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
       form.append('file', file);
       form.append('subjectId', selectedSubject!.id);
       form.append('examType', examType);
-      form.append('academicYear', academicYear);
       form.append('paperKind', paperKind);
-      form.append('departmentId', departmentId);
+      form.append('academicYear', academicYear);
       form.append('assignedToYear', String(assignedToYear));
-      form.append('section', section);
+      if (departmentId !== 'ALL') {
+        form.append('departmentId', departmentId);
+      }
+      if (section && section !== 'BOTH' && !isUniversityExamPaper) {
+        form.append('assignedToSection', section);
+      }
       if (examDate) form.append('examDate', examDate);
 
       setUploadStatus('Parsing questions with AI…');
@@ -279,6 +283,7 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
                 >
                   <option value="">Select department…</option>
+                  {isUniversityExamPaper && <option value="ALL">All Departments</option>}
                   {departments.map(d => (
                     <option key={d.id} value={d.id}>{d.branch} - {d.name}</option>
                   ))}

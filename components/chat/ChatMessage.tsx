@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
+import api from '@/lib/api';
+import { useToast } from '@/context/ToastContext';
 import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -10,9 +12,11 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
-import { GraphDisplay } from '@/components/ui/GraphDisplay';
 
-import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
+import { SolutionRenderer, MultiSchemaData } from './Diagram/SolutionRenderer';
+import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
+import { QuestionPaperRenderer } from './QuestionPaperRenderer';
+import { QuestionPaperEditor } from './QuestionPaperEditor';
 
 type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
 
@@ -23,7 +27,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   while (true) {
     const explicitMatch = remainingText.match(/%%EXECUTION_JSON_START%%\s*(\{[\s\S]*?\})\s*%%EXECUTION_JSON_END%%/i);
     const fencedMatch = remainingText.match(/```(?:json)?\s*(\{[\s\S]*?(?:"solution"|"step"|"ui_type")[\s\S]*?\})\s*```/i);
-    
+
     let bestMatch: RegExpMatchArray | null = null;
     let bestIndex = Infinity;
 
@@ -35,7 +39,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
       bestMatch = fencedMatch;
       bestIndex = fencedMatch.index;
     }
-    
+
     if (!bestMatch) {
       const startIndex = remainingText.indexOf('{');
       if (startIndex !== -1 && startIndex < bestIndex) {
@@ -83,7 +87,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
             continue;
           }
           if (c === '\\') {
-            const nextChar = repaired[i+1];
+            const nextChar = repaired[i + 1];
             // Only keep standard JSON escapes. Treat \f, \b, \t as raw backslashes (e.g. \frac, \begin, \text)
             if (['n', 'r', '"', '\\', 'u'].includes(nextChar)) {
               out += c;
@@ -115,18 +119,18 @@ function parseMathSolutions(text: string): SolutionSegment[] {
           out += c;
         }
         out = out.replace(/,\s*([\}\]])/g, '$1');
-        
+
         try {
           parsed = JSON.parse(out);
         } catch (err2) {
           try {
             parsed = new Function('return ' + matchContent)();
-          } catch(err3) {
+          } catch (err3) {
             throw err2;
           }
         }
       }
-      
+
       if (parsed) {
         if (parsed.ui_type) {
           data = parsed.solution !== undefined ? parsed : { ui_type: parsed.ui_type, solution: parsed };
@@ -176,13 +180,13 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   }
 
   const segmentsWithGraph: SolutionSegment[] = [];
-  const GRAPH_PREFIX_RE = /\[\[graph:([\s\S]*?)\]\]\s*/i;
+  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]\s*/i;
 
   for (const seg of finalSegments) {
     if (seg.type === 'text') {
       let currentText = seg.content;
       while (currentText) {
-        const match = currentText.match(GRAPH_PREFIX_RE);
+        const match = currentText.match(DIAGRAM_PREFIX_RE);
         if (!match || match.index === undefined) {
           if (currentText.trim()) {
             segmentsWithGraph.push({ type: 'text', content: currentText });
@@ -190,24 +194,27 @@ function parseMathSolutions(text: string): SolutionSegment[] {
           break;
         }
 
-        const textAfterMatch = currentText.substring(match.index + match[0].length);
-        let endOfBlock = textAfterMatch.indexOf('\n\n');
-        if (endOfBlock === -1) endOfBlock = textAfterMatch.indexOf('\n');
-        if (endOfBlock === -1) endOfBlock = textAfterMatch.length;
+        const textBeforeGraph = currentText.substring(0, match.index);
 
-        const textBeforeGraph = currentText.substring(0, match.index) + textAfterMatch.substring(0, endOfBlock);
-        
         if (textBeforeGraph.trim()) {
           segmentsWithGraph.push({ type: 'text', content: textBeforeGraph.trim() });
         }
 
         try {
-          segmentsWithGraph.push({ type: 'graph', data: JSON.parse(match[1]) });
+          const rawTagType = match[1].toLowerCase();
+          const parsedData = JSON.parse(match[2]);
+
+          // Normalize old tags to the new format
+          if (rawTagType !== 'diagram' && !parsedData.type) {
+            parsedData.type = rawTagType;
+          }
+
+          segmentsWithGraph.push({ type: 'graph', data: parsedData });
         } catch {
           segmentsWithGraph.push({ type: 'text', content: match[0] });
         }
 
-        currentText = textAfterMatch.substring(endOfBlock);
+        currentText = currentText.substring(match.index + match[0].length);
       }
     } else {
       segmentsWithGraph.push(seg);
@@ -217,10 +224,11 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
-export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMessageProps) {
+export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content || '');
+  const [editSegmentsState, setEditSegmentsState] = useState<SolutionSegment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -236,45 +244,127 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
     return true;
   });
 
+  const isLikelyPaper = /\[\[meta:\{/i.test(message.content || '');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    toast.success('Generating 100% accurate PDF with diagrams... Please wait.');
+    try {
+      let endpoint = (paperId && message.isAssigned)
+        ? `/api/question-papers/${paperId}/generate-pdf`
+        : `/api/chats/messages/${message.id}/generate-pdf`;
+
+      let res;
+      try {
+        res = await api.get(endpoint, { responseType: 'blob' });
+      } catch (err: any) {
+        // If paper generation returns 404 (e.g. paper was soft-deleted), fallback to draft generation
+        if (paperId && err.response?.status === 404) {
+          endpoint = `/api/chats/messages/${message.id}/generate-pdf`;
+          res = await api.get(endpoint, { responseType: 'blob' });
+        } else {
+          throw err;
+        }
+      }
+
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', paperId ? `QuestionPaper_${paperId}.pdf` : `QuestionPaper_Draft.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      // Delay revocation to ensure download starts
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 5000);
+
+      toast.success('PDF Generated successfully!');
+    } catch (error: any) {
+      toast.error('Failed to download PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (isUser) {
     if (isEditing) {
       return (
         <div className="flex justify-end">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[400px] md:w-[500px]"
           >
-            <textarea
-              ref={el => {
-                if (el) {
-                  el.style.height = 'auto';
-                  el.style.height = el.scrollHeight + 'px';
+            <div className="flex flex-col">
+              {editSegmentsState.map((seg, i) => {
+                if (seg.type === 'text') {
+                  return (
+                    <textarea
+                      key={i}
+                      ref={el => {
+                        if (el) {
+                          el.style.height = 'auto';
+                          el.style.height = el.scrollHeight + 'px';
+                        }
+                      }}
+                      value={seg.content}
+                      onChange={e => {
+                        const newSegs = [...editSegmentsState];
+                        newSegs[i] = { type: 'text', content: e.target.value };
+                        setEditSegmentsState(newSegs);
+                      }}
+                      className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
+                      disabled={isSaving}
+                    />
+                  );
+                } else if (seg.type === 'graph') {
+                  return (
+                    <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
+                      <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                      <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                    </div>
+                  );
+                } else if (seg.type === 'solution') {
+                  return (
+                    <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
+                      <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                      <SolutionRenderer
+                        data={seg.data}
+                        messageId={message.id}
+                        chatId={chatId}
+                        stepExplanations={message.stepExplanations ?? []}
+                      />
+                    </div>
+                  );
+                } else {
+                  return null;
                 }
-              }}
-              value={editContent}
-              onChange={e => {
-                setEditContent(e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              }}
-              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
-              disabled={isSaving}
-            />
+              })}
+            </div>
             <div className="flex justify-end gap-2 p-2 bg-[#1C1C1B] border-t border-[#3A3A38]">
-              <button 
-                onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
+              <button
+                onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
                 className="px-3 py-1 text-[11px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
                 disabled={isSaving}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   if (onEditSubmit) {
                     setIsSaving(true);
                     try {
-                      await onEditSubmit(message.id, editContent);
+                      const newContent = editSegmentsState.map(seg => {
+                        if (seg.type === 'text') return seg.content;
+                        if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
+                        if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
+                        return '';
+                      }).join('\n\n');
+                      await onEditSubmit(message.id, newContent);
                       setIsEditing(false);
                     } catch (e) {
                       // err
@@ -282,8 +372,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                       setIsSaving(false);
                     }
                   }
-                }} 
-                disabled={isSaving || !editContent.trim() || editContent === message.content} 
+                }}
+                disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
                 className="px-4 py-1 text-[11px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save & Resubmit'}
@@ -309,10 +399,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
               className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
             >
               {copied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-              
+
             </button>
             {/* <button
-              onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+              onClick={() => { setIsEditing(true); setEditSegmentsState(parseMathSolutions(message.content || '')); }}
               title="Edit message"
               className="p-1.5 text-[#8C8C8A] hover:text-[#ECECEA] bg-transparent rounded transition-colors hover:bg-[#333331]"
             >
@@ -363,7 +453,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
           <div className="absolute top-2 right-2 text-xs text-gray-400 font-sans px-2 py-1 bg-[#1E1E1E] rounded z-10 select-none">
             {match[1]}
           </div>
-          
+
           <SyntaxHighlighter
             {...rest}
             PreTag="div"
@@ -392,7 +482,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
       if (content.startsWith('Answer:') || content.startsWith('**Answer:**') || content.includes('Answer:')) {
         return <p className="border-l-[3px] border-[#818CF8] pl-4 py-2 font-bold my-4 bg-[#2C2C2A] rounded-r-md text-[#F4F4F5]" {...props} />;
       }
-      
+
       if (content.trim() === 'OR' || content.trim() === '**OR**') {
         return (
           <div className="flex items-center gap-3 py-1 px-1 my-4">
@@ -406,8 +496,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
       if (content.startsWith('Example:') || content.startsWith('**Example:**')) {
         return (
           <div className="bg-[#2C2C2A]/50 border border-[#3A3A38] rounded-lg p-3.5 my-3 relative overflow-hidden">
-             <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#10B981]/80"></div>
-             <p className="text-[13.5px] text-[#D1D1C7] whitespace-pre-wrap leading-relaxed pl-2" {...props} />
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#10B981]/80"></div>
+            <p className="text-[13.5px] text-[#D1D1C7] whitespace-pre-wrap leading-relaxed pl-2" {...props} />
           </div>
         );
       }
@@ -429,7 +519,26 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
     td: ({ node, ...props }: any) => <td className="px-4 py-3 text-[13px] text-[#D1D1C7] leading-relaxed" {...props} />,
     strong: ({ node, ...props }: any) => <strong className="font-[600] text-[#BC676A] bg-[#1A1A19] border border-[#BC676A]/30 px-1.5 py-0.5 rounded mx-0.5" {...props} />,
     h1: ({ node, ...props }: any) => <h1 className="text-xl font-bold mt-6 mb-4 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
-    h2: ({ node, ...props }: any) => <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />,
+    h2: ({ node, ...props }: any) => {
+      const extractText = (child: any): string => {
+        if (typeof child === 'string') return child;
+        if (Array.isArray(child)) return child.map(extractText).join('');
+        if (child?.props?.children) return extractText(child.props.children);
+        return '';
+      };
+      const text = extractText(props.children);
+      if (/^Part\s+[A-Z]/i.test(text) || text.includes('Unmarked Questions')) {
+        return (
+          <div className="flex items-center gap-3 mt-8 mb-4">
+            <span className="bg-[#242422] border border-[#4A4A48] text-[#ECECEA] px-3 py-1.5 rounded-md text-[13px] font-semibold tracking-wide">
+              {text}
+            </span>
+            <div className="flex-1 border-t border-[#3A3A38]" />
+          </div>
+        );
+      }
+      return <h2 className="text-lg font-bold mt-5 mb-3 pb-2 border-b border-[#3A3A38] text-white" {...props} />;
+    },
     h3: ({ node, ...props }: any) => <h3 className="text-md font-bold mt-4 mb-2 pb-1 border-b border-[#3A3A38]/50 text-white" {...props} />,
     blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-[#3A3A38] pl-4 italic text-[#A1A1AA] my-4" {...props} />,
     img: ({ node, ...props }: any) => {
@@ -438,10 +547,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
         const pageNumber = pageNumMatch ? parseInt(pageNumMatch[1]) : 0;
         return (
           <div className="my-6 w-full flex justify-center">
-            <DiagramCard 
-              diagramName={props.alt || ''} 
-              pageNumber={pageNumber} 
-              url={props.src as string} 
+            <DiagramCard
+              diagramName={props.alt || ''}
+              pageNumber={pageNumber}
+              url={props.src as string}
             />
           </div>
         );
@@ -459,7 +568,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
               let processedBatchContent = (batch.answer || '')
                 .replace(/([^\n])\s+(\([ivx]+\))/gi, '$1\n\n$2')
                 .replace(/^(\([ivx]+\)\s+)([^:\n]+):/gim, '**$1$2:**');
-                
+
               const batchSegments = parseMathSolutions(processedBatchContent);
 
               return (
@@ -489,17 +598,17 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                           </ReactMarkdown>
                         ) : seg.type === 'graph' ? (
                           <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                            <GraphDisplay graph={seg.data} width={300} height={250} />
+                            <DiagramRenderer type={seg.data.type} spec={seg.data} width={300} height={250} />
                           </div>
-                        ) : (
-                          <SolutionRenderer 
-                            data={seg.data} 
+                        ) : seg.type === 'solution' ? (
+                          <SolutionRenderer
+                            data={seg.data}
                             messageId={message.id}
                             chatId={chatId}
                             stepExplanations={message.stepExplanations ?? []}
                             batchQuestionNo={batch.questionNo ?? null}
                           />
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </motion.div>
@@ -510,10 +619,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
         ) : processedContent.startsWith('[ASSIGN_SUCCESS]') ? (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 my-4">
             <h3 className="text-[14px] font-semibold text-emerald-400 mb-2 whitespace-pre-wrap">
-               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n')[0]}
+              {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n')[0]}
             </h3>
             <div className="text-[13px] text-emerald-500/80 whitespace-pre-wrap leading-relaxed">
-               {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n').slice(1).join('\n\n')}
+              {processedContent.replace('[ASSIGN_SUCCESS]', '').trim().split('\n\n').slice(1).join('\n\n')}
             </div>
           </div>
         ) : (
@@ -524,69 +633,133 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                 <span className="text-[11px] font-semibold text-emerald-500 tracking-wide uppercase">Assigned</span>
               </div>
             )}
-            
+
             <AnimatePresence mode="wait">
               {isEditing ? (
-                <motion.div 
-                  key="edit"
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                  className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
-                >
-                  <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
-                    </div>
-                  </div>
-                  <textarea
-                    ref={el => {
-                      if (el) {
-                        el.style.height = 'auto';
-                        el.style.height = el.scrollHeight + 'px';
-                      }
-                    }}
-                    value={editContent}
-                    onChange={e => {
-                      setEditContent(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = e.target.scrollHeight + 'px';
-                    }}
-                    className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
-                    disabled={isSaving}
-                    placeholder="Make changes to the AI generated content..."
-                  />
-                  <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
-                    <button 
-                      onClick={() => { setIsEditing(false); setEditContent(message.content || ''); }} 
-                      className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={async () => {
+                /\[\[meta:\{/i.test(processedContent) ? (
+                  <motion.div
+                    key="edit-qp"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                  >
+                    <QuestionPaperEditor
+                      initialContent={message.content}
+                      isSaving={isSaving}
+                      onCancel={() => { setIsEditing(false); setEditSegmentsState([]); }}
+                      onSave={async (newContent) => {
                         if (onEditSubmit) {
                           setIsSaving(true);
                           try {
-                            await onEditSubmit(message.id, editContent);
+                            await onEditSubmit(message.id, newContent);
                             setIsEditing(false);
                           } catch (e) {
-                            // Error toast handled by parent
                           } finally {
                             setIsSaving(false);
                           }
                         }
-                      }} 
-                      disabled={isSaving || !editContent.trim() || editContent === message.content} 
-                      className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isSaving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </motion.div>
+                      }}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                    className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
+                  >
+                    <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      {editSegmentsState.map((seg, i) => {
+                        if (seg.type === 'text') {
+                          return (
+                            <textarea
+                              key={i}
+                              ref={el => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = el.scrollHeight + 'px';
+                                }
+                              }}
+                              value={seg.content}
+                              onChange={e => {
+                                const newSegs = [...editSegmentsState];
+                                newSegs[i] = { type: 'text', content: e.target.value };
+                                setEditSegmentsState(newSegs);
+                              }}
+                              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
+                              disabled={isSaving}
+                              placeholder="Make changes to the AI generated content..."
+                            />
+                          );
+                        } else if (seg.type === 'graph') {
+                          return (
+                            <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
+                              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                              <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                            </div>
+                          );
+                        } else if (seg.type === 'solution') {
+                          return (
+                            <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
+                              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                              <SolutionRenderer
+                                data={seg.data}
+                                messageId={message.id}
+                                chatId={chatId}
+                                stepExplanations={message.stepExplanations ?? []}
+                              />
+                            </div>
+                          );
+                        } else {
+                          return null;
+                        }
+                      })}
+                    </div>
+                    <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
+                      <button
+                        onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
+                        className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (onEditSubmit) {
+                            setIsSaving(true);
+                            try {
+                              const newContent = editSegmentsState.map(seg => {
+                                if (seg.type === 'text') return seg.content;
+                                if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
+                                if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
+                                return '';
+                              }).join('\n\n');
+                              await onEditSubmit(message.id, newContent);
+                              setIsEditing(false);
+                            } catch (e) {
+                              // Error toast handled by parent
+                            } finally {
+                              setIsSaving(false);
+                            }
+                          }
+                        }}
+                        disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
+                        className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )
               ) : (
                 <motion.div
                   key="view"
@@ -595,31 +768,46 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {segmentsMain.map((seg, i) => (
-                    <div key={i} className="mb-4">
-                      {seg.type === 'text' ? (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={markdownComponents}
-                        >
-                          {seg.content}
-                        </ReactMarkdown>
-                      ) : seg.type === 'graph' ? (
-                        <div className="my-4 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                          <GraphDisplay graph={seg.data} width={300} height={250} />
-                        </div>
-                      ) : (
-                        <SolutionRenderer 
-                          data={seg.data}
-                          messageId={message.id}
-                          chatId={chatId}
-                          stepExplanations={message.stepExplanations ?? []}
-                          batchQuestionNo={null}
-                        />
-                      )}
-                    </div>
-                  ))}
+                  {/\[\[meta:\{/i.test(processedContent) ? (
+                    <QuestionPaperRenderer content={processedContent} />
+                  ) : (
+                    segmentsMain.map((seg, i) => (
+                      <div key={i} className="mb-4">
+                        {seg.type === 'text' ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath, remarkGfm]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={markdownComponents}
+                          >
+                            {seg.content}
+                          </ReactMarkdown>
+                        ) : seg.type === 'graph' ? (
+                          (() => {
+                            const diagType = seg.data.type || seg.data.format || 'unknown';
+                            const diagSubtype = seg.data.subtype || '';
+                            const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform'].includes(diagType);
+                            const renderWidth = isWide ? 500 : 300;
+                            const renderHeight = isWide ? 320 : 250;
+                            return (
+                              <div className="my-4 flex flex-col items-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                                <div className="text-xs text-[#A1A1AA] mb-2 font-medium tracking-wide uppercase">
+                                  {diagType} {diagSubtype ? `— ${diagSubtype.replace(/_/g, ' ')}` : ''}
+                                </div>
+                                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={seg.data} width={renderWidth} height={renderHeight} />
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <SolutionRenderer
+                            data={seg.data}
+                            messageId={message.id}
+                            chatId={chatId}
+                            stepExplanations={message.stepExplanations ?? []}
+                            batchQuestionNo={null}
+                          />
+                        )}
+                      </div>
+                    )))}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -638,22 +826,23 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                 return null;
               }
               return (
-                <DiagramCard 
-                  key={idx} 
-                  diagramName={fig.caption} 
-                  pageNumber={fig.pageNumber} 
-                  url={fig.url as string} 
+                <DiagramCard
+                  key={idx}
+                  diagramName={fig.caption}
+                  pageNumber={fig.pageNumber}
+                  url={fig.url as string}
                 />
               );
             })}
           </div>
         )}
-        
+
         {((visibleActions && visibleActions.length > 0) || (isEditable && !isEditing)) && (
           <div className="flex flex-wrap gap-2 mt-3 mb-2">
             {visibleActions?.map(action => (
               <button
                 key={action.id}
+                type="button"
                 onClick={() => onAction && onAction(message.id, action.id)}
                 disabled={isEditing}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#1C1C1B] bg-[#ECECEA] border border-[#ECECEA] rounded-lg px-3 py-1.5 hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -662,13 +851,25 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId }: ChatMes
                 {action.label}
               </button>
             ))}
-            
+
             {isEditable && !isEditing && (
               <button
-                onClick={() => { setIsEditing(true); setEditContent(message.content || ''); }}
+                type="button"
+                onClick={() => { setIsEditing(true); setEditSegmentsState(parseMathSolutions(message.content || '')); }}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[#8C8C8A] bg-transparent border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:text-[#ECECEA] hover:bg-[#333331] transition-colors"
               >
                 Edit
+              </button>
+            )}
+
+            {isLikelyPaper && !isEditing && (
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-3 py-1.5 hover:bg-[#3A3A38] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileDown size={14} /> {isDownloading ? 'Downloading...' : 'Download PDF'}
               </button>
             )}
           </div>

@@ -12,6 +12,7 @@ import {
   Zap,
   List,
   ChevronDown,
+  X,
 } from "lucide-react";
 import {
   TocEntry,
@@ -65,18 +66,18 @@ function CountStepper({ value, onChange, disabled }: CountStepperProps) {
       <button
         onClick={() => onChange(Math.max(1, value - 1))}
         disabled={disabled || value <= 1}
-        className="w-7 h-7 flex items-center justify-center text-[#8C8C8A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="w-7 h-7 flex items-center justify-center text-[#ECECEA] bg-[#2C2C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Decrease count"
       >
         <Minus size={11} />
       </button>
-      <span className="w-8 text-center text-[13px] font-semibold text-[#ECECEA] bg-[#242422] py-1 select-none">
+      <span className="w-8 text-center text-[13px] font-semibold text-[#ECECEA]  bg-[#2C2C2A] py-1 select-none">
         {value}
       </span>
       <button
         onClick={() => onChange(Math.min(30, value + 1))}
         disabled={disabled}
-        className="w-7 h-7 flex items-center justify-center text-[#8C8C8A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="w-7 h-7 flex items-center justify-center text-[#ECECEA] bg-[#2C2C2A] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Increase count"
       >
         <Plus size={11} />
@@ -137,6 +138,7 @@ export interface ContextSetupCardProps {
   onGenerate: (config: ContextSetupConfig) => void;
   difficulty: DifficultyMode | '';
   onDifficultyChange: (mode: DifficultyMode) => void;
+  onClose?: () => void;
 }
 
 export function ContextSetupCard({
@@ -147,6 +149,7 @@ export function ContextSetupCard({
   onGenerate,
   difficulty,
   onDifficultyChange,
+  onClose,
 }: ContextSetupCardProps) {
   const hasChapters = syllabusEntries.length > 0;
 
@@ -311,9 +314,9 @@ export function ContextSetupCard({
       <div
         className="
           relative overflow-hidden rounded-2xl
-          border border-[#2E2E2C]
-          bg-gradient-to-b from-[#222220] to-[#1E1E1C]
-          shadow-xl shadow-black/30
+          border border-[#3A3A38]
+          bg-[#242422]
+          shadow-xl shadow-black/40
         "
       >
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#3A6A3A]/60 to-transparent" />
@@ -331,6 +334,15 @@ export function ContextSetupCard({
               {subjectName} · {kindLabel}
             </p>
           </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[#6C6C6A] hover:text-[#ECECEA] hover:bg-[#2C2C2A] transition-colors"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div className="px-5 py-4 flex flex-col gap-5">
@@ -351,21 +363,23 @@ export function ContextSetupCard({
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-0.5">
                   <button
                     onClick={handleAllChapters}
                     className={`
-                      flex items-center gap-2.5 px-4 py-3 rounded-xl text-[13px] font-medium
-                      border transition-all duration-150 w-full text-left
+                      flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-medium
+                      transition-all duration-150 w-full text-left
                       ${
                         allChapters
-                          ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
-                          : "bg-[#242422] border-[#3A3A38] text-[#6C6C6A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
+                          ? "bg-[#343432] text-[#ECECEA]"
+                          : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
                       }
                     `}
                     aria-pressed={allChapters}
                   >
-                    <LayoutGrid size={14} className="flex-shrink-0" />
+                    <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${allChapters ? 'bg-[#ECECEA] text-black' : 'bg-[#3A3A38] text-[#ECECEA]'}`}>
+                      <LayoutGrid size={10} />
+                    </span>
                     All Chapters
                   </button>
 
@@ -375,7 +389,7 @@ export function ContextSetupCard({
                     <div className="flex-1 h-px bg-[#2A2A28]" />
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-0.5">
                     {syllabusEntries.map((entry) => {
                       const isSelected = allChapters || selectedChapters.has(entry.chapter);
                       return (
@@ -383,20 +397,20 @@ export function ContextSetupCard({
                           key={entry.chapter}
                           onClick={() => toggleChapter(entry.chapter)}
                           className={`
-                            flex items-start gap-3 px-4 py-3 rounded-xl text-[13px] font-medium
-                            border transition-all duration-150 text-left
+                            flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-medium
+                            transition-all duration-150 text-left w-full
                             ${
                               isSelected
-                                ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
-                                : "bg-[#242422] border-[#3A3A38] text-[#6C6C6A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
+                                ? "bg-[#343432] text-[#ECECEA]"
+                                : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
                             }
                           `}
                           aria-pressed={isSelected}
                         >
-                          <span className="flex-shrink-0 w-6 h-6 rounded bg-black/20 flex items-center justify-center text-[11px] font-bold opacity-80 mt-0.5">
+                          <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? 'bg-[#ECECEA] text-black' : 'bg-[#3A3A38] text-[#ECECEA]'}`}>
                             {entry.chapter}
                           </span>
-                          <span className="leading-snug">{entry.title}</span>
+                          <span className="leading-snug truncate flex-1">{entry.title}</span>
                         </button>
                       );
                     })}
@@ -513,7 +527,7 @@ export function ContextSetupCard({
                 </span>
               </div>
 
-              <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#2A2A28]">
+              <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
                 <PartRow
                   label="Part A"
                   marksLabel="2 marks"
@@ -599,7 +613,7 @@ export function ContextSetupCard({
         </div>
 
         {/* ── Action buttons ───────────────────────────────────────────── */}
-        <div className="sticky bottom-0 z-10 px-5 py-4 bg-[#1E1E1C] border-t border-[#2E2E2C] flex gap-2">
+        <div className="sticky bottom-0 z-10 px-5 py-4 bg-[#222220] border-t border-[#2E2E2C] flex gap-2">
           {step > 1 && (
             <button
               onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3 | 4)}
@@ -686,7 +700,7 @@ function PartRow({
 }: PartRowProps) {
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 bg-[#1E1E1C] transition-opacity duration-150 ${
+      className={`flex items-center gap-3 px-4 py-3 bg-[#343432] transition-opacity duration-150 ${
         !enabled ? "opacity-50" : ""
       }`}
     >
@@ -729,7 +743,7 @@ function PartRow({
               onChange={onMarksChange ?? (() => {})}
               disabled={!enabled}
             />
-            <span className="text-[11px] text-[#4A4A48]">marks</span>
+            <span className="text-[11px]">marks</span>
           </div>
         )}
       </div>

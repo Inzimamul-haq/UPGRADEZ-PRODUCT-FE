@@ -15,6 +15,7 @@ interface ParsedUnit {
   title: string;
   subtitle: string;
   content: string;
+  co: string[];
 }
 
 export default function SyllabusPdfGeneratorModal({
@@ -26,6 +27,7 @@ export default function SyllabusPdfGeneratorModal({
   const [parsedUnits, setParsedUnits] = useState<ParsedUnit[]>([]);
   const [error, setError] = useState("");
   const [isParsing, setIsParsing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [localSubjectName, setLocalSubjectName] = useState(
     subjectName || ""
   );
@@ -35,6 +37,7 @@ export default function SyllabusPdfGeneratorModal({
       setLocalSubjectName(subjectName || "");
       setError("");
       setParsedUnits([]);
+      setIsEditing(false);
     }
   }, [open, subjectName]);
 
@@ -264,6 +267,28 @@ export default function SyllabusPdfGeneratorModal({
     };
   };
 
+  const toggleCO = (unitIndex: number, co: string) => {
+    setParsedUnits((prev) => {
+      const updated = [...prev];
+      const unit = { ...updated[unitIndex] };
+      if (unit.co.includes(co)) {
+        unit.co = unit.co.filter((c) => c !== co);
+      } else {
+        unit.co = [...unit.co, co].sort();
+      }
+      updated[unitIndex] = unit;
+      return updated;
+    });
+  };
+
+  const updateUnit = (unitIndex: number, field: keyof ParsedUnit, value: string) => {
+    setParsedUnits((prev) => {
+      const updated = [...prev];
+      updated[unitIndex] = { ...updated[unitIndex], [field]: value };
+      return updated;
+    });
+  };
+
   const handleParse = async () => {
     setError("");
 
@@ -285,9 +310,11 @@ export default function SyllabusPdfGeneratorModal({
         title: `UNIT ${u.chapter}`,
         subtitle: u.title,
         content: Array.isArray(u.topics) ? u.topics.join("\n") : u.topics,
+        co: Array.isArray(u.co) ? u.co : [],
       }));
 
       setParsedUnits(mappedUnits);
+      setIsEditing(false);
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.error || "Failed to parse syllabus text. Please try again.");
@@ -297,7 +324,17 @@ export default function SyllabusPdfGeneratorModal({
   };
 
   const handleGeneratePDF = () => {
+    setError("");
     if (parsedUnits.length === 0) return;
+
+    const missingCoChapters = parsedUnits
+      .map((unit, index) => (unit.co && unit.co.length > 0 ? null : index + 1))
+      .filter((val) => val !== null);
+
+    if (missingCoChapters.length > 0) {
+      setError(`Please assign CO for chapter ${missingCoChapters.join(", ")} before downloading.`);
+      return;
+    }
 
     const doc = new jsPDF();
 
@@ -383,6 +420,22 @@ export default function SyllabusPdfGeneratorModal({
         );
 
         yPos += subtitleLines.length * 5 + 4;
+      }
+
+      /*
+       * CO Array Display
+       */
+      if (unit.co && unit.co.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10.5);
+        
+        doc.text(
+          `Course Outcomes: ${unit.co.join(", ")}`,
+          marginLeft,
+          yPos
+        );
+        
+        yPos += 7;
       }
 
       /*
@@ -536,12 +589,18 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
             <div className="flex flex-col gap-4">
 
               {/* Success */}
-              <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 p-3 text-[13px] text-green-400">
-                <CheckCircle2 size={16} />
-
-                <span>
-                  Successfully parsed {parsedUnits.length} units.
-                </span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 p-3 text-[13px] text-green-400">
+                  <CheckCircle2 size={16} />
+                  <span>
+                    Successfully parsed {parsedUnits.length} units.
+                  </span>
+                </div>
+                {error && (
+                  <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-[13px] text-red-400">
+                    {error}
+                  </div>
+                )}
               </div>
 
               {/* Preview */}
@@ -554,22 +613,77 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
                   >
 
                     {/* Unit */}
-                    <div className="mb-1 text-[14px] font-bold uppercase tracking-wide text-[#ECECEA]">
-                      {unit.title}
-                    </div>
-
-                    {/* Unit Heading */}
-                    {unit.subtitle && (
-                      <div className="mb-4 text-[15px] font-semibold text-[#B0B0AE]">
-                        {unit.subtitle}
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={unit.title}
+                        onChange={(e) => updateUnit(index, "title", e.target.value)}
+                        placeholder="e.g. UNIT I"
+                        className="mb-1 w-full bg-transparent text-[14px] font-bold uppercase tracking-wide text-[#ECECEA] focus:outline-none focus:ring-1 focus:ring-[#4A4A48] rounded border border-transparent hover:border-[#3A3A38] px-2 py-1 -ml-2"
+                      />
+                    ) : (
+                      <div className="mb-1 text-[14px] font-bold uppercase tracking-wide text-[#ECECEA]">
+                        {unit.title}
                       </div>
                     )}
 
-                    {/* Entire content */}
-                    {unit.content && (
-                      <div className="whitespace-pre-wrap text-[13px] leading-6 text-[#ECECEA]">
-                        {unit.content}
+                    {/* Unit Heading */}
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={unit.subtitle}
+                        onChange={(e) => updateUnit(index, "subtitle", e.target.value)}
+                        placeholder="Unit Heading (Optional)"
+                        className="mb-4 w-full bg-transparent text-[15px] font-semibold text-[#B0B0AE] focus:outline-none focus:ring-1 focus:ring-[#4A4A48] rounded border border-transparent hover:border-[#3A3A38] px-2 py-1 -ml-2"
+                      />
+                    ) : (
+                      unit.subtitle && (
+                        <div className="mb-4 text-[15px] font-semibold text-[#B0B0AE]">
+                          {unit.subtitle}
+                        </div>
+                      )
+                    )}
+
+                    {/* CO Selection */}
+                    <div className="mb-4">
+                      <label className="mb-2 block text-[12px] font-medium text-[#8C8C8A]">
+                        CO Mapping
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {["CO1", "CO2", "CO3", "CO4", "CO5", "CO6"].map((co) => {
+                          const isSelected = unit.co?.includes(co);
+                          return (
+                            <button
+                              key={co}
+                              onClick={() => toggleCO(index, co)}
+                              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
+                                isSelected
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  : "border-[#4A4A48] bg-[#1F1F1E] text-[#8C8C8A] hover:border-[#5A5A58] hover:text-[#ECECEA]"
+                              }`}
+                            >
+                              {co}
+                            </button>
+                          );
+                        })}
                       </div>
+                    </div>
+
+                    {/* Entire content */}
+                    {isEditing ? (
+                      <textarea
+                        value={unit.content}
+                        onChange={(e) => updateUnit(index, "content", e.target.value)}
+                        placeholder="Syllabus topics..."
+                        rows={Math.max(3, unit.content.split("\n").length)}
+                        className="w-full resize-y bg-transparent text-[13px] leading-6 text-[#ECECEA] focus:outline-none focus:ring-1 focus:ring-[#4A4A48] rounded border border-transparent hover:border-[#3A3A38] px-2 py-1 -ml-2"
+                      />
+                    ) : (
+                      unit.content && (
+                        <div className="whitespace-pre-wrap text-[13px] leading-6 text-[#ECECEA]">
+                          {unit.content}
+                        </div>
+                      )
                     )}
                   </div>
                 ))}
@@ -585,7 +699,7 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
           <button
             onClick={() => {
               if (parsedUnits.length > 0) {
-                setParsedUnits([]);
+                setIsEditing(!isEditing);
               } else {
                 onClose();
               }
@@ -593,7 +707,7 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
             className="rounded-md border border-[#3A3A38] px-4 py-2 text-[13px] text-[#B0B0AE] transition-colors hover:bg-[#2C2C2A]"
           >
             {parsedUnits.length > 0
-              ? "Edit Text"
+              ? isEditing ? "Done Editing" : "Edit Text"
               : "Cancel"}
           </button>
 

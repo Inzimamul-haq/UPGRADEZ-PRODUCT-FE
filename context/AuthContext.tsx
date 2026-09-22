@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register') || pathname?.startsWith('/forgot-password');
+      const isPublicRoute = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/super-admin-register') || pathname?.startsWith('/forgot-password') || pathname?.startsWith('/print-qp') || pathname?.startsWith('/print-msg');
 
       // If the user just logged out, skip the /me check entirely for up to 30 seconds.
       // Uses localStorage (not sessionStorage) so it survives hard refreshes.
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('newLoginAt', String(Date.now()));
             localStorage.removeItem('justLoggedOutAt');
           }
-          router.push(userPrefix === 'student' ? '/chat/new' : `/${userPrefix}/dashboard`);
+          router.push(`/${userPrefix}/dashboard`);
         } else if (
           // Faculty without department: always redirect to onboarding (no skip)
           (data.user?.role === 'faculty' && !data.user?.department?.id && !pathname?.startsWith('/onboarding')) ||
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (topLevelRoute && ['student', 'faculty', 'admin', 'super-admin'].includes(topLevelRoute) && !isAllowed) {
-            router.push(userPrefix === 'student' ? '/chat/new' : `/${userPrefix}/dashboard`);
+            router.push(`/${userPrefix}/dashboard`);
           }
         }
       } catch (err: any) {

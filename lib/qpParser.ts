@@ -62,6 +62,14 @@ export function stripGraphPrefix(raw: string): string {
 }
 
 /**
+ * Strips the [[meta:...]] prefix from a stored questionText, returning only the
+ * clean display text.
+ */
+export function stripMetaPrefix(raw: string): string {
+  return raw.replace(/\[\[meta:.*?\]\]/gi, '').trim();
+}
+
+/**
  * Parses the [[graph:...]] prefix into a JSON object if present.
  */
 export function extractGraphPrefix(raw: string): any | null {
@@ -105,9 +113,14 @@ export function encodeQPPrefix(q: StructuredQuestion): string {
 
 /** Extracts a marks value from trailing "(N Marks)" or "(N)" patterns. */
 function extractMarks(text: string): { cleanText: string; marks: number | undefined } {
-  const m = text.match(/[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]\s*$/i);
+  // Allow optional [[meta:...]] tags at the very end
+  const m = text.match(/[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]](?:\s*\[\[meta:.*?\]\])?\s*$/i);
   if (m) {
-    return { cleanText: text.slice(0, m.index).trim(), marks: parseInt(m[1], 10) };
+    // We just remove the exact marks string (e.g. "(13 Marks)"), leaving the meta tag intact if it was there
+    const marksStrMatch = m[0].match(/[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]/i);
+    const marksStr = marksStrMatch ? marksStrMatch[0] : m[0];
+    const cleanText = text.replace(marksStr, '').trim();
+    return { cleanText, marks: parseInt(m[1], 10) };
   }
   return { cleanText: text, marks: undefined };
 }
@@ -115,7 +128,8 @@ function extractMarks(text: string): { cleanText: string; marks: number | undefi
 function extractTotalMarks(text: string): number | undefined {
   let total = 0;
   let found = false;
-  const regex = /[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]/gi;
+  // Require the word 'mark(s)' or 'm' to avoid matching arbitrary numbers like '(4)' in questions
+  const regex = /[\(\[]\s*(\d+)\s+(?:marks?|m)\s*[\)\]]/gi;
   let match;
   while ((match = regex.exec(text)) !== null) {
     total += parseInt(match[1], 10);

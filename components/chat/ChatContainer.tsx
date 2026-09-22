@@ -621,12 +621,21 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     let chapterStr = 'all chapters';
     if (config.chapters.length > 0) {
-      if (config.chapters.length === 1) {
-        chapterStr = `chapter ${config.chapters[0]}`;
+      const chapterParts = config.chapters.map(ch => {
+        const chTopics = config.topics[ch];
+        if (!chTopics || chTopics.length === 0 || chTopics.includes('all')) {
+          return `chapter ${ch} (all topics)`;
+        } else {
+          return `chapter ${ch} (strictly ONLY from topics: ${chTopics.join(', ')})`;
+        }
+      });
+
+      if (chapterParts.length === 1) {
+        chapterStr = chapterParts[0];
       } else {
-        const last = config.chapters.slice(-1)[0];
-        const rest = config.chapters.slice(0, -1);
-        chapterStr = `chapter ${rest.join(', ')} and ${last}`;
+        const last = chapterParts.slice(-1)[0];
+        const rest = chapterParts.slice(0, -1);
+        chapterStr = `${rest.join(', ')} and ${last}`;
       }
     }
 
@@ -638,7 +647,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
     const markStr = distLines.length > 0 ? ` and mark is ${distLines.join(' , ')}` : '';
 
-    return `generate the ${kindLabel} from ${chapterStr} from topic${markStr}`;
+    return `generate the ${kindLabel} from ${chapterStr}${markStr}`;
   };
 
   // ── Context setup card generate handler ───────────────────────────────────
@@ -1030,7 +1039,7 @@ return (
       subjectName={syllabusSubjectName || sessionData?.subjectName || ''}
       entries={syllabusEntries}
     />
-    <ChatMessages messages={messages} chatId={chatId || ''} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
+    <ChatMessages messages={messages} chatId={chatId || ''} paperId={resolvedPaperId} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
 
     {assignModalOpen && sessionData && (
       <AssignModal
@@ -1043,22 +1052,25 @@ return (
       />
     )}
 
-    {/* Context Setup Card — shown inline above ChatInput for faculty fresh sessions */}
+    {/* Context Setup Card — shown connected to the input */}
     {showContextSetup && isFaculty && sessionData && (
-      <div className="flex-shrink-0 overflow-y-auto max-h-[65vh] border-t border-[#2E2E2C]">
-        <ContextSetupCard
-          examType={sessionData.examType}
-          paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
-          subjectName={sessionData.subjectName ?? ''}
-          syllabusEntries={syllabusEntries}
-          onGenerate={handleContextGenerate}
-          difficulty={difficultyMode}
-          onDifficultyChange={(mode) => {
-            setDifficultyMode(mode);
-            setDifficultyConfirmed(true);
-            setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
-          }}
-        />
+      <div className="absolute bottom-[80px] sm:bottom-[90px] left-0 right-0 z-30 flex justify-center px-2 sm:px-4 pointer-events-none">
+        <div className="w-full max-w-3xl pointer-events-auto max-h-[75vh] overflow-y-auto custom-scrollbar rounded-2xl">
+          <ContextSetupCard
+            examType={sessionData.examType}
+            paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
+            subjectName={sessionData.subjectName ?? ''}
+            syllabusEntries={syllabusEntries}
+            onGenerate={handleContextGenerate}
+            difficulty={difficultyMode}
+            onDifficultyChange={(mode) => {
+              setDifficultyMode(mode);
+              setDifficultyConfirmed(true);
+              setSessionData(prev => prev ? { ...prev, difficultyMode: mode } : prev);
+            }}
+            onClose={() => setShowContextSetup(false)}
+          />
+        </div>
       </div>
     )}
 
@@ -1086,6 +1098,8 @@ return (
             toast.error('Please confirm the difficulty mode on top to start generating.');
           }
         }}
+        showNewGenerationButton={isFaculty && !!sessionData && !showContextSetup && !sessionLocked}
+        onNewGenerationClick={() => setShowContextSetup(true)}
       />
     )}
   </div>

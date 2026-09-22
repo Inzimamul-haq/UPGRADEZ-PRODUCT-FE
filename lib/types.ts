@@ -195,6 +195,7 @@ export interface ChatContainerProps {
 export interface ChatMessageProps {
   message: Message;
   chatId: string;
+  paperId?: string | null;
   onAction?: (messageId: string, actionId: string) => void;
   onEditSubmit?: (messageId: string, content: string) => Promise<void>;
 }
@@ -202,6 +203,7 @@ export interface ChatMessageProps {
 export interface ChatMessagesProps {
   messages: Message[];
   chatId: string;
+  paperId?: string | null;
   isStreaming: boolean;
   onAction?: (messageId: string, actionId: string) => void;
   onEditSubmit?: (messageId: string, content: string) => Promise<void>;

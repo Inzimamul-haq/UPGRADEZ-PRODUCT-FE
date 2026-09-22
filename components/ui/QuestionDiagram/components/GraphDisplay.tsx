@@ -13,7 +13,7 @@ export interface GraphEdge {
 }
 
 export interface GraphDefinition {
-  nodes: string[];
+  nodes: (string | { id: string; label?: string; value?: string })[];
   edges: GraphEdge[];
   directed?: boolean;
 }
@@ -31,7 +31,7 @@ interface GraphDisplayProps {
   nodePositions?: Record<string, { x: number; y: number }>;
 }
 
-export function generateCircularLayout(nodes: string[], width: number, height: number): Record<string, { x: number; y: number }> {
+export function generateCircularLayout(nodes: (string | { id: string })[], width: number, height: number): Record<string, { x: number; y: number }> {
   const cx = width / 2;
   const cy = height / 2;
   const radius = Math.min(width, height) / 2 - 30; // 30px padding
@@ -39,7 +39,8 @@ export function generateCircularLayout(nodes: string[], width: number, height: n
   const positions: Record<string, { x: number; y: number }> = {};
   const n = nodes.length;
   
-  nodes.forEach((node, i) => {
+  nodes.forEach((nodeItem, i) => {
+    const node = typeof nodeItem === 'string' ? nodeItem : nodeItem.id;
     const angle = (i * 2 * Math.PI) / n - Math.PI / 2; // Start from top
     positions[node] = {
       x: cx + radius * Math.cos(angle),
@@ -62,7 +63,7 @@ export function GraphDisplay({
   visitedNodes = new Set(),
   nodePositions
 }: GraphDisplayProps) {
-  const positions = nodePositions || generateCircularLayout(graph.nodes, width, height);
+  const positions = nodePositions || generateCircularLayout(graph.nodes || [], width, height);
   const isDirected = graph.directed !== false;
   
   return (
@@ -92,7 +93,7 @@ export function GraphDisplay({
         </defs>
 
         {/* Edges */}
-        {graph.edges.map((edge, i) => {
+        {(graph.edges || []).map((edge, i) => {
           const fromPos = positions[edge.from];
           const toPos = positions[edge.to];
           if (!fromPos || !toPos) return null;
@@ -141,12 +142,14 @@ export function GraphDisplay({
         })}
 
         {/* Nodes */}
-        {graph.nodes.map((node) => {
-          const pos = positions[node];
+        {(graph.nodes || []).map((nodeItem, idx) => {
+          const nodeId = typeof nodeItem === 'string' ? nodeItem : nodeItem.id;
+          const nodeLabel = typeof nodeItem === 'string' ? nodeItem : (nodeItem.label || nodeItem.value || nodeItem.id);
+          const pos = positions[nodeId];
           if (!pos) return null;
           
-          const isActive = activeNodes.has(node);
-          const isVisited = visitedNodes.has(node);
+          const isActive = activeNodes.has(nodeId);
+          const isVisited = visitedNodes.has(nodeId);
           
           let bgColor = nodeColor;
           let textColor = "#ECECEA";
@@ -162,7 +165,7 @@ export function GraphDisplay({
           }
 
           return (
-            <g key={`node-${node}`} className="transition-all duration-300">
+            <g key={`node-${nodeId}-${idx}`} className="transition-all duration-300">
               <circle
                 cx={pos.x}
                 cy={pos.y}
@@ -181,7 +184,7 @@ export function GraphDisplay({
                 dominantBaseline="central"
                 fontWeight="600"
               >
-                {node}
+                {nodeLabel}
               </text>
             </g>
           );
