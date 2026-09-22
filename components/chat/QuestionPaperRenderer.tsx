@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import { DiagramRenderer } from '../ui/DiagramRenderer';
+import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 
 interface QuestionPaperRendererProps {
   content: string;
@@ -21,9 +21,9 @@ interface ParsedQuestion {
 
 export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   const questions: ParsedQuestion[] = [];
-  
+
   const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
-  
+
   let match;
   while ((match = questionRegex.exec(content)) !== null) {
     const qNo = parseInt(match[1], 10);
@@ -31,7 +31,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
     const marks = parseFloat(match[3]);
     const extraContent = match[4];
     const metaStr = match[5];
-    
+
     let meta = { co: "", rbt: "", po: "" };
     try {
       const parsedMeta = JSON.parse(metaStr);
@@ -40,18 +40,18 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
         rbt: parsedMeta.rbt || parsedMeta.RBT || "",
         po: parsedMeta.po || parsedMeta.PO || ""
       };
-    } catch (e) {}
+    } catch (e) { }
 
     let diagramSpec = undefined;
     let diagramType = undefined;
-    
+
     const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
     const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
     if (diagMatch) {
       diagramType = diagMatch[1].toLowerCase();
       try {
         diagramSpec = JSON.parse(diagMatch[2]);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     questions.push({
@@ -102,7 +102,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
                 <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                   {q.text}
                 </ReactMarkdown>
-                
+
                 {q.diagramSpec && (() => {
                   const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
                   const diagSubtype = q.diagramSpec.subtype || '';
@@ -114,7 +114,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
                 })()}
               </div>
             </div>
-            
+
             {/* Right side: Clean alignment for marks & meta */}
             <div className="flex-shrink-0 flex flex-col items-end gap-1.5 text-[12px] text-[#A1A19A] tracking-wider whitespace-nowrap mt-1">
               <span className="font-medium text-[#ECECEA]">({q.marks} Marks)</span>
@@ -125,7 +125,7 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
               </div>
             </div>
           </div>
-          
+
           {qIdx < group.length - 1 && (
             <div className="flex items-center gap-3 py-1 px-1 my-4">
               <div className="flex-1 border-t border-dashed border-[#3A3A38]" />

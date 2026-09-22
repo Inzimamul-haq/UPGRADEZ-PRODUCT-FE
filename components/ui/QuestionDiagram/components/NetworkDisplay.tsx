@@ -1,5 +1,5 @@
 import React from 'react';
-import { normalizeDiagramSpec, generateCircularLayout } from './layoutUtils';
+import { normalizeDiagramSpec, generateCircularLayout } from '../../layoutUtils';
 
 export function NetworkDisplay({ data, subtype, width = 400, height = 400 }: any) {
   const { nodes, edges } = normalizeDiagramSpec(data);

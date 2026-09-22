@@ -39,7 +39,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
         </h1>
 
         <div className="flex items-center gap-1.5">
-          {role !== 'super_admin' && (
+          {role !== 'super_admin' && role !== 'student' && (
             <button
               onClick={openSearch}
               className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-[#ECECEA]"
@@ -58,7 +58,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
       </div>
 
       {/* New Chat / New Paper */}
-      {role !== 'super_admin' && (
+      {role !== 'super_admin' && role !== 'student' && (
         <div className="flex-shrink-0 px-3 pb-2">
           <Link
             href={isPaperRole ? `/chat/new?role=${role}` : '/chat/new'}
@@ -83,7 +83,7 @@ export function Sidebar({ role, navItems, isOpen, setIsOpen }: SidebarProps) {
           ))}
         </div>
 
-        {role !== 'super_admin' && <SidebarRecentChats />}
+        {role !== 'super_admin' && role !== 'student' && <SidebarRecentChats />}
       </div>
 
       {/* Footer */}

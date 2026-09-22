@@ -1,5 +1,5 @@
 import React from 'react';
-import { normalizeDiagramSpec, computeLayerLayout } from './layoutUtils';
+import { normalizeDiagramSpec, computeLayerLayout } from '../../layoutUtils';
 
 export function FlowchartDisplay({ data, subtype, width = 500, height = 320 }: any) {
   const { nodes, edges } = normalizeDiagramSpec(data);

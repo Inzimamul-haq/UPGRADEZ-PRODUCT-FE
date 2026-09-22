@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, AlertCircle, FileDown, CheckCircle2 } from 'lucide-react';
 import api from '@/lib/api';
-import { DiagramRenderer } from '../ui/DiagramRenderer';
+import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -31,7 +31,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
   const [questions, setQuestions] = useState<IQQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Array of question IDs in the order they were selected
   const [selections, setSelections] = useState<string[]>([]);
 
@@ -64,7 +64,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
             if (metaTagMatch) {
               try {
                 metadata = { ...metadata, ...JSON.parse(metaTagMatch[1]) };
-              } catch (e) {}
+              } catch (e) { }
             }
 
             // 3. Clean up bracket tags
@@ -88,16 +88,16 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
                 const raw = metaJsonMatch[0].replace(/([a-zA-Z0-9_]+):/g, '"$1":').replace(/'/g, '"');
                 metadata = { ...metadata, ...JSON.parse(raw) };
                 text = text.replace(metaJsonMatch[0], '');
-              } catch (e) {}
+              } catch (e) { }
             }
 
             // 5. Extract trailing bare text tokens (CO3, PO2, L4)
             const coMatch = text.match(/\b(CO[1-6])\b/gi);
             if (coMatch) metadata['CO'] = Array.from(new Set(coMatch.map((s: string) => s.toUpperCase()))).join(', ');
-            
+
             const poMatch = text.match(/\b(PO\d+)\b/gi);
             if (poMatch) metadata['PO'] = Array.from(new Set(poMatch.map((s: string) => s.toUpperCase()))).join(', ');
-            
+
             const rbtMatch = text.match(/\b(L[1-6])\b/gi);
             if (rbtMatch) metadata['RBT'] = Array.from(new Set(rbtMatch.map((s: string) => s.toUpperCase()))).join(', ');
 
@@ -133,7 +133,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
   const groupedQuestions = useMemo(() => {
     const groups: Record<number, IQQuestion[]> = {};
     const noMarks: IQQuestion[] = [];
-    
+
     questions.forEach(q => {
       if (q.marks !== null) {
         if (!groups[q.marks]) groups[q.marks] = [];
@@ -142,7 +142,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
         noMarks.push(q);
       }
     });
-    
+
     const sortedMarkKeys = Object.keys(groups).map(Number).sort((a, b) => a - b);
     return { groups, sortedMarkKeys, noMarks };
   }, [questions]);
@@ -164,10 +164,10 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
   const handleCompile = () => {
     // Preserve selection order!
     const selectedQs = selections.map(id => questions.find(q => q.id === id)!).filter(Boolean);
-    
+
     // Group by marks ascending
     const uniqueMarks = Array.from(new Set(selectedQs.map(q => q.marks).filter(m => m !== null) as number[])).sort((a, b) => a - b);
-    
+
     let markdown = '';
     let globalCounter = 1;
     const partLabels = ['A', 'B', 'C', 'D', 'E'];
@@ -175,7 +175,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
     uniqueMarks.forEach((mark, index) => {
       const partQs = selectedQs.filter(q => q.marks === mark);
       const partLabel = partLabels[index] || `Part ${index + 1}`;
-      
+
       markdown += `## Part ${partLabel} — ${mark} Marks\n\n`;
 
       if (mark >= 11) {
@@ -185,7 +185,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
           const isA = i % 2 === 0;
           let text = q.text.replace(/^\s*\d+[\.\)]\s*/, '');
           if (q.marks) {
-             text += ` (${q.marks} Marks)`;
+            text += ` (${q.marks} Marks)`;
           }
 
           if (isA) {
@@ -194,7 +194,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
             markdown += `[[meta:${JSON.stringify(q.metadata || {})}]]\n\n`;
             // If there's a next question for part 'b', insert OR
             if (i < partQs.length - 1) {
-               markdown += `\n\n**OR**\n\n`;
+              markdown += `\n\n**OR**\n\n`;
             }
           } else {
             markdown += `${globalCounter}. b) ${text}\n\n`;
@@ -242,20 +242,20 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
 
     const selectedQs = selections.map(id => questions.find(q => q.id === id)!).filter(Boolean);
     const uniqueMarks = Array.from(new Set(selectedQs.map(q => q.marks).filter(m => m !== null) as number[])).sort((a, b) => a - b);
-    
+
     let globalCounter = 1;
     let label = '';
-    
+
     uniqueMarks.forEach((mark) => {
       const partQs = selectedQs.filter(q => q.marks === mark);
       if (mark >= 11) {
         for (let i = 0; i < partQs.length; i++) {
           const isA = i % 2 === 0;
           if (partQs[i].id === qId) {
-             label = `${globalCounter}${isA ? 'a' : 'b'}`;
+            label = `${globalCounter}${isA ? 'a' : 'b'}`;
           }
           if (!isA || i === partQs.length - 1) {
-             globalCounter++;
+            globalCounter++;
           }
         }
       } else {
@@ -316,7 +316,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
           <h3 className="text-[12px] sm:text-[15px] font-semibold text-[#ECECEA]">Compile Exam Paper</h3>
           <p className="text-[9px] sm:text-[13px] text-[#A1A19A] mt-1">Select questions from the IQ pool for {subjectName}</p>
         </div>
-        
+
         {/* Stats summary */}
         <div className="flex gap-4 text-[8px] sm:text-[12px] font-medium">
           <div className={`px-3 py-1.5 rounded-md flex items-center gap-2 ${stats.count > 0 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-[#242422] text-[#8C8C8A] border border-transparent'}`}>
@@ -334,20 +334,20 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
               <span className="bg-[#242422] text-[#A1A19A] px-2 py-0.5 rounded text-[12px] font-mono">{markKey} Marks</span>
               <span className="text-[#8C8C8A] font-normal text-[13px]">{groupedQuestions.groups[markKey].length} questions available</span>
             </h4>
-            
+
             <div className="space-y-2">
               {groupedQuestions.groups[markKey].map(q => (
-                <QuestionRow 
-                  key={q.id} 
-                  question={q} 
-                  displayLabel={getDisplayLabel(q.id)} 
-                  onSelect={() => handleSelect(q.id)} 
+                <QuestionRow
+                  key={q.id}
+                  question={q}
+                  displayLabel={getDisplayLabel(q.id)}
+                  onSelect={() => handleSelect(q.id)}
                 />
               ))}
             </div>
           </div>
         ))}
-        
+
         {groupedQuestions.noMarks.length > 0 && (
           <div className="space-y-4">
             <h4 className="text-[14px] font-semibold text-[#ECECEA] flex items-center gap-2 border-b border-[#2E2E2C] pb-2">
@@ -355,11 +355,11 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
             </h4>
             <div className="space-y-2">
               {groupedQuestions.noMarks.map(q => (
-                <QuestionRow 
-                  key={q.id} 
-                  question={q} 
-                  displayLabel={getDisplayLabel(q.id)} 
-                  onSelect={() => handleSelect(q.id)} 
+                <QuestionRow
+                  key={q.id}
+                  question={q}
+                  displayLabel={getDisplayLabel(q.id)}
+                  onSelect={() => handleSelect(q.id)}
                 />
               ))}
             </div>
@@ -369,7 +369,7 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-[#2E2E2C] flex items-center justify-between sticky bottom-0 bg-[#161615] z-10">
-        <button 
+        <button
           onClick={onCancel}
           className="px-4 py-2 text-[13px] font-medium text-[#ECECEA] bg-[#1E1E1C] border border-[#3A3A38] rounded-md hover:bg-[#242422] hover:border-[#4A4A48] transition-colors"
         >
@@ -379,8 +379,8 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
           onClick={handleCompile}
           disabled={!hasSelections}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-[13px] font-semibold transition-all shadow-sm
-            ${hasSelections 
-              ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/20' 
+            ${hasSelections
+              ? 'bg-green-600 text-white hover:bg-green-700 shadow-green-900/20'
               : 'bg-[#242422] text-[#6C6C6A] cursor-not-allowed'
             }`}
         >
@@ -398,7 +398,7 @@ function QuestionRow({ question, displayLabel, onSelect }: { question: IQQuestio
   const isSelected = displayLabel !== null;
 
   return (
-    <div 
+    <div
       onClick={onSelect}
       className={`flex items-start gap-4 p-3 rounded-lg border transition-colors cursor-pointer select-none ${isSelected ? 'bg-[#242422]/50 border-green-500/30' : 'bg-transparent border-[#2E2E2C] hover:bg-[#1E1E1C]'}`}
     >
@@ -417,7 +417,7 @@ function QuestionRow({ question, displayLabel, onSelect }: { question: IQQuestio
             {displayText}
           </ReactMarkdown>
         </div>
-        
+
         {/* Render Metadata Badges */}
         {question.metadata && Object.keys(question.metadata).length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
@@ -432,11 +432,11 @@ function QuestionRow({ question, displayLabel, onSelect }: { question: IQQuestio
         {/* Render Diagram */}
         {question.diagramSpec && (
           <div className="mt-3 p-2 bg-black/20 rounded-md border border-[#2E2E2C] flex justify-center">
-            <DiagramRenderer 
-              type={question.diagramSpec.type || question.diagramSpec.diagramType || 'unknown'} 
-              spec={question.diagramSpec} 
-              width={300} 
-              height={200} 
+            <DiagramRenderer
+              type={question.diagramSpec.type || question.diagramSpec.diagramType || 'unknown'}
+              spec={question.diagramSpec}
+              width={300}
+              height={200}
             />
           </div>
         )}

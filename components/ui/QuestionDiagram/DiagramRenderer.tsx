@@ -1,17 +1,17 @@
-import { GraphDisplay } from './GraphDisplay';
-import { TreeDisplay } from './TreeDisplay';
-import { CircuitDisplay } from './CircuitDisplay';
-import { SchematicDisplay } from './SchematicDisplay';
-import { GeometryDisplay } from './GeometryDisplay';
-import { StructuralDisplay } from './StructuralDisplay';
-import { BlockDisplay } from './BlockDisplay';
-import { FlowchartDisplay } from './FlowchartDisplay';
-import { ArchitectureDisplay } from './ArchitectureDisplay';
-import { NetworkDisplay } from './NetworkDisplay';
-import { WaveformDisplay } from './WaveformDisplay';
-import { TableDisplay } from './TableDisplay';
-import { MechStructuralDisplay } from './MechStructuralDisplay';
-import { EngineeringDrawingDisplay } from './EngineeringDrawingDisplay';
+import { GraphDisplay } from './components/GraphDisplay';
+import { TreeDisplay } from './components/TreeDisplay';
+import { CircuitDisplay } from './components/mech_structural/CircuitDisplay';
+import { SchematicDisplay } from './components/schemantic/SchematicDisplay';
+import { GeometryDisplay } from './components/geomentry/GeometryDisplay';
+import { StructuralDisplay } from './components/structural/StructuralDisplay';
+import { BlockDisplay } from './components/block/BlockDisplay';
+import { FlowchartDisplay } from './components/FlowchartDisplay';
+import { ArchitectureDisplay } from './components/ArchitectureDisplay';
+import { NetworkDisplay } from './components/NetworkDisplay';
+import { WaveformDisplay } from './components/WaveformDisplay';
+import { TableDisplay } from './components/TableDisplay';
+import { MechStructuralDisplay } from './components/mech_structural/MechStructuralDisplay';
+import { EngineeringDrawingDisplay } from './components/geomentry/EngineeringDrawingDisplay';
 
 interface DiagramRendererProps {
   type: string;

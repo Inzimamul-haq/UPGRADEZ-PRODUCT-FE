@@ -13,8 +13,8 @@ import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import 'katex/dist/katex.min.css';
 import { DiagramCard } from './DiagramCard';
 
-import { SolutionRenderer, MultiSchemaData } from './SolutionRenderer';
-import { DiagramRenderer } from '../ui/DiagramRenderer';
+import { SolutionRenderer, MultiSchemaData } from './Diagram/SolutionRenderer';
+import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { QuestionPaperRenderer } from './QuestionPaperRenderer';
 import { QuestionPaperEditor } from './QuestionPaperEditor';
 
@@ -255,7 +255,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
       let endpoint = (paperId && message.isAssigned)
         ? `/api/question-papers/${paperId}/generate-pdf`
         : `/api/chats/messages/${message.id}/generate-pdf`;
-      
+
       let res;
       try {
         res = await api.get(endpoint, { responseType: 'blob' });
@@ -268,7 +268,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
           throw err;
         }
       }
-      
+
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -281,7 +281,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
       }, 5000);
-      
+
       toast.success('PDF Generated successfully!');
     } catch (error: any) {
       toast.error('Failed to download PDF');
@@ -663,102 +663,102 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                     />
                   </motion.div>
                 ) : (
-                <motion.div
-                  key="edit"
-                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                  className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
-                >
-                  <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                    className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
+                  >
+                    <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-col">
-                    {editSegmentsState.map((seg, i) => {
-                      if (seg.type === 'text') {
-                        return (
-                          <textarea
-                            key={i}
-                            ref={el => {
-                              if (el) {
-                                el.style.height = 'auto';
-                                el.style.height = el.scrollHeight + 'px';
-                              }
-                            }}
-                            value={seg.content}
-                            onChange={e => {
-                              const newSegs = [...editSegmentsState];
-                              newSegs[i] = { type: 'text', content: e.target.value };
-                              setEditSegmentsState(newSegs);
-                            }}
-                            className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
-                            disabled={isSaving}
-                            placeholder="Make changes to the AI generated content..."
-                          />
-                        );
-                      } else if (seg.type === 'graph') {
-                        return (
-                          <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
-                            <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
-                            <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
-                          </div>
-                        );
-                      } else if (seg.type === 'solution') {
-                        return (
-                          <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
-                            <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
-                            <SolutionRenderer
-                              data={seg.data}
-                              messageId={message.id}
-                              chatId={chatId}
-                              stepExplanations={message.stepExplanations ?? []}
+                    <div className="flex flex-col">
+                      {editSegmentsState.map((seg, i) => {
+                        if (seg.type === 'text') {
+                          return (
+                            <textarea
+                              key={i}
+                              ref={el => {
+                                if (el) {
+                                  el.style.height = 'auto';
+                                  el.style.height = el.scrollHeight + 'px';
+                                }
+                              }}
+                              value={seg.content}
+                              onChange={e => {
+                                const newSegs = [...editSegmentsState];
+                                newSegs[i] = { type: 'text', content: e.target.value };
+                                setEditSegmentsState(newSegs);
+                              }}
+                              className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[150px] max-h-[70vh] resize-none custom-scrollbar focus:outline-none leading-relaxed"
+                              disabled={isSaving}
+                              placeholder="Make changes to the AI generated content..."
                             />
-                          </div>
-                        );
-                      } else {
-                        return null;
-                      }
-                    })}
-                  </div>
-                  <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
-                    <button
-                      onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
-                      className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (onEditSubmit) {
-                          setIsSaving(true);
-                          try {
-                            const newContent = editSegmentsState.map(seg => {
-                              if (seg.type === 'text') return seg.content;
-                              if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
-                              if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
-                              return '';
-                            }).join('\n\n');
-                            await onEditSubmit(message.id, newContent);
-                            setIsEditing(false);
-                          } catch (e) {
-                            // Error toast handled by parent
-                          } finally {
-                            setIsSaving(false);
-                          }
+                          );
+                        } else if (seg.type === 'graph') {
+                          return (
+                            <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
+                              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                              <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                            </div>
+                          );
+                        } else if (seg.type === 'solution') {
+                          return (
+                            <div key={i} className="my-2 opacity-80 pointer-events-none relative mx-4">
+                              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                              <SolutionRenderer
+                                data={seg.data}
+                                messageId={message.id}
+                                chatId={chatId}
+                                stepExplanations={message.stepExplanations ?? []}
+                              />
+                            </div>
+                          );
+                        } else {
+                          return null;
                         }
-                      }}
-                      disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
-                      className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {isSaving ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </motion.div>
+                      })}
+                    </div>
+                    <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
+                      <button
+                        onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
+                        className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (onEditSubmit) {
+                            setIsSaving(true);
+                            try {
+                              const newContent = editSegmentsState.map(seg => {
+                                if (seg.type === 'text') return seg.content;
+                                if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
+                                if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
+                                return '';
+                              }).join('\n\n');
+                              await onEditSubmit(message.id, newContent);
+                              setIsEditing(false);
+                            } catch (e) {
+                              // Error toast handled by parent
+                            } finally {
+                              setIsSaving(false);
+                            }
+                          }
+                        }}
+                        disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
+                        className="px-5 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:shadow-amber-500/20 hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </motion.div>
                 )
               ) : (
                 <motion.div
@@ -773,41 +773,41 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                   ) : (
                     segmentsMain.map((seg, i) => (
                       <div key={i} className="mb-4">
-                      {seg.type === 'text' ? (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={markdownComponents}
-                        >
-                          {seg.content}
-                        </ReactMarkdown>
-                      ) : seg.type === 'graph' ? (
-                        (() => {
-                          const diagType = seg.data.type || seg.data.format || 'unknown';
-                          const diagSubtype = seg.data.subtype || '';
-                          const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform'].includes(diagType);
-                          const renderWidth = isWide ? 500 : 300;
-                          const renderHeight = isWide ? 320 : 250;
-                          return (
-                            <div className="my-4 flex flex-col items-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                              <div className="text-xs text-[#A1A1AA] mb-2 font-medium tracking-wide uppercase">
-                                {diagType} {diagSubtype ? `— ${diagSubtype.replace(/_/g, ' ')}` : ''}
+                        {seg.type === 'text' ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath, remarkGfm]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={markdownComponents}
+                          >
+                            {seg.content}
+                          </ReactMarkdown>
+                        ) : seg.type === 'graph' ? (
+                          (() => {
+                            const diagType = seg.data.type || seg.data.format || 'unknown';
+                            const diagSubtype = seg.data.subtype || '';
+                            const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform'].includes(diagType);
+                            const renderWidth = isWide ? 500 : 300;
+                            const renderHeight = isWide ? 320 : 250;
+                            return (
+                              <div className="my-4 flex flex-col items-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
+                                <div className="text-xs text-[#A1A1AA] mb-2 font-medium tracking-wide uppercase">
+                                  {diagType} {diagSubtype ? `— ${diagSubtype.replace(/_/g, ' ')}` : ''}
+                                </div>
+                                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={seg.data} width={renderWidth} height={renderHeight} />
                               </div>
-                              <DiagramRenderer type={diagType} subtype={diagSubtype} spec={seg.data} width={renderWidth} height={renderHeight} />
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        <SolutionRenderer
-                          data={seg.data}
-                          messageId={message.id}
-                          chatId={chatId}
-                          stepExplanations={message.stepExplanations ?? []}
-                          batchQuestionNo={null}
-                        />
-                      )}
-                    </div>
-                  )))}
+                            );
+                          })()
+                        ) : (
+                          <SolutionRenderer
+                            data={seg.data}
+                            messageId={message.id}
+                            chatId={chatId}
+                            stepExplanations={message.stepExplanations ?? []}
+                            batchQuestionNo={null}
+                          />
+                        )}
+                      </div>
+                    )))}
                 </motion.div>
               )}
             </AnimatePresence>

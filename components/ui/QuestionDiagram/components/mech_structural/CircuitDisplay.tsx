@@ -1,5 +1,5 @@
 import React from 'react';
-import { normalizeDiagramSpec, computeLayerLayout } from './layoutUtils';
+import { normalizeDiagramSpec, computeLayerLayout } from '../../../layoutUtils';
 
 const zigzagPoints = (x: number, y: number, w: number, h: number) => {
   const steps = 6;

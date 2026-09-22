@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { cleanQuestionText } from '@/lib/utils';
 import { toDecoded, type DecodedQuestion } from '@/lib/examFormat';
-import { DiagramRenderer } from '@/components/ui/DiagramRenderer';
+import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 
 interface QuestionsPanelProps {
   isOpen: boolean;
@@ -17,17 +17,16 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
     <>
       {/* Backdrop for mobile mostly, but good for focus */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Drawer */}
-      <div 
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-[#1C1C1B] border-l border-[#3A3A38] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+      <div
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-[#1C1C1B] border-l border-[#3A3A38] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#3A3A38]">
           <div>
@@ -40,14 +39,14 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
               </div>
             )}
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="text-[#8C8C8A] hover:text-[#ECECEA] transition-colors"
           >
             <X size={20} />
           </button>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {decodedQuestions.length === 0 ? (
             <p className="text-[13px] text-[#8C8C8A] text-center mt-10">No questions available.</p>
@@ -58,7 +57,7 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
               // For simplicity in the panel, just numbering them sequentially or using subLabel
               const label = hasQpPrefix && q.subLabel ? `${q.groupIndex}${q.subLabel}` : `Q${i + 1}`;
 
-              
+
               return (
                 <div key={q.id || i} className="bg-[#2C2C2A] p-4 rounded-xl border border-[#3A3A38] flex flex-col gap-3">
                   {/* Header: Number & Marks & Badges */}
@@ -91,7 +90,7 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Question Text */}
                   <p className="text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">
                     {cleanQuestionText(q.text)}
@@ -100,11 +99,11 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
                   {/* Diagram */}
                   {q.diagramSpec && (
                     <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38]">
-                      <DiagramRenderer 
-                        type={q.diagramSpec.type || q.diagramType || 'unknown'} 
-                        spec={q.diagramSpec} 
-                        width={280} 
-                        height={200} 
+                      <DiagramRenderer
+                        type={q.diagramSpec.type || q.diagramType || 'unknown'}
+                        spec={q.diagramSpec}
+                        width={280}
+                        height={200}
                       />
                     </div>
                   )}

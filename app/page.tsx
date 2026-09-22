@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 const roleToPath = (role: string) => {
-  if (role === 'student') return '/chat/new';
   if (role === 'super_admin') return '/super-admin/dashboard';
   return `/${role}/dashboard`;
 };

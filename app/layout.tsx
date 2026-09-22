@@ -6,7 +6,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
 import { PWA_CONFIG } from "@/config/pwa";
-import CapacitorStatusBar from "@/components/ui/CapacitorStatusBar";
+import CapacitorStatusBar from "@/components/ui/QuestionDiagram/components/mech_structural/CapacitorStatusBar";
 
 const inter = Inter({
   subsets: ["latin"],

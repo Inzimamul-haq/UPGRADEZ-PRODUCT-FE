@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { HelpCircle, Loader2, User, Bot } from 'lucide-react';
 import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
-import { GraphDefinition, GraphDisplay, generateCircularLayout } from '@/components/ui/GraphDisplay';
+import { GraphDefinition, GraphDisplay, generateCircularLayout } from '@/components/ui/QuestionDiagram/components/GraphDisplay';
 import { isTree, generateTreeLayout } from '@/lib/graphUtils';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -33,19 +33,19 @@ export interface GraphTraversalSolutionData {
   finalAnswer: string;
 }
 
-function StepCard({ 
-  step, 
+function StepCard({
+  step,
   isLast,
-  graph, 
+  graph,
   layout,
   messageId,
   chatId,
   stepExplanations = [],
   batchQuestionNo
-}: { 
-  step: GraphTraversalStep; 
-  isLast: boolean; 
-  graph: GraphDefinition; 
+}: {
+  step: GraphTraversalStep;
+  isLast: boolean;
+  graph: GraphDefinition;
   layout: Record<string, { x: number; y: number }>;
   messageId?: string;
   chatId?: string;
@@ -54,20 +54,20 @@ function StepCard({
 }) {
   const [doubtOpen, setDoubtOpen] = useState(false);
   const [doubtInput, setDoubtInput] = useState('');
-  
+
   const stepLabel = step.step;
   const { submitDoubt, loading } = useStepDoubt(chatId, messageId, batchQuestionNo);
-  
+
   const [localDoubts, setLocalDoubts] = useState<StepExplanation[]>(() => {
     return stepExplanations.filter(e => e.question.startsWith(`Step ${stepLabel}`));
   });
 
   const handleDoubtSubmit = async (text: string) => {
     if (!text.trim() || loading) return;
-    
+
     // For graph step, stepContent is just the explanation
     const doubtText = `Step ${stepLabel} — ${text}`;
-    
+
     const newRow = await submitDoubt(stepLabel, doubtText);
     if (newRow) {
       setLocalDoubts(prev => [...prev, newRow]);
@@ -99,7 +99,7 @@ function StepCard({
             </div>
           </div>
         )}
-        
+
         {state.stack && (
           <div className="bg-[#2C2C2A] rounded p-3 border border-[#3A3A38]">
             <span className="text-[11px] font-bold text-[#8C8C8A] uppercase mb-2 block">Stack</span>
@@ -140,7 +140,7 @@ function StepCard({
       {!isLast && (
         <div className="absolute left-[11px] top-8 bottom-[-24px] w-[2px] bg-[#3A3A38]"></div>
       )}
-      
+
       {/* Step Node */}
       <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-[#2C2C2A] border-2 border-[#3A3A38] flex items-center justify-center text-[10px] font-bold text-[#8C8C8A]">
         {step.step}
@@ -155,7 +155,7 @@ function StepCard({
             </ReactMarkdown>
           </div>
           {messageId && (
-            <button 
+            <button
               onClick={() => setDoubtOpen(!doubtOpen)}
               title="I have a doubt about this step"
               className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#2C2C2A] hover:bg-[#3A3A38] transition-colors text-[#818CF8] shrink-0 mt-0.5"
@@ -198,7 +198,7 @@ function StepCard({
         <div className="flex flex-col md:flex-row gap-4">
           <div className="w-full md:w-1/2 min-w-0 flex items-center justify-center bg-[#222220] rounded-xl border border-[#3A3A38] p-4">
             {Object.keys(layout).length > 0 && (
-              <GraphDisplay 
+              <GraphDisplay
                 graph={graph}
                 width={300}
                 height={220}
@@ -214,8 +214,8 @@ function StepCard({
         </div>
 
         {localDoubts.map(d => (
-          <motion.div 
-            key={d.id} 
+          <motion.div
+            key={d.id}
             initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
             className="mt-4 p-4 bg-[#252523] border border-[#3A3A38]/50 border-l-[3px] border-l-[#818CF8] rounded-xl flex flex-col gap-4"
           >
@@ -242,13 +242,13 @@ function StepCard({
   );
 }
 
-export function GraphTraversalSolution({ 
+export function GraphTraversalSolution({
   data,
   messageId,
   chatId,
   stepExplanations = [],
   batchQuestionNo = null,
-}: { 
+}: {
   data: GraphTraversalSolutionData;
   messageId?: string;
   chatId?: string;
@@ -275,7 +275,7 @@ export function GraphTraversalSolution({
   return (
     <div className="font-sans text-[#ECECEA] space-y-6">
       <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl overflow-hidden shadow-lg p-5">
-        
+
         {/* Title */}
         <div className="flex items-center gap-2 mb-6 border-b border-[#3A3A38] pb-3">
           <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
@@ -287,10 +287,10 @@ export function GraphTraversalSolution({
           <span className="text-[11px] font-bold text-[#8C8C8A] uppercase mb-4 block tracking-wider">Execution Steps</span>
           <div className="flex flex-col">
             {data.steps.map((step, idx) => (
-              <StepCard 
-                key={idx} 
-                step={step} 
-                isLast={idx === data.steps.length - 1} 
+              <StepCard
+                key={idx}
+                step={step}
+                isLast={idx === data.steps.length - 1}
                 graph={data.graph}
                 layout={layout}
                 messageId={messageId}

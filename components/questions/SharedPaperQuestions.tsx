@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import { decodeQPPrefix, stripQPPrefix, extractGraphPrefix, stripGraphPrefix, stripMetaPrefix } from '@/lib/qpParser';
 import { getMarksColor } from '@/lib/utils';
-import { DiagramRenderer } from '@/components/ui/DiagramRenderer';
+import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 import { toDecoded, groupByIndex, type DecodedQuestion } from '@/lib/examFormat';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,15 +47,15 @@ function QuestionBlock({
           </span>
         )}
       </div>
-      
+
       {/* Diagram */}
       {question.diagramSpec && (
         <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-3 ">
-          <DiagramRenderer 
-            type={question.diagramSpec.type || question.diagramType || 'unknown'} 
-            spec={question.diagramSpec} 
-            width={400} 
-            height={250} 
+          <DiagramRenderer
+            type={question.diagramSpec.type || question.diagramType || 'unknown'}
+            spec={question.diagramSpec}
+            width={400}
+            height={250}
           />
         </div>
       )}
@@ -169,7 +169,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
       {/* Header - Fixed alignment */}
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center mt-8 sm:mt-0 gap-2">
-          <button 
+          <button
             onClick={() => router.back()}
             className="p-1.5 hover:bg-[#2E2E2C] rounded-lg transition-colors"
           >
@@ -179,7 +179,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
         </div>
 
         {/* Study button - moved to top with proper alignment */}
-        {role === 'student' && (
+        {/* {role === 'student' && (
           <button
             onClick={handleStudyChat}
             className="flex items-center mt-6 gap-2 text-[13px] font-medium text-[#1C1C1B] bg-[#ECECEA] hover:bg-white rounded-lg px-4 py-2 transition-colors duration-150 shadow-sm hover:shadow whitespace-nowrap"
@@ -187,7 +187,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
             <MessageSquare size={16} />
             Study in Chat
           </button>
-        )}
+        )} */}
       </div>
 
       {/* Paper Info */}

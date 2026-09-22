@@ -1,8 +1,8 @@
 import React from 'react';
-import { BeamRenderer } from './structural/BeamRenderer';
-import { TrussRenderer } from './structural/TrussRenderer';
-import { FrameRenderer } from './structural/FrameRenderer';
-import { FreeBodyRenderer } from './structural/FreeBodyRenderer';
+import { BeamRenderer } from './BeamRenderer';
+import { TrussRenderer } from './TrussRenderer';
+import { FrameRenderer } from './FrameRenderer';
+import { FreeBodyRenderer } from './FreeBodyRenderer';
 
 export function MechStructuralDisplay({ data, subtype, width = '100%', height = 500 }: any) {
   if (!data) return null;

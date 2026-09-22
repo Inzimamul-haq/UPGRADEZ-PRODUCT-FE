@@ -1,5 +1,5 @@
 import React from 'react';
-import { normalizeDiagramSpec, computeLayerLayout, classifyAndRouteArcs } from './layoutUtils';
+import { normalizeDiagramSpec, computeLayerLayout, classifyAndRouteArcs } from '../../../layoutUtils';
 
 export function SignalFlowDiagram({ data, width = 500, height = 320 }: any) {
   const { nodes, edges } = normalizeDiagramSpec(data);

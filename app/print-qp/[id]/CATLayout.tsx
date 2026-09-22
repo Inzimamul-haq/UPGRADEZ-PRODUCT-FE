@@ -5,14 +5,14 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
 import { toDecoded, groupByIndex, formatPartMarks, type DecodedQuestion } from '@/lib/examFormat';
-import { DiagramRenderer } from '@/components/ui/DiagramRenderer';
+import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 export function CATLayout({ paper, questions }: any) {
   const decoded = questions.map(toDecoded);
   const partA = decoded.filter((q: any) => q.part === 'A');
   const partB = decoded.filter((q: any) => q.part === 'B');
   const partC = decoded.filter((q: any) => q.part === 'C');
 
-  const isCAT = ['CAT1','CAT2','CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(
+  const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(
     (paper.examType || '').toUpperCase().replace(/\s+/g, '')
   );
 
@@ -115,9 +115,9 @@ export function CATLayout({ paper, questions }: any) {
       )}
 
       {/* Part B & C */}
-      {[ 
+      {[
         { qs: partB, title: 'B', startIndex: partA.length + 1, defaultFormula: isCAT ? '2 x 20 = 40' : '5 x 13 = 65' },
-        { qs: partC, title: 'C', startIndex: partA.length + groupByIndex(partB).length + 1, defaultFormula: isCAT ? '' : '1 x 15 = 15' } 
+        { qs: partC, title: 'C', startIndex: partA.length + groupByIndex(partB).length + 1, defaultFormula: isCAT ? '' : '1 x 15 = 15' }
       ].map((part) => {
         if (part.qs.length === 0) return null;
         const groups = groupByIndex(part.qs);
@@ -165,7 +165,7 @@ export function CATLayout({ paper, questions }: any) {
                           </td>
                         </tr>
                       )}
-                      
+
                       {/* OR Divider */}
                       {grp.b && (
                         <tr>

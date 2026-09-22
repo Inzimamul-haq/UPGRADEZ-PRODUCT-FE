@@ -5,6 +5,7 @@ import { Home, BookOpen, FileText, Users, GraduationCap, HelpCircle, CreditCard,
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationPrompt } from '@/components/ui/NotificationPrompt';
+import { UnauthorizedError } from '@/components/ui/UnauthorizedError';
 
 const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> = {
   student: [
@@ -51,8 +52,28 @@ const NAV_BY_ROLE: Record<string, { href: string; icon: any; label: string }[]> 
 };
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const navItems = NAV_BY_ROLE[role ?? 'student'] ?? NAV_BY_ROLE.student;
+
+  if (loading) {
+    return (
+      <AppShell role={role ?? 'student'} navItems={navItems}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden items-center justify-center">
+          <div className="text-[#8C8C8A]">Loading...</div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (role === 'student') {
+    return (
+      <AppShell role={role} navItems={navItems}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <UnauthorizedError />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell role={role ?? 'student'} navItems={navItems}>

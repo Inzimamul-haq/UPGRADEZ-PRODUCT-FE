@@ -1,12 +1,12 @@
 import React from 'react';
 import { LogicGateDisplay } from './LogicGateDisplay';
-import { BlockDisplay } from './BlockDisplay';
+import { BlockDisplay } from '../block/BlockDisplay';
 
 export function SchematicDisplay({ data, subtype, width = 500, height = 320 }: any) {
   if (subtype === 'logic_gate' || subtype === 'logic gate' || (data?.components && data?.connections)) {
     return <LogicGateDisplay logic={data} width={width} height={height} />;
   }
-  
+
   if (data?.nodes && data?.edges) {
     return <BlockDisplay data={data} subtype={subtype} width={width} height={height} />;
   }

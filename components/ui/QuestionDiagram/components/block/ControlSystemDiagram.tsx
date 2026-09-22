@@ -1,5 +1,5 @@
 import React from 'react';
-import { normalizeDiagramSpec, computeLayerLayout, classifyAndRouteArcs } from './layoutUtils';
+import { normalizeDiagramSpec, computeLayerLayout, classifyAndRouteArcs } from '../../../layoutUtils';
 
 export function ControlSystemDiagram({ data, width = 500, height = 320 }: any) {
   const { nodes, edges } = normalizeDiagramSpec(data);
@@ -16,7 +16,7 @@ export function ControlSystemDiagram({ data, width = 500, height = 320 }: any) {
 
   const numWidth = typeof width === 'number' ? width : 500;
   const numHeight = typeof height === 'number' ? height : 320;
-  
+
   // LR layout for control systems
   const positions = computeLayerLayout(nodes, edges, numWidth, numHeight, 'LR');
   const routedEdges = classifyAndRouteArcs(edges, positions, 'LR');
@@ -36,14 +36,14 @@ export function ControlSystemDiagram({ data, width = 500, height = 320 }: any) {
             <polygon points="0 0, 10 3.5, 0 7" fill="#8B8B88" />
           </marker>
         </defs>
-        
+
         {/* Edges */}
         {routedEdges.map((e: any, i: number) => {
           const fromNode = nodes.find(n => n.id === e.from);
           const toNode = nodes.find(n => n.id === e.to);
           const fromPos = positions[e.from];
           const toPos = positions[e.to];
-          
+
           if (!fromPos || !toPos || !fromNode || !toNode) return null;
 
           // Adjust connection points based on node kind
@@ -72,10 +72,10 @@ export function ControlSystemDiagram({ data, width = 500, height = 320 }: any) {
             return (
               <g key={`edge-${i}`}>
                 <path
-                  d={`M ${fromPos.x},${startY - (fromNode.kind === 'summer' ? summerRadius : (fromNode.kind === 'block' ? rectHeight/2 : 0))} 
+                  d={`M ${fromPos.x},${startY - (fromNode.kind === 'summer' ? summerRadius : (fromNode.kind === 'block' ? rectHeight / 2 : 0))} 
                       L ${fromPos.x},${arcY} 
                       L ${toPos.x},${arcY} 
-                      L ${toPos.x},${endY - (toNode.kind === 'summer' ? summerRadius : (toNode.kind === 'block' ? rectHeight/2 : 0))}`}
+                      L ${toPos.x},${endY - (toNode.kind === 'summer' ? summerRadius : (toNode.kind === 'block' ? rectHeight / 2 : 0))}`}
                   fill="none"
                   stroke="#8B8B88"
                   strokeWidth="1.5"

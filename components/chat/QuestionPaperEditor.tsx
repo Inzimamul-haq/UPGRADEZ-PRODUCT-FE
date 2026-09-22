@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DiagramRenderer } from '../ui/DiagramRenderer';
+import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { Plus, X } from 'lucide-react';
 
 interface QuestionPaperEditorProps {
@@ -33,7 +33,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   useEffect(() => {
     const parsedQuestions: EditableQuestion[] = [];
     const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
-    
+
     let match;
     while ((match = questionRegex.exec(initialContent)) !== null) {
       const qNo = parseInt(match[1], 10);
@@ -41,7 +41,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       const marks = parseFloat(match[3]);
       const extraContent = match[4];
       const metaStr = match[5];
-      
+
       let meta = { co: "", rbt: "", po: "" };
       try {
         const parsedMeta = JSON.parse(metaStr);
@@ -50,18 +50,18 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           rbt: parsedMeta.rbt || parsedMeta.RBT || "",
           po: parsedMeta.po || parsedMeta.PO || ""
         };
-      } catch (e) {}
+      } catch (e) { }
 
       let diagramSpec = undefined;
       let diagramType = undefined;
-      
+
       const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
       const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
       if (diagMatch) {
         diagramType = diagMatch[1].toLowerCase();
         try {
           diagramSpec = JSON.parse(diagMatch[2]);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       parsedQuestions.push({
@@ -124,34 +124,34 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     setQuestions(prev => {
       let lastIndexInPart = -1;
       if (part === 'A') {
-         lastIndexInPart = prev.findLastIndex(q => q.marks === 2);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 2);
       } else if (part === 'B') {
-         lastIndexInPart = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
       } else if (part === 'C') {
-         lastIndexInPart = prev.findLastIndex(q => q.marks === 14 || q.marks === 15);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 14 || q.marks === 15);
       }
-      
+
       let idxToInsert = prev.length;
       if (lastIndexInPart !== -1) {
-         idxToInsert = lastIndexInPart + 1;
+        idxToInsert = lastIndexInPart + 1;
       } else {
-         if (part === 'C') {
-           const lastB = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
-           if (lastB !== -1) idxToInsert = lastB + 1;
-           else {
-             const lastA = prev.findLastIndex(q => q.marks === 2);
-             idxToInsert = lastA !== -1 ? lastA + 1 : 0;
-           }
-         } else if (part === 'B') {
-           const lastA = prev.findLastIndex(q => q.marks === 2);
-           idxToInsert = lastA !== -1 ? lastA + 1 : 0;
-         } else {
-           idxToInsert = 0;
-         }
+        if (part === 'C') {
+          const lastB = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+          if (lastB !== -1) idxToInsert = lastB + 1;
+          else {
+            const lastA = prev.findLastIndex(q => q.marks === 2);
+            idxToInsert = lastA !== -1 ? lastA + 1 : 0;
+          }
+        } else if (part === 'B') {
+          const lastA = prev.findLastIndex(q => q.marks === 2);
+          idxToInsert = lastA !== -1 ? lastA + 1 : 0;
+        } else {
+          idxToInsert = 0;
+        }
       }
-      
+
       const newArray = [...prev.slice(0, idxToInsert), newQuestion, ...prev.slice(idxToInsert)];
-      
+
       setTimeout(() => {
         document.getElementById(`question-${newQuestion.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
@@ -165,7 +165,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       setShowConfirm(true);
       return;
     }
-    
+
     const serialized = questions.map(q => {
       let block = `${q.qNo}. ${q.text.trim()} (${q.marks} Marks)`;
       if (q.diagramSpec) {
@@ -174,7 +174,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       block += `\n[[meta:${JSON.stringify(q.meta)}]]`;
       return block;
     }).join('\n\n');
-    
+
     await onSave(serialized);
   };
 
@@ -196,7 +196,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const renderQuestion = (q: EditableQuestion) => (
     <div id={`question-${q.id}`} key={q.id} className={`flex flex-col py-6 border-b border-[#2E2E2C] last:border-b-0 transition-colors ${q.selected ? 'bg-[#1C1C1B]/50 rounded-lg -mx-4 px-4' : ''}`}>
       <div className="flex flex-col gap-4">
-        
+
         {/* Top Row: Checkbox, Question Number and Text Area */}
         <div className="flex gap-3 items-start">
           <input
@@ -315,7 +315,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
   return (
     <div className="flex flex-col relative bg-[#161615] rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full my-4">
-      
+
       {/* Header */}
       <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-2">
