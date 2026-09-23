@@ -148,9 +148,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     
     let cancelled = false;
     const acYear = getAcademicYear();
+    const mappedExamType = examType.toUpperCase().replace(/\s+/g, '');
     
     api.get(`/api/topic-assignments/subject/${subjectId}/active`, {
-      params: { examType, academicYear: acYear }
+      params: { examType: mappedExamType, academicYear: acYear }
     }).then(({ data }) => {
       if (cancelled) return;
       if (data.success && data.data) {

@@ -46,7 +46,7 @@ type PaperDetail = {
   content?: any;
 };
 
-const EXAM_TABS = ['CAT1', 'CAT2', 'MODEL', 'UNIVERSITY'];
+const EXAM_TABS = ['CAT1', 'CAT2', 'MODEL', 'UNIVERSITY', 'ARREAR'];
 
 const examTypeColors: Record<string, string> = {
   CAT1: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
@@ -54,10 +54,11 @@ const examTypeColors: Record<string, string> = {
   CAT3: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
   MODEL: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
   UNIVERSITY: 'text-green-400 bg-green-400/10 border-green-400/20',
+  ARREAR: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
 };
 
 const examLabel: Record<string, string> = {
-  CAT1: 'CAT 1', CAT2: 'CAT 2', CAT3: 'CAT 3', MODEL: 'Model', UNIVERSITY: 'University',
+  CAT1: 'CAT 1', CAT2: 'CAT 2', CAT3: 'CAT 3', MODEL: 'Model', UNIVERSITY: 'University', ARREAR: 'Arrear'
 };
 
 export default function PapersPage() {
@@ -349,7 +350,7 @@ export default function PapersPage() {
                   <Eye size={13} /> View
                 </button>
 
-                {paper.kind === 'EXAM_PAPER' && (
+                {paper.kind === 'EXAM_PAPER' && paper.examType !== 'ARREAR' && (
                   <button
                     onClick={() => setEditDateModal({
                       paperId: paper.id,

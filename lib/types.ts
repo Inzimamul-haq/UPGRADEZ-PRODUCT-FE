@@ -175,6 +175,7 @@ export interface SessionData {
   subject?: Subject;
 
   examType: string;
+  arrearMonth?: string;
 
   paperKind: PaperKind | null;
   difficultyMode?: DifficultyMode;
@@ -227,6 +228,7 @@ export interface ChatStepOverlayProps {
     subject: Subject; 
     examType: string;
     paperKind?: PaperKind;
+    arrearMonth?: string;
   }) => void;
 }
 

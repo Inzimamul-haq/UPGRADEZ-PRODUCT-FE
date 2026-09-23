@@ -13,8 +13,8 @@ export function ExamTypeTabs({ activeTab, onChange }: ExamTypeTabsProps) {
   const isEngineering = user?.college?.name?.toLowerCase().includes('engineering') ?? true;
   
   const TABS = isEngineering 
-    ? ['CAT 1', 'CAT 2', 'Model', 'University']
-    : ['CIA 1', 'CIA 2', 'Model', 'University'];
+    ? ['CAT 1', 'CAT 2', 'Model', 'University', 'Arrear']
+    : ['CIA 1', 'CIA 2', 'Model', 'University', 'Arrear'];
 
   // Map internal activeTab (which might still be CAT 1 due to DB) to the display version
   // If activeTab is 'CAT 1' but we are not engineering, we should maybe display 'CIA 1'

@@ -18,6 +18,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
   const { user } = useAuth();
   
   const isUniversity = sessionData.examType.toUpperCase().includes('UNIVERSITY');
+  const isArrear = sessionData.examType.toUpperCase().includes('ARREAR');
   
   // Flow 2B gate state (force false for University Exam Papers)
   const isFlow2B = sessionData.paperKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !!sessionData.linkedIQPaperId && !isUniversity;
@@ -43,7 +44,8 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
   const [savingDate, setSavingDate] = useState(false);
   const [directExamDate, setDirectExamDate] = useState('');
   const [justAssigned, setJustAssigned] = useState(false);
-  const needsDirectDate = gateState === 'ready' && currentKind === 'EXAM_PAPER' && !isFlow2B;
+  const needsDirectDate = gateState === 'ready' && currentKind === 'EXAM_PAPER' && !isFlow2B && !isArrear;
+  const [arrearMonth, setArrearMonth] = useState(sessionData.arrearMonth || '');
 
   const [fetchingDepts, setFetchingDepts] = useState(true);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -139,7 +141,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
         linkedPaperId: currentKind === 'EXAM_PAPER' && sessionData.hasLinkedIQ && !isUniversity
           ? sessionData.linkedIQPaperId || null
           : null,
-        examDate: isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null),
+        examDate: isArrear ? (arrearMonth ? `${arrearMonth}-01` : null) : (isFlow2B ? (sessionData.linkedIQExamDate || examDateInput) : (needsDirectDate ? directExamDate : null)),
         chatId: chatId || undefined,
         messageId: messageId || undefined,
       };
@@ -326,7 +328,11 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Department</label>
-                  {fetchingDepts ? (
+                  {isArrear ? (
+                    <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                      All Students
+                    </div>
+                  ) : fetchingDepts ? (
                      <div className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]">Loading...</div>
                   ) : departments.length > 0 ? (
                     <select
@@ -365,7 +371,11 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
-                  {isUniversity && currentKind === 'EXAM_PAPER' ? (
+                  {isArrear ? (
+                     <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                       All Students
+                     </div>
+                  ) : (isUniversity && currentKind === 'EXAM_PAPER') ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
                        All Sections (Common Paper)
                      </div>
@@ -389,6 +399,18 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                     />
                   )}
                 </div>
+                {isArrear && (
+                  <div className="flex items-center gap-3">
+                    <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Arrear Month</label>
+                    <input
+                      type="month"
+                      value={arrearMonth}
+                      required
+                      disabled
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A] opacity-70 cursor-not-allowed"
+                    />
+                  </div>
+                )}
                 {needsDirectDate && (
                   <div className="flex items-center gap-3">
                     <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Exam Date</label>
@@ -415,7 +437,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || (needsDirectDate && !directExamDate) || (isFlow2B && !section)}
+                disabled={loading || (needsDirectDate && !directExamDate) || (isArrear && !arrearMonth) || (isFlow2B && !section)}
                 className="flex-1 bg-orange-500 rounded-xl py-2.5 text-[13px] font-medium text-white hover:bg-orange-400 disabled:opacity-40 transition-colors"
               >
                 {loading ? 'Assigning…' : 'Assign'}
