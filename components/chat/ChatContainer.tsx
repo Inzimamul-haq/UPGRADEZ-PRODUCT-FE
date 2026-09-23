@@ -735,7 +735,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       )]);
     } catch (err: any) {
       if (err.response?.status === 409) {
-        toast.error('Important topics have already been assigned for this combination.');
+        toast.error(err.response?.data?.message || 'Important topics have already been assigned for this subject');
       } else {
         toast.error('Failed to assign important topics.');
       }

@@ -77,6 +77,9 @@ function OrDivider() {
 
 export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string; paperId: string }) {
   const router = useRouter();
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const kind = searchParams.get('kind');
+  
   const [rawQuestions, setRawQuestions] = useState<RawQuestion[]>([]);
   const [paper, setPaper] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -86,9 +89,14 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
     const fetchQuestions = async () => {
       try {
         setLoading(true);
-        const { data } = await api.get(`/api/question-papers/${paperId}/questions`);
-        setPaper(data.paper);
-        setRawQuestions(data.paper?.questions || []);
+        if (kind === 'TOPIC_ASSIGNMENT') {
+          const { data } = await api.get(`/api/topic-assignments/${paperId}`);
+          setPaper(data.data);
+        } else {
+          const { data } = await api.get(`/api/question-papers/${paperId}/questions`);
+          setPaper(data.paper);
+          setRawQuestions(data.paper?.questions || []);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -96,7 +104,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
       }
     };
     fetchQuestions();
-  }, [paperId]);
+  }, [paperId, kind]);
 
   // Decode once — never re-parse raw text again after this point
   const decoded = rawQuestions.map(q => toDecoded({ ...q, questionText: q.questionText }));
@@ -215,10 +223,35 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
         )}
       </div>
 
-      {/* Questions */}
+      {/* Content */}
       <div className="mt-2">
         {loading ? (
-          <div className="py-12 text-[#5A5A58] text-[14px] text-center">Loading questions...</div>
+          <div className="py-12 text-[#5A5A58] text-[14px] text-center">Loading...</div>
+        ) : paper?.kind === 'TOPIC_ASSIGNMENT' ? (
+          <div className="flex flex-col gap-4 mt-6">
+            {paper.content?.chapters?.length === 0 ? (
+              <p className="text-[14px] text-[#6C6C6A] mt-4">No topics found.</p>
+            ) : (
+              paper.content?.chapters?.map((chapterNumber: number) => {
+                const topics = paper.content?.topics?.[chapterNumber] || [];
+                return (
+                  <div key={chapterNumber} className="rounded-xl border border-[#2E2E2C] bg-[#1A1A19] overflow-hidden">
+                    <div className="bg-[#222221] px-5 py-3 border-b border-[#2E2E2C]">
+                      <h3 className="font-semibold text-[14px] text-[#ECECEA]">Chapter {chapterNumber}</h3>
+                    </div>
+                    <ul className="divide-y divide-[#2E2E2C]">
+                      {topics.map((topic: string, i: number) => (
+                        <li key={i} className="px-5 py-3 flex gap-3 text-[14px] text-[#ECECEA] items-start">
+                          <span className="text-[#8C8C8A] font-medium shrink-0">{i + 1}.</span>
+                          <span className="leading-relaxed">{topic}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })
+            )}
+          </div>
         ) : rawQuestions.length === 0 ? (
           <p className="text-[14px] text-[#6C6C6A] mt-4">No questions found.</p>
         ) : hasStructure ? (

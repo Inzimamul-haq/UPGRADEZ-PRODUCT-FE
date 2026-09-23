@@ -1,7 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
-export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' | 'ASSIGN_TOPICS';
+export type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' | 'ASSIGN_TOPICS' | 'TOPIC_ASSIGNMENT';
 export type DifficultyMode = 'SIMPLE' | 'MEDIUM' | 'HARD';
 
 export interface PartConfig {
@@ -143,13 +143,20 @@ export interface Message {
 
 export interface Notification {
   id: string;
-  type: 'new_paper' | 'syllabus_update' | 'study_recap' | 'general';
+  type: 'new_paper' | 'syllabus_update' | 'study_recap' | 'general' | 'important_topics';
   message: string;
   read_at: string | null;
   created_at: string;
   createdAt?: string;
   paperId?: string | null;
+  topicAssignmentId?: string | null;
   paper?: {
+    subjectId?: string;
+    examType?: string;
+    kind?: string;
+    subject?: { id: string; name: string };
+  } | null;
+  topicAssignment?: {
     subjectId?: string;
     examType?: string;
     subject?: { id: string; name: string };

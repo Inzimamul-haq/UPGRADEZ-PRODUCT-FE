@@ -13,7 +13,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { toDecoded } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 
-type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER';
+type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' | 'TOPIC_ASSIGNMENT';
 
 type Subject = {
   id: string;
@@ -42,7 +42,8 @@ type PaperDetail = {
   academicYear: string;
   kind: PaperKind;
   subject: { name: string; code: string };
-  questions: Question[];
+  questions?: Question[];
+  content?: any;
 };
 
 const EXAM_TABS = ['CAT1', 'CAT2', 'MODEL', 'UNIVERSITY'];
@@ -113,6 +114,19 @@ export default function PapersPage() {
   }, [selectedSubject]);
 
   const openQuestions = async (paperId: string) => {
+    const paper = papers.find(p => p.id === paperId);
+    if (paper?.kind === 'TOPIC_ASSIGNMENT') {
+      setQuestionModal({
+        id: paper.id,
+        examType: paper.examType,
+        academicYear: paper.academicYear,
+        kind: paper.kind,
+        subject: { name: selectedSubject!.name, code: selectedSubject!.code },
+        content: (paper as any).content,
+      });
+      return;
+    }
+
     try {
       setLoadingQuestions(true);
       const res = await api.get(`/api/question-papers/${paperId}/questions`);
@@ -128,12 +142,16 @@ export default function PapersPage() {
     if (!deleteModal) return;
     try {
       setIsDeleting(true);
-      await api.delete(`/api/question-papers/${deleteModal.paperId}`);
+      if (deleteModal.kind === 'TOPIC_ASSIGNMENT') {
+        await api.delete(`/api/topic-assignments/${deleteModal.paperId}`);
+      } else {
+        await api.delete(`/api/question-papers/${deleteModal.paperId}`);
+      }
       setPapers(prev => prev.filter(p => p.id !== deleteModal.paperId));
-      toast.success('Paper deleted successfully');
+      toast.success(deleteModal.kind === 'TOPIC_ASSIGNMENT' ? 'Important topics deleted successfully' : 'Paper deleted successfully');
       setDeleteModal(null);
     } catch (error: any) {
-      toast.error(extractErrorMessage(error, 'Failed to delete paper'));
+      toast.error(extractErrorMessage(error, 'Failed to delete'));
     } finally {
       setIsDeleting(false);
     }
@@ -296,9 +314,11 @@ export default function PapersPage() {
                 </span>
                 <span className={`text-[9px] sm:text-[10px] font-medium rounded px-1.5 sm:px-2 py-0.5 ${paper.kind === 'IMPORTANT_QUESTIONS'
                     ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
+                    : paper.kind === 'TOPIC_ASSIGNMENT'
+                    ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
                     : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
                   }`}>
-                  {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : 'Exam'}
+                  {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : paper.kind === 'TOPIC_ASSIGNMENT' ? 'Topics' : 'Exam'}
                 </span>
                 <span className="text-[10px] sm:text-[11px] text-[#5A5A58] flex items-center gap-1">
                   <Clock size={10} /> {paper.academicYear}
@@ -364,24 +384,26 @@ export default function PapersPage() {
         )}
       </div>
 
-      {/* Questions Modal */}
+      {/* Questions/Topics Modal */}
       {(loadingQuestions || questionModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-xl border border-[#3A3A38] bg-[#1A1A19] shadow-2xl flex flex-col max-h-[80vh]">
             <div className="flex items-start justify-between px-4 sm:px-6 py-4 border-b border-[#2E2E2C]">
               {loadingQuestions ? (
-                <p className="text-[13px] text-[#8C8C8A]">Loading questions…</p>
+                <p className="text-[13px] text-[#8C8C8A]">Loading…</p>
               ) : questionModal && (
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider truncate">
                     {questionModal.subject.code} · {examLabel[questionModal.examType] || questionModal.examType}
                     {' · '}
-                    <span className={questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'text-amber-400' : 'text-blue-400'}>
-                      {questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper'}
+                    <span className={questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'text-amber-400' : questionModal.kind === 'TOPIC_ASSIGNMENT' ? 'text-emerald-400' : 'text-blue-400'}>
+                      {questionModal.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : questionModal.kind === 'TOPIC_ASSIGNMENT' ? 'Important Topics' : 'Exam Paper'}
                     </span>
                   </p>
                   <h2 className="text-[14px] sm:text-[15px] font-medium text-[#ECECEA] mt-0.5 truncate">{questionModal.subject.name}</h2>
-                  <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-0.5">{questionModal.questions.length} questions</p>
+                  {questionModal.kind !== 'TOPIC_ASSIGNMENT' && (
+                    <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-0.5">{questionModal.questions?.length || 0} questions</p>
+                  )}
                 </div>
               )}
               <button
@@ -394,20 +416,39 @@ export default function PapersPage() {
 
             {!loadingQuestions && questionModal && (
               <div className="overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
-                {questionModal.questions.length === 0 ? (
-                  <p className="text-[13px] text-[#5A5A58] text-center py-6">No questions found.</p>
+                {questionModal.kind === 'TOPIC_ASSIGNMENT' ? (
+                  questionModal.content?.chapters?.length === 0 ? (
+                    <p className="text-[13px] text-[#5A5A58] text-center py-6">No topics found.</p>
+                  ) : (
+                    questionModal.content?.chapters?.map((chapterNumber: number) => {
+                      const topics = questionModal.content?.topics?.[chapterNumber] || [];
+                      return (
+                        <div key={chapterNumber} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3 flex flex-col gap-2">
+                          <h3 className="font-semibold text-[13px] text-[#ECECEA]">Chapter {chapterNumber}</h3>
+                          <ul className="list-disc pl-5 text-[13px] text-[#8C8C8A] space-y-1">
+                            {topics.map((topic: string, i: number) => (
+                              <li key={i}>{topic}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })
+                  )
                 ) : (
-                  questionModal.questions.map(toDecoded).map((q, idx) => {
-                    const hasQpPrefix = q.part && q.groupIndex;
-                    const label = hasQpPrefix && q.subLabel ? `${q.groupIndex}${q.subLabel}` : `Q${idx + 1}`;
+                  !questionModal.questions || questionModal.questions.length === 0 ? (
+                    <p className="text-[13px] text-[#5A5A58] text-center py-6">No questions found.</p>
+                  ) : (
+                    questionModal.questions.map(toDecoded).map((q, idx) => {
+                      const hasQpPrefix = q.part && q.groupIndex;
+                      const label = hasQpPrefix && q.subLabel ? `${q.groupIndex}${q.subLabel}` : `Q${idx + 1}`;
 
-                    return (
-                      <div key={q.id || idx} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3 flex flex-col gap-3">
-                        {/* Header: Number & Marks & Badges */}
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-[13px] text-[#ECECEA]">{label}.</span>
-                            {q.meta && (
+                      return (
+                        <div key={q.id || idx} className="rounded-lg border border-[#2E2E2C] bg-[#222221] px-3 sm:px-4 py-3 flex flex-col gap-3">
+                          {/* Header: Number & Marks & Badges */}
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-[13px] text-[#ECECEA]">{label}.</span>
+                              {q.meta && (
                               <div className="flex gap-1.5">
                                 {q.meta.co && (
                                   <span className="px-1.5 py-0.5 rounded bg-[#2E2E2C] text-[#8C8C8A] text-[10px] font-medium border border-[#3A3A38]">
@@ -453,7 +494,8 @@ export default function PapersPage() {
                       </div>
                     );
                   })
-                )}
+                )
+              )}
               </div>
             )}
           </div>
