@@ -5,9 +5,10 @@ import { Subject, Department, ChatStepOverlayProps, PaperKind } from '@/lib/type
 import { SubjectCard } from '@/components/dashboard/SubjectCard';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
+import { getAcademicYear } from '@/lib/academicYear';
 
 const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
-const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University'];
+const EXAM_TYPES = ['CAT 1', 'CAT 2', 'Model', 'University', 'Arrear'];
 
 const mapYearToNumber = (y: string) => {
   if (y.startsWith('1')) return 1;
@@ -30,6 +31,9 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const [examType, setExamType] = useState('');
   const [section, setSection] = useState('');
   const [paperKind, setPaperKind] = useState<PaperKind | null>(null);
+  const [arrearMonth, setArrearMonth] = useState('');
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+  const [duplicateError, setDuplicateError] = useState('');
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
@@ -88,9 +92,10 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setDepartmentId(d.id); setStep(3); };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => { 
-    setExamType(type); 
+    setExamType(type);
+    setDuplicateError('');
     if (isFaculty) {
-      if (type.toLowerCase().includes('university') || type.toLowerCase().includes('semester')) {
+      if (type.toLowerCase().includes('university') || type.toLowerCase().includes('semester') || type.toLowerCase().includes('arrear')) {
         setStep(4.5);
       } else {
         setStep(5);
@@ -99,14 +104,64 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
     else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: type });
   };
 
+  const handleFinalize = async (finalizeSection: string = '', finalizeKind?: PaperKind, finalizeArrearMonth: string = '') => {
+    if (!selectedSubject) return;
+    setDuplicateError('');
+
+    const kindToUse = finalizeKind || paperKind;
+    const isArrear = examType === 'Arrear';
+
+    // Before proceeding, check if paper already exists
+    if (isFaculty && kindToUse !== 'ASSIGN_TOPICS') {
+      try {
+        setCheckingDuplicate(true);
+        const acYear = getAcademicYear();
+        const effectiveSection = (isArrear || ['University', 'Model'].includes(examType)) ? null : (finalizeSection || null);
+        const mappedExamType = examType.toUpperCase().replace(/\s+/g, '');
+        
+        await api.post('/api/question-papers/check-duplicate', {
+          subjectId: selectedSubject.id,
+          examType: mappedExamType,
+          academicYear: acYear,
+          assignedToYear: mapYearToNumber(year) || 1,
+          assignedToDepartmentId: isArrear ? null : departmentId,
+          assignedToSection: effectiveSection,
+          kind: kindToUse,
+          examDate: isArrear && finalizeArrearMonth ? `${finalizeArrearMonth}-01` : null
+        });
+      } catch (error: any) {
+        setCheckingDuplicate(false);
+        setDuplicateError(error.response?.data?.message || 'Error checking for duplicates.');
+        return; // Block progression
+      } finally {
+        setCheckingDuplicate(false);
+      }
+    }
+
+    onComplete({ 
+      year, 
+      branch, 
+      department, 
+      departmentId, 
+      section: finalizeSection === 'All Sections' ? '' : finalizeSection, 
+      subject: selectedSubject, 
+      examType, 
+      paperKind: kindToUse || undefined,
+      arrearMonth: finalizeArrearMonth
+    });
+  };
+
   const handleSelectPaperKind = (kind: PaperKind) => {
     setPaperKind(kind);
-    if (kind === 'IMPORTANT_QUESTIONS') {
+    setDuplicateError('');
+    if (examType === 'Arrear') {
+      setStep(4.75); // Proceed to month selection
+    } else if (kind === 'IMPORTANT_QUESTIONS') {
       setStep(5); // Proceed to section
     } else {
-      // University Exam Paper or Important Topics -> Skip section
+      // University/Model Exam Paper or Important Topics -> Skip section
       if (selectedSubject) {
-        onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType, paperKind: kind });
+        handleFinalize('', kind, '');
       }
     }
   };
@@ -114,7 +169,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const handleSelectSection = (s: string) => {
     setSection(s);
     if (selectedSubject) {
-      onComplete({ year, branch, department, departmentId, section: s === 'All Sections' ? '' : s, subject: selectedSubject, examType, paperKind: paperKind || undefined });
+      handleFinalize(s === 'All Sections' ? '' : s, paperKind || undefined, '');
     }
   };
 
@@ -216,23 +271,55 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
           <div className="flex flex-col gap-3">
             <button
               onClick={() => handleSelectPaperKind('IMPORTANT_QUESTIONS')}
-              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+              disabled={checkingDuplicate}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] disabled:opacity-50 transition-all"
             >
-              Important Questions (per section)
+              Important Questions {examType === 'Arrear' ? '(Global for All Students)' : '(per section)'}
             </button>
             <button
               onClick={() => handleSelectPaperKind('EXAM_PAPER')}
-              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+              disabled={checkingDuplicate}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] disabled:opacity-50 transition-all"
             >
-              Direct Exam Paper (Common for Dept)
+              Direct Exam Paper {examType === 'Arrear' ? '(Global for All Students)' : '(Common for Dept)'}
             </button>
             <button
               onClick={() => handleSelectPaperKind('ASSIGN_TOPICS')}
-              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+              disabled={checkingDuplicate}
+              className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] disabled:opacity-50 transition-all"
             >
-              Important Topics (Topics Only)
+              Important Topics {examType === 'Arrear' ? '(Global for All Students)' : '(Topics Only)'}
             </button>
           </div>
+          {duplicateError && (
+            <p className="mt-4 text-[13px] text-rose-400 font-medium bg-rose-400/10 px-3 py-2 rounded-lg border border-rose-400/20">{duplicateError}</p>
+          )}
+        </div>
+      )}
+
+      {step === 4.75 && isFaculty && examType === 'Arrear' && (
+        <div className="w-full max-w-md text-center">
+          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Arrear Month</h2>
+          <p className="text-[13px] text-[#8C8C8A] mb-8">Select the month for the Arrear paper</p>
+          <div className="flex flex-col gap-4 items-center w-full">
+            <input 
+              type="month"
+              value={arrearMonth}
+              onChange={(e) => setArrearMonth(e.target.value)}
+              className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-4 text-[15px] text-[#ECECEA] focus:outline-none focus:border-[#ECECEA] transition-colors w-full text-center"
+            />
+            <button
+              onClick={() => handleFinalize('', paperKind || undefined, arrearMonth)}
+              disabled={!arrearMonth || checkingDuplicate}
+              className="w-full bg-[#ECECEA] text-[#1C1C1B] rounded-xl px-4 py-4 font-medium text-[15px] hover:bg-white disabled:opacity-50 transition-all flex justify-center items-center gap-2"
+            >
+              {checkingDuplicate ? <Loader2 size={16} className="animate-spin" /> : null}
+              Continue
+            </button>
+          </div>
+          {duplicateError && (
+            <p className="mt-4 text-[13px] text-rose-400 font-medium bg-rose-400/10 px-3 py-2 rounded-lg border border-rose-400/20">{duplicateError}</p>
+          )}
         </div>
       )}
 
@@ -245,12 +332,16 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
               <button
                 key={s}
                 onClick={() => handleSelectSection(s)}
-                className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+                disabled={checkingDuplicate}
+                className="border border-[#3A3A38] bg-[#2C2C2A] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] disabled:opacity-50 transition-all"
               >
                 {s}
               </button>
             ))}
           </div>
+          {duplicateError && (
+            <p className="mt-4 text-[13px] text-rose-400 font-medium bg-rose-400/10 px-3 py-2 rounded-lg border border-rose-400/20">{duplicateError}</p>
+          )}
         </div>
       )}
     </div>

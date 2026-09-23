@@ -14,7 +14,13 @@ interface ActivityFeedProps {
 }
 
 function getSubjectId(notification: Notification): string | null {
-  return notification.paper?.subjectId ?? notification.paper?.subject?.id ?? null;
+  return (
+    notification.paper?.subjectId ?? 
+    notification.paper?.subject?.id ?? 
+    notification.topicAssignment?.subjectId ??
+    notification.topicAssignment?.subject?.id ??
+    null
+  );
 }
 
 function getQuestionsPath(role: string | undefined, subjectId: string): string {
@@ -32,10 +38,18 @@ function buildNotificationPath(
   if (!subjectId) return null;
 
   const basePath = getQuestionsPath(role, subjectId);
+  if (item.topicAssignmentId) {
+    return `${basePath}/${item.topicAssignmentId}?kind=TOPIC_ASSIGNMENT`;
+  }
+
   const paperId = item.paperId ?? null;
-  const examType = item.paper?.examType;
+  const examType = item.paper?.examType ?? item.topicAssignment?.examType;
 
   if (paperId) {
+    const kind = (item.paper as any)?.kind;
+    if (kind) {
+      return `${basePath}/${paperId}?kind=${kind}`;
+    }
     return `${basePath}/${paperId}`;
   }
 

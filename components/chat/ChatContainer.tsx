@@ -148,9 +148,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     
     let cancelled = false;
     const acYear = getAcademicYear();
+    const mappedExamType = examType.toUpperCase().replace(/\s+/g, '');
     
     api.get(`/api/topic-assignments/subject/${subjectId}/active`, {
-      params: { examType, academicYear: acYear }
+      params: { examType: mappedExamType, academicYear: acYear }
     }).then(({ data }) => {
       if (cancelled) return;
       if (data.success && data.data) {
@@ -735,7 +736,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       )]);
     } catch (err: any) {
       if (err.response?.status === 409) {
-        toast.error('Important topics have already been assigned for this combination.');
+        toast.error(err.response?.data?.message || 'Important topics have already been assigned for this subject');
       } else {
         toast.error('Failed to assign important topics.');
       }

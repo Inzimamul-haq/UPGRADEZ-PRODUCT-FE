@@ -259,12 +259,12 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
 
       let res;
       try {
-        res = await api.get(endpoint, { responseType: 'blob' });
+        res = await api.get(endpoint, { responseType: 'blob', timeout: 60000 });
       } catch (err: any) {
         // If paper generation returns 404 (e.g. paper was soft-deleted), fallback to draft generation
         if (paperId && err.response?.status === 404) {
           endpoint = `/api/chats/messages/${message.id}/generate-pdf`;
-          res = await api.get(endpoint, { responseType: 'blob' });
+          res = await api.get(endpoint, { responseType: 'blob', timeout: 60000 });
         } else {
           throw err;
         }
@@ -838,7 +838,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
           </div>
         )}
 
-        {((visibleActions && visibleActions.length > 0) || (isEditable && !isEditing)) && (
+        {((visibleActions && visibleActions.length > 0) || (isEditable && !isEditing) || (isLikelyPaper && !isEditing)) && (
           <div className="flex flex-wrap gap-2 mt-3 mb-2">
             {visibleActions?.map(action => (
               <button

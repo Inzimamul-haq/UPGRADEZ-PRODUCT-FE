@@ -21,7 +21,7 @@ export function PaperRow({ paper, kind, subjectId }: PaperRowProps) {
 
   return (
     <div 
-      onClick={() => router.push(`${pathname}/${paper.id}`)}
+      onClick={() => router.push(`${pathname}/${paper.id}?kind=${paper.kind}`)}
       className="flex items-center justify-between bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-3 mb-2 cursor-pointer hover:bg-[#333331] transition-colors duration-150"
     >
       <div>
@@ -30,7 +30,7 @@ export function PaperRow({ paper, kind, subjectId }: PaperRowProps) {
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
-            {paper.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : 'Exam Paper'}
+            {paper.kind === 'IMPORTANT_QUESTIONS' ? 'Important Questions' : paper.kind === 'TOPIC_ASSIGNMENT' ? 'Important Topics' : 'Exam Paper'}
           </span>
           <span className="inline-block text-[11px] text-[#8C8C8A] border border-[#3A3A38] rounded px-2 py-0.5">
             {paper.source === 'historical' ? 'Previous year' : 'This year'}
