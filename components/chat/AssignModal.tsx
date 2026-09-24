@@ -330,7 +330,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Department</label>
                   {isArrear ? (
                     <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
-                      All Students
+                      All Departments
                     </div>
                   ) : fetchingDepts ? (
                      <div className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]">Loading...</div>
@@ -355,13 +355,19 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Branch</label>
-                  <input
-                    value={branch}
-                    readOnly={departments.length > 0}
-                    onChange={(e) => setBranch(e.target.value)}
-                    placeholder="e.g. CSE, ECE"
-                    className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] ${departments.length > 0 ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  />
+                  {isArrear ? (
+                    <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                      All Branches
+                    </div>
+                  ) : (
+                    <input
+                      value={branch}
+                      readOnly={departments.length > 0}
+                      onChange={(e) => setBranch(e.target.value)}
+                      placeholder="e.g. CSE, ECE"
+                      className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] ${departments.length > 0 ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Year</label>
@@ -373,7 +379,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
                   {isArrear ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
-                       All Students
+                       All Sections
                      </div>
                   ) : (isUniversity && currentKind === 'EXAM_PAPER') ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">

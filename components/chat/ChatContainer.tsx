@@ -445,16 +445,22 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     try {
       const acYear = getAcademicYear();
 
+      const checkIqParams = {
+        subjectId: data.subject.id,
+        examType: data.examType.replace(/\s+/g, '').toUpperCase(),
+        academicYear: acYear,
+        year: data.year ? data.year.charAt(0) : undefined,
+        departmentId: data.departmentId,
+        section: data.section
+      };
+      console.log('[ChatContainer] check-iq params:', checkIqParams);
+
       const { data: iqRes } = await api.get('/api/question-papers/check-iq', {
-        params: {
-          subjectId: data.subject.id,
-          examType: data.examType.replace(/\s+/g, '').toUpperCase(),
-          academicYear: acYear,
-          year: data.year ? data.year.charAt(0) : undefined,
-          branch: data.branch,
-          section: data.section
-        },
+        params: checkIqParams,
       });
+
+      console.log('[ChatContainer] check-iq response:', iqRes);
+
       if (iqRes.exists) {
         if (iqRes.paper) {
           hasLinkedIQ = true;
