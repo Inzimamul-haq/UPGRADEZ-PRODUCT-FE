@@ -56,10 +56,20 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
 
   useEffect(() => {
     if (paperData) {
-      Promise.all([document.fonts.ready]).then(() => {
+      const waitForImages = () => {
+        const imgs = Array.from(document.querySelectorAll('img'));
+        const imagePromises = imgs.map(img =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); })
+        );
+        return Promise.all(imagePromises);
+      };
+
+      Promise.all([document.fonts.ready, waitForImages()]).then(() => {
         setTimeout(() => {
           (window as any).__PRINT_READY__ = true;
-        }, 1500); 
+        }, 300);
       });
     }
   }, [paperData]);
@@ -120,6 +130,23 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
           svg line {
             stroke: black !important;
             stroke-width: 1.5 !important;
+          }
+
+          canvas, svg, img {
+            max-width: 100% !important;
+            max-height: 350px !important;
+            object-fit: contain;
+          }
+
+          .uploaded-diagram-image {
+            max-width: 400px !important;
+            max-height: 250px !important;
+            border: 1px solid #999 !important;
+            border-radius: 4px !important;
+            padding: 4px !important;
+            margin: 10px auto !important;
+            object-fit: contain !important;
+            display: block !important;
           }
         }
       `}} />

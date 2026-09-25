@@ -12,6 +12,8 @@ import { QuestionsPanel } from './QuestionsPanel';
 import { SyllabusPanel } from './SyllabusPanel';
 import { ContextSetupCard } from './ContextSetupCard';
 import { IQPickerPanel } from './IQPickerPanel';
+import { GenerationStatus } from './GenerationStatus';
+import { GenerationStepData, GenerationStatusType } from './GenerationStatus/types';
 import api from '@/lib/api';
 import { authenticatedFetch } from '@/lib/authenticatedFetch';
 import { SessionData, ChatContainerProps, PaperKind, DifficultyMode } from "@/lib/types";
@@ -109,6 +111,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [showContextSetup, setShowContextSetup] = useState(false);
   const [showIQPicker, setShowIQPicker] = useState(false);
   const [activeTopicAssignment, setActiveTopicAssignment] = useState<any>(null);
+  
+  const [generationSteps, setGenerationSteps] = useState<GenerationStepData[]>([]);
+  const [generationStatus, setGenerationStatus] = useState<GenerationStatusType>('completed');
+  const [generationElapsed, setGenerationElapsed] = useState(0);
+
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -848,9 +855,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
         }
 
-        const historyToUse = newMessagesList.slice(0, -1); // exclude the newly added user message for API history if needed, or include it
+        const historyToUse = newMessagesList.slice(0, -1);
         const history = historyToUse.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
-        const { data } = await api.post('/api/generate/qp', {
+        
+        const payload = {
           subjectId: sessionData?.subjectId || undefined,
           subjectName: sessionData?.subjectName || '',
           examType: sessionData?.examType || '',
@@ -861,36 +869,178 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           difficultyMode: forceDifficulty || difficultyMode,
           linkedIQDifficultyMode: sessionData?.linkedIQDifficultyMode,
           hasLinkedIQ: sessionData?.hasLinkedIQ || false,
-          linkedPaperId: sessionData?.linkedIQPaperId, // Pass the explicit paper ID if this chat was started from the dashboard
+          linkedPaperId: sessionData?.linkedIQPaperId,
           chatId: chatId,
           history,
-        });
+        };
 
-        // Persist session: update URL + sidebar on first turn
-        if (data.chatId && !chatId) {
-          setChatId(data.chatId);
-          refreshSessions();
-          window.history.replaceState(null, '', `/chat/${data.chatId}?role=${role}`);
+        const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
+        const csrfToken = match ? decodeURIComponent(match[3]) : '';
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+
+        setGenerationSteps([
+          { stage: 'context',  label: 'Preparing subject context', status: 'pending' },
+          { stage: 'syllabus', label: 'Reading syllabus',          status: 'pending' },
+          { stage: 'generate', label: 'Generating questions',      status: 'pending' },
+          { stage: 'check',    label: 'Checking for issues',       status: 'pending' },
+          { stage: 'validate', label: 'Final validation',          status: 'pending' }
+        ]);
+        setGenerationStatus('running');
+        setGenerationElapsed(0);
+
+        let elapsedSecs = 0;
+        const timer = setInterval(() => {
+          elapsedSecs++;
+          setGenerationElapsed(elapsedSecs);
+        }, 1000);
+
+        try {
+          const response = await authenticatedFetch(`${api.defaults.baseURL}/api/generate/qp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-College-Slug': window.location.hostname.split('.')[0],
+              ...(csrfToken ? { 'x-csrf-token': csrfToken } : {})
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include',
+            signal: abortController.signal
+          });
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || errData.error || 'Generation failed');
+          }
+
+          if (!response.body) throw new Error('ReadableStream not supported');
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let doneReading = false;
+          let buffer = '';
+
+          while (!doneReading) {
+            const { value, done } = await reader.read();
+            if (done) {
+              doneReading = true;
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+            let boundary = buffer.indexOf('\n\n');
+            while (boundary !== -1) {
+              const chunk = buffer.slice(0, boundary);
+              buffer = buffer.slice(boundary + 2);
+              boundary = buffer.indexOf('\n\n');
+
+              if (chunk.startsWith(': heartbeat')) {
+                continue;
+              }
+
+              const stagePrefix = 'event: stage\ndata: ';
+              if (chunk.startsWith(stagePrefix)) {
+                try {
+                  const dataStr = chunk.slice(stagePrefix.length);
+                  const data = JSON.parse(dataStr);
+                  setGenerationSteps(prev => {
+                    const next = [...prev];
+                    
+                    if (data.stage === 'issues' && !next.some(s => s.stage === 'issues')) {
+                      const idx = next.findIndex(s => s.stage === 'validate');
+                      next.splice(idx > -1 ? idx : next.length, 0, { stage: 'issues', label: 'Issues found', status: 'pending' });
+                    }
+                    if (data.stage === 'repair' && !next.some(s => s.stage === 'repair')) {
+                      const idx = next.findIndex(s => s.stage === 'validate');
+                      next.splice(idx > -1 ? idx : next.length, 0, { stage: 'repair', label: 'Repairing questions', status: 'pending' });
+                    }
+
+                    let foundCurrent = false;
+                    for (let i = 0; i < next.length; i++) {
+                      if (next[i].stage === data.stage) {
+                        next[i] = { ...next[i], status: data.status };
+                        foundCurrent = true;
+                      } else if (data.status === 'running' && !foundCurrent && next[i].status === 'running') {
+                        next[i] = { ...next[i], status: 'done' };
+                      }
+                    }
+                    return next;
+                  });
+                } catch (e) {
+                  console.error('Error parsing stage event', e);
+                }
+              }
+
+              const donePrefix = 'event: done\ndata: ';
+              if (chunk.startsWith(donePrefix)) {
+                try {
+                  const dataStr = chunk.slice(donePrefix.length);
+                  const data = JSON.parse(dataStr);
+                  
+                  if (data.chatId && !chatId) {
+                    setChatId(data.chatId);
+                    refreshSessions();
+                    window.history.replaceState(null, '', `/chat/${data.chatId}?role=${role}`);
+                  }
+                  
+                  const responseText = data.data as string;
+                  const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(responseText);
+                  const hasMarks = /\d+\s*marks?/i.test(responseText);
+                  const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(responseText);
+
+                  const isLikelyPaper = responseText.length > 100 && (
+                    /(?:part|section)\s*[-_]?\s*[a-c]/i.test(responseText) || 
+                    (/important questions?/i.test(responseText) && hasNumberedList) ||
+                    (hasNumberedList && hasMarks && hasQuestionWords)
+                  );
+
+                  const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
+                  const returnedMessageId = data.messageId || crypto.randomUUID();
+
+                  setMessages(prev => [...prev, {
+                    id: returnedMessageId, role: 'assistant', content: responseText, figures: responseFigures,
+                    ...(isLikelyPaper && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
+                  }]);
+
+                  setGenerationSteps(prev => {
+                    const next = [...prev];
+                    const lastActive = next.slice().reverse().find(s => s.status === 'running');
+                    if (lastActive) {
+                      const idx = next.findIndex(s => s.stage === lastActive.stage);
+                      if (idx !== -1) next[idx] = { ...next[idx], status: 'done' };
+                    }
+                    return next;
+                  });
+                  setGenerationStatus('completed');
+                } catch (e) {
+                  console.error('Error parsing done event', e);
+                }
+              }
+
+              const errorPrefix = 'event: error\ndata: ';
+              if (chunk.startsWith(errorPrefix)) {
+                try {
+                  const dataStr = chunk.slice(errorPrefix.length);
+                  const data = JSON.parse(dataStr);
+                  throw new Error(data.error);
+                } catch (e) {
+                  throw e;
+                }
+              }
+            }
+          }
+        } catch (err: any) {
+          setGenerationStatus('failed');
+          setGenerationSteps(prev => {
+             const next = [...prev];
+             const activeIdx = next.findIndex(s => s.status === 'running');
+             if (activeIdx !== -1) next[activeIdx] = { ...next[activeIdx], status: 'failed' };
+             return next;
+          });
+          throw err;
+        } finally {
+          clearInterval(timer);
         }
-
-        const responseText = data.data as string;
-        const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(responseText);
-        const hasMarks = /\d+\s*marks?/i.test(responseText);
-        const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(responseText);
-
-        const isLikelyPaper = responseText.length > 100 && (
-          /(?:part|section)\s*[-_]?\s*[a-c]/i.test(responseText) || 
-          (/important questions?/i.test(responseText) && hasNumberedList) ||
-          (hasNumberedList && hasMarks && hasQuestionWords)
-        );
-
-        const responseFigures = data.figures as { pageNumber: number, caption: string, url: string }[] | undefined;
-        const returnedMessageId = data.messageId || crypto.randomUUID();
-
-        setMessages(prev => [...prev, {
-          id: returnedMessageId, role: 'assistant', content: responseText, figures: responseFigures,
-          ...(isLikelyPaper && { actions: [{ id: 'generate_pdf', label: 'Assign', icon: 'file-down' }] }),
-        }]);
       } else {
         // ── Stream standard student Q&A / Study-paper mode ────────────────────────
         const payload = initialPaperId ? {
@@ -1127,7 +1277,18 @@ return (
       subjectName={syllabusSubjectName || sessionData?.subjectName || ''}
       entries={syllabusEntries}
     />
-    <ChatMessages messages={messages} chatId={chatId || ''} paperId={resolvedPaperId} isStreaming={isStreaming} onAction={handleAction} onEditSubmit={handleEditSubmit} />
+    <ChatMessages 
+      messages={messages} 
+      chatId={chatId || ''} 
+      paperId={resolvedPaperId} 
+      isStreaming={isStreaming} 
+      onAction={handleAction} 
+      onEditSubmit={handleEditSubmit} 
+      isFaculty={isFaculty}
+      generationSteps={generationSteps}
+      generationStatus={generationStatus}
+      generationElapsed={generationElapsed}
+    />
 
     {assignModalOpen && sessionData && (
       <AssignModal

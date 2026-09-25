@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
 import api from '@/lib/api';
@@ -18,6 +18,7 @@ import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { extractDiagramTag } from '../ui/layoutUtils';
 import { QuestionPaperRenderer } from './QuestionPaperRenderer';
 import { QuestionPaperEditor } from './QuestionPaperEditor';
+import { DiagramImageEditor } from '../ui/QuestionDiagram/DiagramImageEditor';
 
 type SolutionSegment = { type: 'text'; content: string } | { type: 'solution'; data: MultiSchemaData } | { type: 'graph'; data: any };
 
@@ -235,6 +236,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
   const [editSegmentsState, setEditSegmentsState] = useState<SolutionSegment[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editingDiagramIdx, setEditingDiagramIdx] = useState<number | null>(null);
+  const messageRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content || '');
@@ -327,9 +330,19 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                   );
                 } else if (seg.type === 'graph') {
                   return (
-                    <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
-                      <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
-                      <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                    <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] relative mx-4 group overflow-hidden diagram-card-wrapper transition-all duration-300">
+                      <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                      <div className="opacity-80 pointer-events-none">
+                        <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                      </div>
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                        <button
+                          onClick={() => setEditingDiagramIdx(i)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-black/80 text-white rounded-md hover:bg-black transition-colors text-xs font-medium border border-[#3A3A38]"
+                        >
+                          <Pencil size={14} /> Replace Image
+                        </button>
+                      </div>
                     </div>
                   );
                 } else if (seg.type === 'solution') {
@@ -362,6 +375,9 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                   if (onEditSubmit) {
                     setIsSaving(true);
                     try {
+                      const originalContent = message.content || '';
+                      const originalSegments = parseMathSolutions(originalContent);
+
                       const newContent = editSegmentsState.map(seg => {
                         if (seg.type === 'text') return seg.content;
                         if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
@@ -370,6 +386,19 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                       }).join('\n\n');
                       await onEditSubmit(message.id, newContent);
                       setIsEditing(false);
+                      setTimeout(() => {
+                        messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
+
+                      // Cleanup old images if replaced
+                      originalSegments.forEach((origSeg, idx) => {
+                        if (origSeg.type === 'graph' && origSeg.data.type === 'image' && origSeg.data.storagePath) {
+                          const newSeg = editSegmentsState[idx];
+                          if (!newSeg || newSeg.type !== 'graph' || newSeg.data.storagePath !== origSeg.data.storagePath) {
+                            api.delete('/api/diagrams/storage', { data: { storagePath: origSeg.data.storagePath } }).catch(console.error);
+                          }
+                        }
+                      });
                     } catch (e) {
                       // err
                     } finally {
@@ -389,7 +418,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
     }
 
     return (
-      <div className="flex justify-end w-full">
+      <div className="flex justify-end w-full" ref={messageRef}>
         <div className="flex flex-col items-end gap-1.5 max-w-[90%] md:max-w-[70%]">
           <div className="bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-4 py-2 w-auto text-left">
             <p className="text-[14px] text-[#ECECEA] leading-relaxed break-words">
@@ -564,8 +593,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
   };
 
   return (
-    <div className="flex justify-start">
-      <div className="max-w-full md:max-w-[85%]">
+    <div className="flex justify-start w-full" ref={messageRef}>
+      <div className="max-w-full md:max-w-[85%] w-full">
         {message.batchAnswers && message.batchAnswers.length > 0 ? (
           <div className="flex flex-col gap-8">
             {message.batchAnswers.map((batch, index) => {
@@ -700,9 +729,19 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                           );
                         } else if (seg.type === 'graph') {
                           return (
-                            <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] opacity-80 pointer-events-none relative mx-4">
-                              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
-                              <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                            <div key={i} className="my-2 flex justify-center bg-[#1C1C1B] rounded-lg p-2 border border-[#3A3A38] relative mx-4 group overflow-hidden diagram-card-wrapper transition-all duration-300">
+                              <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only in Edit Mode</div>
+                              <div className="opacity-80 pointer-events-none">
+                                <DiagramRenderer type={seg.data.type || seg.data.format || 'unknown'} spec={seg.data} width={300} height={250} />
+                              </div>
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                <button
+                                  onClick={() => setEditingDiagramIdx(i)}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-black/80 text-white rounded-md hover:bg-black transition-colors text-xs font-medium border border-[#3A3A38]"
+                                >
+                                  <Pencil size={14} /> Replace Image
+                                </button>
+                              </div>
                             </div>
                           );
                         } else if (seg.type === 'solution') {
@@ -735,14 +774,31 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                           if (onEditSubmit) {
                             setIsSaving(true);
                             try {
+                              const originalContent = message.content || '';
+                              const originalSegments = parseMathSolutions(originalContent);
+                              
                               const newContent = editSegmentsState.map(seg => {
                                 if (seg.type === 'text') return seg.content;
                                 if (seg.type === 'graph') return `[[diagram:${JSON.stringify(seg.data)}]]`;
                                 if (seg.type === 'solution') return `\`\`\`json\n${JSON.stringify(seg.data, null, 2)}\n\`\`\``;
                                 return '';
                               }).join('\n\n');
+                              
                               await onEditSubmit(message.id, newContent);
                               setIsEditing(false);
+                              setTimeout(() => {
+                                messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }, 100);
+
+                              // Cleanup old images if replaced
+                              originalSegments.forEach((origSeg, idx) => {
+                                if (origSeg.type === 'graph' && origSeg.data.type === 'image' && origSeg.data.storagePath) {
+                                  const newSeg = editSegmentsState[idx];
+                                  if (!newSeg || newSeg.type !== 'graph' || newSeg.data.storagePath !== origSeg.data.storagePath) {
+                                    api.delete('/api/diagrams/storage', { data: { storagePath: origSeg.data.storagePath } }).catch(console.error);
+                                  }
+                                }
+                              });
                             } catch (e) {
                               // Error toast handled by parent
                             } finally {
@@ -783,7 +839,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                           (() => {
                             const diagType = seg.data.type || seg.data.format || 'unknown';
                             const diagSubtype = seg.data.subtype || '';
-                            const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform'].includes(diagType);
+                            const isWide = ['block', 'circuit', 'schematic', 'architecture', 'flowchart', 'network', 'waveform', 'image'].includes(diagType);
                             const renderWidth = isWide ? 500 : 300;
                             const renderHeight = isWide ? 320 : 250;
                             return (
@@ -810,6 +866,26 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
               )}
             </AnimatePresence>
           </div>
+        )}
+
+        {/* Diagram Image Editor Modal */}
+        {editingDiagramIdx !== null && (
+          <DiagramImageEditor
+            currentSpec={(editSegmentsState[editingDiagramIdx] as any).data}
+            onCancel={() => setEditingDiagramIdx(null)}
+            onConfirm={({ url, storagePath }) => {
+              const newSegs = [...editSegmentsState];
+              newSegs[editingDiagramIdx] = {
+                type: 'graph',
+                data: { type: 'image', url, storagePath }
+              };
+              setEditSegmentsState(newSegs);
+              setEditingDiagramIdx(null);
+              setTimeout(() => {
+                messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+            }}
+          />
         )}
 
         {message.figures && message.figures.length > 0 && (

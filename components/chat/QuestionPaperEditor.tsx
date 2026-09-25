@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
-import { Plus, X } from 'lucide-react';
+import { DiagramImageEditor } from '../ui/QuestionDiagram/DiagramImageEditor';
+import { Plus, X, Pencil } from 'lucide-react';
 import { extractDiagramTag } from '../ui/layoutUtils';
+import api from '@/lib/api';
 
 interface QuestionPaperEditorProps {
   initialContent: string;
@@ -30,6 +32,21 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [editingDiagramFor, setEditingDiagramFor] = useState<string | null>(null);
+
+  // Helper to extract all storage paths from initial content
+  const parseImageStoragePathsFromContent = (content: string): string[] => {
+    const paths: string[] = [];
+    const imageTagRegex = /\[\[diagram:\s*(\{.*?["']type["']\s*:\s*["']image["'].*?\})\s*\]\]/gmi;
+    let match;
+    while ((match = imageTagRegex.exec(content)) !== null) {
+      try {
+        const spec = JSON.parse(match[1]);
+        if (spec.storagePath) paths.push(spec.storagePath);
+      } catch (e) {}
+    }
+    return paths;
+  };
 
   useEffect(() => {
     const parsedQuestions: EditableQuestion[] = [];
@@ -175,7 +192,18 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       return block;
     }).join('\n\n');
 
+    const oldStoragePaths = parseImageStoragePathsFromContent(initialContent);
+    const newStoragePaths = questions
+      .map(q => q.diagramSpec?.storagePath)
+      .filter(Boolean);
+    const toDelete = oldStoragePaths.filter(p => !newStoragePaths.includes(p));
+
     await onSave(serialized);
+
+    // Fire and forget deletions for replaced/removed images
+    toDelete.forEach(storagePath => {
+      api.delete('/api/diagrams/storage', { data: { storagePath } }).catch(console.error);
+    });
   };
 
   const anySelected = questions.some(q => q.selected);
@@ -228,10 +256,20 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
           const diagSubtype = q.diagramSpec.subtype || '';
           return (
-            <div className="flex justify-center w-full relative mb-2">
-              <div className="w-full max-w-[360px] aspect-video relative rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-2 opacity-70 pointer-events-none flex items-center justify-center">
+            <div className="flex justify-center w-full relative mb-2 group">
+              <div className="w-full max-w-[360px] aspect-video relative rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-2 flex items-center justify-center diagram-card-wrapper transition-all duration-300">
                 <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only</div>
                 <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={340} height={180} />
+                
+                {/* Overlay for editing image diagrams */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                  <button
+                    onClick={() => setEditingDiagramFor(q.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-black/80 text-white rounded-md hover:bg-black transition-colors text-xs font-medium border border-[#3A3A38]"
+                  >
+                    <Pencil size={14} /> Replace Image
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -408,7 +446,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
       {/* Confirmation Modal Overlay */}
       {showConfirm && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-[#1C1C1B] border border-[#3A3A38] rounded-xl p-6 w-[350px] shadow-2xl flex flex-col gap-4 mx-4">
             <h4 className="text-[15px] font-semibold text-[#ECECEA]">Save Changes?</h4>
             <p className="text-[13px] text-[#8C8C8A] leading-relaxed">
@@ -431,6 +469,19 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
             </div>
           </div>
         </div>
+      )}
+
+      {/* Diagram Image Editor Modal */}
+      {editingDiagramFor && (
+        <DiagramImageEditor
+          currentSpec={questions.find(q => q.id === editingDiagramFor)?.diagramSpec}
+          onCancel={() => setEditingDiagramFor(null)}
+          onConfirm={({ url, storagePath }) => {
+            handleUpdate(editingDiagramFor, 'diagramSpec', { type: 'image', url, storagePath });
+            handleUpdate(editingDiagramFor, 'diagramType', 'diagram');
+            setEditingDiagramFor(null);
+          }}
+        />
       )}
 
     </div>
