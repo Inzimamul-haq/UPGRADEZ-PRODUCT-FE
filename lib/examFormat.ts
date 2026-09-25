@@ -1,6 +1,6 @@
 import { decodeQPPrefix, stripQPPrefix, type DecodedQPPrefix } from './qpParser';
 
-export type DecodedQuestion = DecodedQPPrefix & { 
+export type DecodedQuestion = DecodedQPPrefix & {
   id?: string;
   marks?: number;
   diagramSpec?: any;
@@ -12,7 +12,7 @@ export type DecodedQuestion = DecodedQPPrefix & {
 export function toDecoded(q: any): DecodedQuestion {
   const raw: string = q.questionText ?? q.text ?? '';
   let decoded = decodeQPPrefix(raw);
-  
+
   if (!decoded) {
     // Legacy / PDF-uploaded question: no prefix → treat as flat Part A
     decoded = { text: stripQPPrefix(raw), part: 'A', groupIndex: 1, subLabel: '' };
@@ -27,11 +27,11 @@ export function toDecoded(q: any): DecodedQuestion {
     diagramType = diagMatch[1].toLowerCase();
     try {
       diagramSpec = JSON.parse(diagMatch[2]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
-  let meta = q.co || q.rbt || q.po 
-    ? { co: q.co || '', rbt: q.rbt || '', po: q.po || '' } 
+  let meta = q.co || q.rbt || q.po
+    ? { co: q.co || '', rbt: q.rbt || '', po: q.po || '' }
     : undefined;
 
   if (!meta) {
@@ -45,7 +45,7 @@ export function toDecoded(q: any): DecodedQuestion {
           rbt: parsed.rbt || parsed.RBT || '',
           po: parsed.po || parsed.PO || ''
         };
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -61,8 +61,10 @@ export function toDecoded(q: any): DecodedQuestion {
     .replace(/\[\[meta:(\{.*?\})\]\]/gi, '')
     .replace(/\[\[(?:graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/gi, '')
     .replace(/\[\[flagged:.*?\]\]/gi, '')
-    .replace(/\(\s*\d+\s*marks?\s*\)\s*$/i, '')
-    .replace(/\[\s*\d+\s*marks?\s*\]\s*$/i, '')
+    .replace(/[\s#*]*Part\s+[ABC]\b[^\n]{0,30}?marks?\.?[\s*]*/gi, '')
+    .replace(/^\s*\**OR\**\s*$/gim, '')
+    .replace(/\s*[\(\[]\s*\d+\s*marks?\s*[\)\]]\s*/gi, '')
+    .replace(new RegExp(`\\s*[\\(\\[]\\s*${displayMarks || '\\d+'}\\s*(?:marks?)?\\s*[\\)\\]]\\s*$`, 'gi'), '')
     .trim();
 
   decoded.text = cleanText;

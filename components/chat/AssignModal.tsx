@@ -249,6 +249,18 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
           </div>
         )}
 
+        {currentKind === 'IMPORTANT_QUESTIONS' && !sessionData.hasLinkedIQ && !sessionData.hasLinkedExamPaper && !justAssigned && (
+          <div className="flex items-center justify-between bg-[#30302E] border border-[#3A3A38] rounded-xl px-4 py-3 mb-5">
+            <span className="text-[12px] text-[#ECECEA]">Assign as Exam Paper instead?</span>
+            <button
+              onClick={() => setCurrentKind('EXAM_PAPER')}
+              className="text-[12px] font-medium text-blue-400 hover:text-blue-400 transition-colors"
+            >
+              Swap to Exam Paper
+            </button>
+          </div>
+        )}
+
         {/* ── Flow 2B: Gate Loading ── */}
         {gateState === 'loading' && (
           <div className="py-8 text-center text-[13px] text-[#8C8C8A]">Checking exam date…</div>
@@ -413,9 +425,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                     <input
                       type="month"
                       value={arrearMonth}
+                      onChange={(e) => setArrearMonth(e.target.value)}
                       required
-                      disabled
-                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A] opacity-70 cursor-not-allowed"
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-white"
                     />
                   </div>
                 )}

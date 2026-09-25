@@ -301,7 +301,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[400px] md:w-[500px]"
+            className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden border border-[#3A3A38] focus-within:border-amber-500/40 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
           >
             <div className="flex flex-col">
               {editSegmentsState.map((seg, i) => {
@@ -321,7 +321,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                         newSegs[i] = { type: 'text', content: e.target.value };
                         setEditSegmentsState(newSegs);
                       }}
-                      className="w-full bg-transparent text-[#ECECEA] text-[13px] p-4 min-h-[80px] max-h-[50vh] resize-none focus:outline-none"
+                      className="w-full bg-transparent text-[#ECECEA] text-[13px] p-5 min-h-[100px] max-h-[50vh] resize-none focus:outline-none leading-relaxed"
                       disabled={isSaving}
                     />
                   );
@@ -349,10 +349,10 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                 }
               })}
             </div>
-            <div className="flex justify-end gap-2 p-2 bg-[#1C1C1B] border-t border-[#3A3A38]">
+            <div className="flex justify-end gap-3 px-4 py-3 border-t border-[#2E2E2C]">
               <button
                 onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
-                className="px-3 py-1 text-[11px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
+                className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
                 disabled={isSaving}
               >
                 Cancel
@@ -378,7 +378,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                   }
                 }}
                 disabled={isSaving || !editSegmentsState.some(s => s.type === 'text' && s.content.trim())}
-                className="px-4 py-1 text-[11px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
+                className="px-4 py-1.5 text-[12px] font-medium bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-lg shadow-lg hover:from-amber-500 hover:to-amber-400 transition-all disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save & Resubmit'}
               </button>
@@ -673,14 +673,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.98 }}
                     transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-                    className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] focus-within:ring-amber-500/50 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
+                    className="flex flex-col mt-2 mb-4 relative rounded-xl overflow-hidden border border-[#3A3A38] focus-within:border-amber-500/40 transition-all duration-300 bg-[#161615] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full"
                   >
-                    <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Edit Mode</span>
-                      </div>
-                    </div>
                     <div className="flex flex-col">
                       {editSegmentsState.map((seg, i) => {
                         if (seg.type === 'text') {
@@ -728,7 +722,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
                         }
                       })}
                     </div>
-                    <div className="flex justify-end gap-3 p-3 bg-[#1C1C1B] border-t border-[#3A3A38]">
+                    <div className="flex justify-end gap-3 px-4 py-3 border-t border-[#2E2E2C]">
                       <button
                         onClick={() => { setIsEditing(false); setEditSegmentsState([]); }}
                         className="px-4 py-1.5 text-[12px] font-medium text-[#8C8C8A] hover:text-[#ECECEA] transition-colors rounded-lg hover:bg-[#333331]"
