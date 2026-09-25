@@ -152,6 +152,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
       setJustAssigned(true);
 
       // Download PDF for exam papers
+      /*
       if (currentKind === 'EXAM_PAPER') {
         const toastId = toast.loading('Generating 100% accurate PDF with diagrams... Please wait.');
         console.log('[AssignModal] Starting PDF generation for paperId:', paper.id);
@@ -177,6 +178,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
           toast.error('Paper assigned successfully, but PDF download failed. Download from Papers page.', { id: toastId });
         }
       }
+      */
 
       const kindLabelText = currentKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
       const successMsg = `[ASSIGN_SUCCESS]\n${kindLabelText} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${year}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;

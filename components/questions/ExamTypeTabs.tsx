@@ -19,7 +19,7 @@ export function ExamTypeTabs({ activeTab, onChange }: ExamTypeTabsProps) {
   // Map internal activeTab (which might still be CAT 1 due to DB) to the display version
   // If activeTab is 'CAT 1' but we are not engineering, we should maybe display 'CIA 1'
   return (
-    <div className="flex gap-6 border-b border-[#2E2E2C]">
+    <div className="flex flex-wrap gap-x-5 gap-y-2 sm:flex-nowrap sm:gap-6 border-b border-[#2E2E2C]">
       {TABS.map(tab => {
         // Because backend/db might still store CAT1/CAT2, activeTab passed down might be CAT 1
         // even for Arts colleges if they click it, so let's normalize check

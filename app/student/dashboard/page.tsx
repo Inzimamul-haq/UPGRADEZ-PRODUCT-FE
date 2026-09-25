@@ -57,7 +57,7 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Stats Grid - Responsive */}
-   <div className="mt-5 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+   <div className="mt-5 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 [&>*:last-child:nth-child(odd)]:col-span-2 [&>*:last-child:nth-child(odd)]:sm:col-span-1">
   {loading ? (
     <>
       <div className="animate-pulse bg-[#2C2C2A] h-[88px] sm:h-24 rounded-xl"></div>

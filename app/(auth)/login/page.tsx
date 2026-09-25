@@ -64,6 +64,7 @@ function LoginPageInner() {
   }, [searchParams]);
 
   const handleGoogleAuth = () => {
+    localStorage.setItem('googleAuthPending', 'true');
     window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/auth/google`;
   };
 

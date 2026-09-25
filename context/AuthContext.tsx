@@ -71,6 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('googleAuthPending')) {
+          localStorage.removeItem('googleAuthPending');
+          localStorage.setItem('newLoginAt', String(Date.now()));
+          localStorage.removeItem('justLoggedOutAt');
+          
+          const userPrefix = roleToRoute(data.user.role);
+          router.push(`/${userPrefix}/dashboard`);
+          return;
+        }
+
         if (isPublicRoute) {
           const userPrefix = roleToRoute(data.user.role);
           // Mark this as a fresh login so NotificationPrompt can show on landing
@@ -103,7 +113,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAllowed = true;
           }
 
-          if (topLevelRoute && ['student', 'faculty', 'admin', 'super-admin'].includes(topLevelRoute) && !isAllowed) {
+          // Let faculty use chat
+          if (topLevelRoute === 'chat' && (userPrefix === 'faculty' || userPrefix === 'super-admin' || userPrefix === 'admin')) {
+            isAllowed = true;
+          }
+          // Explicitly block students from chat
+          if (topLevelRoute === 'chat' && userPrefix === 'student') {
+            isAllowed = false;
+          }
+
+          if (topLevelRoute && ['student', 'faculty', 'admin', 'super-admin', 'chat'].includes(topLevelRoute) && !isAllowed) {
             router.push(`/${userPrefix}/dashboard`);
           }
         }
