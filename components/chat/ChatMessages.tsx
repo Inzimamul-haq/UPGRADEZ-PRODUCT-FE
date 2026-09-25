@@ -2,10 +2,19 @@
 
 import React, { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
-import { TypingIndicator } from './TypingIndicator';
+// import { TypingIndicator } from './TypingIndicator';
+import { GenerationStatus } from './GenerationStatus';
+import { GenerationStepData, GenerationStatusType } from './GenerationStatus/types';
 import { ChatMessagesProps } from '@/lib/types';
 
-export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit }: ChatMessagesProps) {
+interface ExtendedChatMessagesProps extends ChatMessagesProps {
+  isFaculty?: boolean;
+  generationSteps?: GenerationStepData[];
+  generationStatus?: GenerationStatusType;
+  generationElapsed?: number;
+}
+
+export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit, isFaculty, generationSteps, generationStatus, generationElapsed }: ExtendedChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const prevLastMsgId = useRef<string | null>(null);
@@ -28,10 +37,23 @@ export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction,
   return (
     <div className="min-h-0 flex-1 overflow-y-auto w-full custom-scrollbar">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 w-full">
-        {messages.map(m => (
-          <ChatMessage key={m.id} message={m} chatId={chatId} paperId={paperId} onAction={onAction} onEditSubmit={onEditSubmit} />
-        ))}
-        {isStreaming && <TypingIndicator />}
+        {(() => {
+          const lastUserIndex = messages.map(msg => msg.role).lastIndexOf('user');
+          return messages.map((m, i) => {
+            const isLastUser = i === lastUserIndex;
+            return (
+              <React.Fragment key={m.id}>
+                <ChatMessage message={m} chatId={chatId} paperId={paperId} onAction={onAction} onEditSubmit={onEditSubmit} />
+                {isFaculty && isLastUser && generationSteps && generationSteps.length > 0 && generationStatus && (
+                  <div className="flex justify-start -mt-5 -mb-1 z-10 relative">
+                    <GenerationStatus steps={generationSteps} status={generationStatus} elapsed={generationElapsed || 0} />
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          });
+        })()}
+        {/* {isStreaming && !isFaculty && <TypingIndicator />} */}
         <div ref={bottomRef} />
       </div>
     </div>
