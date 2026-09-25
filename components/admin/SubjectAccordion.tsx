@@ -254,9 +254,9 @@ export function SubjectAccordion({
               />
             </span>
 
-            <Pencil
-              size={14}
-              className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA] p-1 sm:p-0"
+            <button
+              type="button"
+              className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA] flex items-center justify-center"
               onClick={(e) => {
                 e.stopPropagation();
                 if (subject.embeddingStatus === 'processing') {
@@ -265,11 +265,13 @@ export function SubjectAccordion({
                 }
                 onEdit(subject);
               }}
-            />
+            >
+              <Pencil size={15} className="sm:w-[14px] sm:h-[14px]" />
+            </button>
 
-            <Trash2
-              size={14}
-              className={`cursor-pointer text-[#5A5A58] ${subject.embeddingStatus === 'processing' ? 'hover:text-[#ECECEA]' : 'hover:text-red-400'} p-1 sm:p-0`}
+            <button
+              type="button"
+              className={`p-2 sm:p-1 cursor-pointer text-[#5A5A58] ${subject.embeddingStatus === 'processing' ? 'hover:text-[#ECECEA]' : 'hover:text-red-400'} flex items-center justify-center`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (subject.embeddingStatus === 'processing') {
@@ -278,7 +280,9 @@ export function SubjectAccordion({
                 }
                 setShowDeleteModal(true);
               }}
-            />
+            >
+              <Trash2 size={15} className="sm:w-[14px] sm:h-[14px]" />
+            </button>
 
             {isOpen ? (
               <ChevronUp size={14} className="text-[#8C8C8A] flex-shrink-0" />

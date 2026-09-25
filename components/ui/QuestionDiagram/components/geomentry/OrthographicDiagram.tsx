@@ -154,7 +154,7 @@ export function OrthographicDiagram({ data, width = 500, height = 320 }: any) {
       <div className="absolute top-2 right-2 px-2 py-1 bg-[#2C2C2A] text-[#E5A05F] text-[10px] rounded border border-[#3A3A38] uppercase tracking-wider font-semibold shadow-sm z-10 pointer-events-none">
         ORTHOGRAPHIC
       </div>
-      <svg width={width} height={height} className="overflow-visible block">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible block">
         {/* Draw subtle crosshairs to divide the quadrants */}
         <line x1={quadWidth} y1={0} x2={quadWidth} y2={height} stroke="#3A3A38" strokeWidth="1" strokeDasharray="4 4" />
         <line x1={0} y1={quadHeight} x2={width} y2={quadHeight} stroke="#3A3A38" strokeWidth="1" strokeDasharray="4 4" />

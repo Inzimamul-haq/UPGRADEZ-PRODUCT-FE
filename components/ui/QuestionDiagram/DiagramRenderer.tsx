@@ -49,16 +49,16 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
       return <StructuralDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'block':
       return <BlockDisplay data={spec} subtype={subtype} width={width} height={height} />;
-    case 'flowchart':
-      return <FlowchartDisplay data={spec} subtype={subtype} width={width} height={height} />;
-    case 'architecture':
-      return <ArchitectureDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    // case 'flowchart':
+    //   return <FlowchartDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    // case 'architecture':
+    //   return <ArchitectureDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'network':
       return <NetworkDisplay data={spec} subtype={subtype} width={width} height={height} />;
-    case 'waveform':
-      return <WaveformDisplay data={spec} subtype={subtype} width={width} height={height} />;
-    case 'table':
-      return <TableDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    // case 'waveform':
+    //   return <WaveformDisplay data={spec} subtype={subtype} width={width} height={height} />;
+    // case 'table':
+      // return <TableDisplay data={spec} subtype={subtype} width={width} height={height} />;
     case 'logic_gate':
       return <SchematicDisplay data={spec} subtype="logic_gate" width={width} height={height} />;
     case 'free_body':

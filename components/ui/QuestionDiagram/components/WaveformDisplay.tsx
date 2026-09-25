@@ -64,7 +64,7 @@ export function WaveformDisplay({ data, subtype, width = 500, height = 260 }: an
 
   return (
     <div className="relative mt-2" style={{ width: numWidth, height: numHeight }}>
-      <svg width={numWidth} height={numHeight} className="overflow-visible block bg-[#1C1C1B] rounded-lg border border-[#3A3A38]">
+      <svg width={numWidth} height={numHeight} viewBox={`0 0 ${numWidth} ${numHeight}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible block bg-[#1C1C1B] rounded-lg border border-[#3A3A38]">
         {/* Grid and Axes */}
         <line x1={padding} y1={padding + chartH} x2={padding + chartW} y2={padding + chartH} stroke="#4C4C4A" strokeWidth="2" />
         <line x1={padding} y1={padding} x2={padding} y2={padding + chartH} stroke="#4C4C4A" strokeWidth="2" />

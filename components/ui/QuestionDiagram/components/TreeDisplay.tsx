@@ -136,7 +136,7 @@ export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProp
 
   if (!nodePositions) {
     return (
-      <svg width={width} height={height} className="mx-auto block" style={{ background: 'transparent' }}>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="mx-auto block" style={{ display: 'block', maxWidth: '100%',  background: 'transparent' }}>
         <text x={width/2} y={height/2} textAnchor="middle" fill="#888" fontSize={12}>Invalid tree structure</text>
       </svg>
     );
@@ -145,7 +145,7 @@ export function TreeDisplay({ tree, width = 260, height = 260 }: TreeDisplayProp
   const nodeRadius = 14;
 
   return (
-    <svg width={width} height={height} className="mx-auto block" style={{ background: 'transparent' }}>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="mx-auto block" style={{ display: 'block', maxWidth: '100%',  background: 'transparent' }}>
       {/* Edges */}
       {(edges || []).map((e, idx) => {
         const p1 = nodePositions.get(e.from);

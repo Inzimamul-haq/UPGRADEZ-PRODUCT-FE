@@ -261,17 +261,21 @@ export default function AdminDepartmentsPage() {
                       {dept.branch} - <span className="">{dept.name}</span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 flex-shrink-0 ml-2">
-                    <Pencil
-                      size={14}
-                      className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA] p-1 sm:p-0"
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <button
+                      type="button"
+                      className="p-2 sm:p-1 cursor-pointer text-[#5A5A58] hover:text-[#ECECEA] flex items-center justify-center"
                       onClick={() => openEdit(dept)}
-                    />
-                    <Trash2
-                      size={14}
-                      className="cursor-pointer text-[#5A5A58] hover:text-red-400 p-1 sm:p-0"
+                    >
+                      <Pencil size={15} className="sm:w-[14px] sm:h-[14px]" />
+                    </button>
+                    <button
+                      type="button"
+                      className="p-2 sm:p-1 cursor-pointer text-[#5A5A58] hover:text-red-400 flex items-center justify-center"
                       onClick={() => setDeleteTarget(dept)}
-                    />
+                    >
+                      <Trash2 size={15} className="sm:w-[14px] sm:h-[14px]" />
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#5A5A58]">
