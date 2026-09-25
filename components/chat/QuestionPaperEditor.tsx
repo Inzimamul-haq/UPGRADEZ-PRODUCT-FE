@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { Plus, X } from 'lucide-react';
+import { extractDiagramTag } from '../ui/layoutUtils';
 
 interface QuestionPaperEditorProps {
   initialContent: string;
@@ -55,12 +56,11 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       let diagramSpec = undefined;
       let diagramType = undefined;
 
-      const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
-      const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
+      const diagMatch = extractDiagramTag(extraContent, 0);
       if (diagMatch) {
-        diagramType = diagMatch[1].toLowerCase();
+        diagramType = diagMatch.type.toLowerCase();
         try {
-          diagramSpec = JSON.parse(diagMatch[2]);
+          diagramSpec = JSON.parse(diagMatch.json);
         } catch (e) { }
       }
 

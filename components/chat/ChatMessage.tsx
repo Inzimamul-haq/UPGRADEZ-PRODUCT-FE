@@ -15,6 +15,7 @@ import { DiagramCard } from './DiagramCard';
 
 import { SolutionRenderer, MultiSchemaData } from './Diagram/SolutionRenderer';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
+import { extractDiagramTag } from '../ui/layoutUtils';
 import { QuestionPaperRenderer } from './QuestionPaperRenderer';
 import { QuestionPaperEditor } from './QuestionPaperEditor';
 
@@ -181,29 +182,30 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   }
 
   const segmentsWithGraph: SolutionSegment[] = [];
-  const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]\s*/i;
 
   for (const seg of finalSegments) {
     if (seg.type === 'text') {
       let currentText = seg.content;
+      let searchFrom = 0;
+      
       while (currentText) {
-        const match = currentText.match(DIAGRAM_PREFIX_RE);
-        if (!match || match.index === undefined) {
+        const match = extractDiagramTag(currentText, searchFrom);
+        if (!match) {
           if (currentText.trim()) {
             segmentsWithGraph.push({ type: 'text', content: currentText });
           }
           break;
         }
 
-        const textBeforeGraph = currentText.substring(0, match.index);
+        const textBeforeGraph = currentText.substring(0, match.startIndex);
 
         if (textBeforeGraph.trim()) {
           segmentsWithGraph.push({ type: 'text', content: textBeforeGraph.trim() });
         }
 
         try {
-          const rawTagType = match[1].toLowerCase();
-          const parsedData = JSON.parse(match[2]);
+          const rawTagType = match.type.toLowerCase();
+          const parsedData = JSON.parse(match.json);
 
           // Normalize old tags to the new format
           if (rawTagType !== 'diagram' && !parsedData.type) {
@@ -212,10 +214,11 @@ function parseMathSolutions(text: string): SolutionSegment[] {
 
           segmentsWithGraph.push({ type: 'graph', data: parsedData });
         } catch {
-          segmentsWithGraph.push({ type: 'text', content: match[0] });
+          segmentsWithGraph.push({ type: 'text', content: match.tagMatch });
         }
 
-        currentText = currentText.substring(match.index + match[0].length);
+        currentText = currentText.substring(match.endIndex);
+        searchFrom = 0;
       }
     } else {
       segmentsWithGraph.push(seg);

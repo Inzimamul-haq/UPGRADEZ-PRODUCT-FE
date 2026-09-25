@@ -11,6 +11,13 @@ export function TableDisplay({ data, subtype, width = '100%' }: any) {
     );
   }
 
+  const normalizedRows = data.rows.map((row: any[]) => {
+    if (row.length === data.columns.length) return row;
+    const padded = [...row];
+    while (padded.length < data.columns.length) padded.push('—');
+    return padded.slice(0, data.columns.length);
+  });
+
   return (
     <div className="overflow-x-auto my-4 w-full" style={{ width }}>
       {subtype && <div className="text-sm font-semibold mb-2 text-gray-300">{subtype.replace(/_/g, ' ').toUpperCase()}</div>}
@@ -25,7 +32,7 @@ export function TableDisplay({ data, subtype, width = '100%' }: any) {
           </tr>
         </thead>
         <tbody>
-          {data.rows.map((row: any[], i: number) => (
+          {normalizedRows.map((row: any[], i: number) => (
             <tr key={i} className="bg-[#1C1C1B] border-b border-[#2C2C2B] hover:bg-[#252524]">
               {row.map((cell: any, j: number) => (
                 <td key={j} className="px-4 py-2 border border-[#3A3A38]">

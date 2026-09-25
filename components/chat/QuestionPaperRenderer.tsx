@@ -4,6 +4,7 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
+import { extractDiagramTag } from '../ui/layoutUtils';
 
 interface QuestionPaperRendererProps {
   content: string;
@@ -45,12 +46,11 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
     let diagramSpec = undefined;
     let diagramType = undefined;
 
-    const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
-    const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
+    const diagMatch = extractDiagramTag(extraContent, 0);
     if (diagMatch) {
-      diagramType = diagMatch[1].toLowerCase();
+      diagramType = diagMatch.type.toLowerCase();
       try {
-        diagramSpec = JSON.parse(diagMatch[2]);
+        diagramSpec = JSON.parse(diagMatch.json);
       } catch (e) { }
     }
 
