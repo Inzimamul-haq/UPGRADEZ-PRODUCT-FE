@@ -28,7 +28,7 @@ export function NetworkDisplay({ data, subtype, width = 400, height = 400 }: any
           {subtype.replace(/_/g, ' ')}
         </div>
       )}
-      <svg width={numWidth} height={numHeight} className="overflow-visible block">
+      <svg width={numWidth} height={numHeight} viewBox={`0 0 ${numWidth} ${numHeight}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible block">
         {/* Edges */}
         {edges.map((e: any, i: number) => {
           const fromPos = positions[e.from];

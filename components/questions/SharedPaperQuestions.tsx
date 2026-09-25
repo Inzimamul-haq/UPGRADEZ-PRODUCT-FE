@@ -51,7 +51,7 @@ function QuestionBlock({
       {/* Diagram */}
       {question.diagramSpec && (
         <div className="mt-2 w-full bg-[#1C1C1B] rounded-lg p-3 overflow-x-auto">
-          <div className="flex justify-center min-w-0">
+          <div className="mx-auto w-max">
             <DiagramRenderer
               type={question.diagramSpec.type || question.diagramType || 'unknown'}
               spec={question.diagramSpec}

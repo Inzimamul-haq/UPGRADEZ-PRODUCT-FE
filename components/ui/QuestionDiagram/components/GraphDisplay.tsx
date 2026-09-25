@@ -68,7 +68,7 @@ export function GraphDisplay({
   
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
-      <svg width={width} height={height} className="overflow-visible font-sans">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible font-sans">
         <defs>
           <marker
             id="arrowhead"

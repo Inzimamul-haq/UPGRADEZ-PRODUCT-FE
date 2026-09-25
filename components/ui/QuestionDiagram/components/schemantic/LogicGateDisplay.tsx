@@ -42,7 +42,7 @@ export function LogicGateDisplay({ logic, width = 500, height = 320 }: any) {
 
   return (
     <div className="relative mt-2" style={{ width: numWidth, height: numHeight }}>
-      <svg width={numWidth} height={numHeight} className="overflow-visible block bg-[#1C1C1B] rounded-lg border border-[#3A3A38]">
+      <svg width={numWidth} height={numHeight} viewBox={`0 0 ${numWidth} ${numHeight}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible block bg-[#1C1C1B] rounded-lg border border-[#3A3A38]">
         {/* Wires */}
         {edges.map((e: any, i: number) => {
           const fromPos = positions[e.from];

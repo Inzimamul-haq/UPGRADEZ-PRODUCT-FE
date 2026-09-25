@@ -50,7 +50,7 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
 
   if (values.length === 0) {
     return (
-      <svg width={width} height={height} className="mx-auto block">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="mx-auto block">
         <text x={width / 2} y={height / 2} textAnchor="middle" fill="#888" fontSize={12}>
           Invalid linked list data
         </text>
@@ -70,7 +70,7 @@ export function LinkedListDisplay({ list, width = 400, height = 120 }: LinkedLis
   const ARROW_SIZE = 5;
 
   return (
-    <svg width={actualW} height={height} className="mx-auto block" style={{ background: 'transparent' }}>
+    <svg width={actualW} height={height} viewBox={`0 0 ${actualW} ${height}`} preserveAspectRatio="xMidYMid meet" className="mx-auto block" style={{ display: 'block', maxWidth: '100%',  background: 'transparent' }}>
       {values.map((val, i) => {
         const x = startX + i * (boxW + gap);
         const y = startY;

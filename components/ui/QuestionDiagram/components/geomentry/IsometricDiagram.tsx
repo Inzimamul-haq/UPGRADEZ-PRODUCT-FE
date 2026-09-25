@@ -106,7 +106,7 @@ export function IsometricDiagram({ data, width = 500, height = 320 }: any) {
       <div className="absolute top-2 right-2 px-2 py-1 bg-[#2C2C2A] text-[#E5A05F] text-[10px] rounded border border-[#3A3A38] uppercase tracking-wider font-semibold shadow-sm z-10 pointer-events-none">
         ISOMETRIC
       </div>
-      <svg width={width} height={height} className="overflow-visible block">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" style={{ display: 'block', maxWidth: '100%' }} className="overflow-visible block">
         {/* Edges */}
         {hiddenEdges.map((e: any, i: number) => renderEdge(e, true, i))}
         {visibleEdges.map((e: any, i: number) => renderEdge(e, false, i))}
