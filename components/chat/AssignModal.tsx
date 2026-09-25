@@ -152,6 +152,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
       setJustAssigned(true);
 
       // Download PDF for exam papers
+      /*
       if (currentKind === 'EXAM_PAPER') {
         const toastId = toast.loading('Generating 100% accurate PDF with diagrams... Please wait.');
         console.log('[AssignModal] Starting PDF generation for paperId:', paper.id);
@@ -177,6 +178,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
           toast.error('Paper assigned successfully, but PDF download failed. Download from Papers page.', { id: toastId });
         }
       }
+      */
 
       const kindLabelText = currentKind === 'IMPORTANT_QUESTIONS' ? 'Important questions' : 'Exam paper';
       const successMsg = `[ASSIGN_SUCCESS]\n${kindLabelText} assigned successfully.\n\n${sessionData.subject?.name} — ${sessionData.examType}\n${branch} · ${year}\nSection: ${section || 'All Sections'}\n\nStudents will be notified.`;
@@ -243,6 +245,18 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
               className="text-[12px] font-medium text-amber-400 hover:text-amber-300 transition-colors"
             >
               Swap to IQ
+            </button>
+          </div>
+        )}
+
+        {currentKind === 'IMPORTANT_QUESTIONS' && !sessionData.hasLinkedIQ && !sessionData.hasLinkedExamPaper && !justAssigned && (
+          <div className="flex items-center justify-between bg-[#30302E] border border-[#3A3A38] rounded-xl px-4 py-3 mb-5">
+            <span className="text-[12px] text-[#ECECEA]">Assign as Exam Paper instead?</span>
+            <button
+              onClick={() => setCurrentKind('EXAM_PAPER')}
+              className="text-[12px] font-medium text-blue-400 hover:text-blue-400 transition-colors"
+            >
+              Swap to Exam Paper
             </button>
           </div>
         )}
@@ -330,7 +344,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Department</label>
                   {isArrear ? (
                     <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
-                      All Students
+                      All Departments
                     </div>
                   ) : fetchingDepts ? (
                      <div className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A]">Loading...</div>
@@ -355,13 +369,19 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Branch</label>
-                  <input
-                    value={branch}
-                    readOnly={departments.length > 0}
-                    onChange={(e) => setBranch(e.target.value)}
-                    placeholder="e.g. CSE, ECE"
-                    className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] ${departments.length > 0 ? 'opacity-70 cursor-not-allowed' : ''}`}
-                  />
+                  {isArrear ? (
+                    <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
+                      All Branches
+                    </div>
+                  ) : (
+                    <input
+                      value={branch}
+                      readOnly={departments.length > 0}
+                      onChange={(e) => setBranch(e.target.value)}
+                      placeholder="e.g. CSE, ECE"
+                      className={`flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] ${departments.length > 0 ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    />
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Year</label>
@@ -373,7 +393,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                   <label className="w-24 text-[13px] text-[#8C8C8A] shrink-0">Section</label>
                   {isArrear ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
-                       All Students
+                       All Sections
                      </div>
                   ) : (isUniversity && currentKind === 'EXAM_PAPER') ? (
                      <div className="flex-1 bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA]">
@@ -405,9 +425,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
                     <input
                       type="month"
                       value={arrearMonth}
+                      onChange={(e) => setArrearMonth(e.target.value)}
                       required
-                      disabled
-                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#8C8C8A] opacity-70 cursor-not-allowed"
+                      className="flex-1 bg-[#1C1C1B] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-white"
                     />
                   </div>
                 )}

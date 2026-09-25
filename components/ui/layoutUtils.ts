@@ -19,6 +19,63 @@ export interface NormalizedGraph {
   edges: NormalizedEdge[];
 }
 
+/**
+ * Finds the JSON object after a `[[type:` diagram tag by counting brace
+ * depth instead of matching to the first "]]" — a lazy regex misreads a
+ * table's `rows` (array of arrays) internal "]]" as the tag's own close.
+ */
+export function extractDiagramTag(text: string, searchFrom: number): { json: string; endIndex: number, type: string, startIndex: number, tagMatch: string } | null {
+  const tagStartRegex = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):/i;
+  const slice = text.slice(searchFrom);
+  const match = slice.match(tagStartRegex);
+  
+  if (!match || match.index === undefined) return null;
+
+  const tagStartMatchFull = match[0];
+  const tagType = match[1];
+  const absoluteStartIndex = searchFrom + match.index;
+  const searchForBraceStart = absoluteStartIndex + tagStartMatchFull.length;
+
+  const jsonStart = text.indexOf('{', searchForBraceStart);
+  if (jsonStart === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = jsonStart; i < text.length; i++) {
+    const ch = text[i];
+    if (escapeNext) { escapeNext = false; continue; }
+    if (ch === '\\') { escapeNext = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const afterJson = i + 1;
+        // Optionally allow spaces between } and ]]
+        let scanIdx = afterJson;
+        while (scanIdx < text.length && /\s/.test(text[scanIdx])) {
+          scanIdx++;
+        }
+        if (text.slice(scanIdx, scanIdx + 2) === ']]') {
+          return { 
+            json: text.slice(jsonStart, i + 1), 
+            endIndex: scanIdx + 2,
+            type: tagType,
+            startIndex: absoluteStartIndex,
+            tagMatch: text.slice(absoluteStartIndex, scanIdx + 2)
+          };
+        }
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
 export function normalizeDiagramSpec(spec: any): NormalizedGraph {
   const nodes: NormalizedNode[] = [];
   const edges: NormalizedEdge[] = [];

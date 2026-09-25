@@ -257,19 +257,19 @@ export default function AdminDepartmentsPage() {
               <div className="flex sm:hidden flex-col gap-1.5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <span className="flex-1 min-w-0 text-[14px] text-[#ECECEA] truncate">
+                    <span className="flex-1 min-w-0 text-[11px] text-[#ECECEA] truncate">
                       {dept.branch} - <span className="">{dept.name}</span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  <div className="flex items-center gap-4 flex-shrink-0 ml-2">
                     <Pencil
                       size={14}
-                      className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA]"
+                      className="cursor-pointer text-[#5A5A58] hover:text-[#ECECEA] p-1 sm:p-0"
                       onClick={() => openEdit(dept)}
                     />
                     <Trash2
                       size={14}
-                      className="cursor-pointer text-[#5A5A58] hover:text-red-400"
+                      className="cursor-pointer text-[#5A5A58] hover:text-red-400 p-1 sm:p-0"
                       onClick={() => setDeleteTarget(dept)}
                     />
                   </div>

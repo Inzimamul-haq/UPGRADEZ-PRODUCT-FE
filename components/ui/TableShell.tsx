@@ -32,7 +32,7 @@ export function TableShell({
   children,
 }: TableShellProps) {
   return (
-    <div className="border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
+    <div className="hidden sm:block mt-4 border border-[#3A3A38] rounded-lg overflow-x-auto bg-[#1F1F1E]">
       <div style={{ minWidth }}>
         {/* Column headers */}
         <div className="flex items-center px-4 py-2.5 bg-[#1F1F1E] text-[11px] text-[#5A5A58] uppercase tracking-wider">

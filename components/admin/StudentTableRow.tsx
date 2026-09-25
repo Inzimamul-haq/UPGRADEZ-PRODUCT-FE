@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X, ChevronDown } from 'lucide-react';
 import api from '@/lib/api';
 import { BRANCH_OPTIONS } from '@/lib/constants';
 import { DepartmentOption, StudentTableRowProps } from '@/lib/types';
@@ -9,7 +9,14 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const ROLE_OPTIONS = ['student', 'faculty', 'admin'];
 
-export function StudentTableRow({ student, onDelete, onPromoteSuccess }: StudentTableRowProps) {
+export function StudentTableRow({ 
+  student, 
+  onDelete, 
+  onPromoteSuccess,
+  variant = 'table',
+  isExpanded = false,
+  onToggleExpand
+}: StudentTableRowProps & { variant?: 'table' | 'card', isExpanded?: boolean, onToggleExpand?: () => void }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,32 +90,82 @@ export function StudentTableRow({ student, onDelete, onPromoteSuccess }: Student
 
   return (
     <>
-      <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[1000px]">
-        <div className="w-[12%] text-[13px] text-[#ECECEA] truncate pr-2">{student.rollNo || '-'}</div>
-        <div className="w-[14%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
-        <div className="w-[18%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
-        <div className="w-[6%] text-[13px] text-[#8C8C8A]">{student.year}</div>
-        <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.batchYear || '-'}</div>
-        <div className="w-[8%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
-        <div className="w-[12%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
-        <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
-        <div className="w-[12%] flex justify-end items-center gap-2">
-          <button
-            onClick={() => { setShowEditModal(true); setEditError(''); }}
-            title="Edit student"
-            className="p-1.5 rounded border border-[#3A3A38] bg-[#1F1F1E] hover:bg-[#2C2C2A] transition-colors"
-          >
-            <Pencil size={13} className="text-[#8C8C8A]" />
-          </button>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            title="Delete student"
-            className="p-1.5 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 transition-colors"
-          >
-            <Trash2 size={13} className="text-red-400" />
-          </button>
+      {variant === 'table' ? (
+        <div className="flex items-center px-4 py-3 border-t border-[#2E2E2C] hover:bg-[#2C2C2A] min-w-[1000px]">
+          <div className="w-[12%] text-[13px] text-[#ECECEA] truncate pr-2">{student.rollNo || '-'}</div>
+          <div className="w-[14%] text-[13px] text-[#ECECEA] truncate pr-2">{student.name}</div>
+          <div className="w-[18%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.email}</div>
+          <div className="w-[6%] text-[13px] text-[#8C8C8A]">{student.year}</div>
+          <div className="w-[10%] text-[13px] text-[#8C8C8A]">{student.batchYear || '-'}</div>
+          <div className="w-[8%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.branch}</div>
+          <div className="w-[12%] text-[13px] text-[#8C8C8A] truncate pr-2">{student.department}</div>
+          <div className="w-[8%] text-[13px] text-[#8C8C8A]">{student.section || '-'}</div>
+          <div className="w-[12%] flex justify-end items-center gap-2">
+            <button
+              onClick={() => { setShowEditModal(true); setEditError(''); }}
+              title="Edit student"
+              className="p-1.5 rounded border border-[#3A3A38] bg-[#1F1F1E] hover:bg-[#2C2C2A] transition-colors"
+            >
+              <Pencil size={13} className="text-[#8C8C8A]" />
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              title="Delete student"
+              className="p-1.5 rounded border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+            >
+              <Trash2 size={13} className="text-red-400" />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="px-3 py-3">
+          <div
+            className="flex items-center justify-between gap-2 cursor-pointer"
+            onClick={onToggleExpand}
+          >
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[#ECECEA] truncate">{student.rollNo || '—'}</p>
+              <p className="text-[12px] text-[#8C8C8A] truncate">{student.name}</p>
+              <p className="text-[11px] text-[#5A5A58] truncate">{student.email}</p>
+            </div>
+            <ChevronDown
+              size={14}
+              className={`text-[#5A5A58] flex-shrink-0 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+
+          {isExpanded && (
+            <div className="mt-3 pt-3 border-t border-[#2E2E2C] space-y-1.5">
+              {[
+                ['Year', student.year || '—'],
+                ['Batch', student.batchYear || '—'],
+                ['Branch', student.branch || '—'],
+                ['Department', student.department || '—'],
+                ['Section', student.section || '—'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between text-[12px]">
+                  <span className="text-[#5A5A58]">{label}</span>
+                  <span className="text-[#ECECEA]">{value}</span>
+                </div>
+              ))}
+              <div className="flex gap-2 mt-3 pt-2 border-t border-[#2E2E2C] justify-end">
+                <button
+                  onClick={() => { setShowEditModal(true); setEditError(''); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#3A3A38] bg-[#1F1F1E] text-[12px] text-[#ECECEA]"
+                >
+                  <Pencil size={13} className="text-[#8C8C8A]" /> Edit
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-red-500/20 bg-red-500/10 text-[12px] text-red-400"
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {showDeleteModal && (
         <ConfirmDeleteModal

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Users, Search } from 'lucide-react';
+import { Users, Search, SlidersHorizontal, X } from 'lucide-react';
 import { StudentTableRow } from '@/components/admin/StudentTableRow';
 import { TableShell } from '@/components/ui/TableShell';
 import { TablePagination } from '@/components/ui/TablePagination';
@@ -26,7 +26,10 @@ export default function AdminStudentsPage() {
   const [searchName, setSearchName] = useState('');
   const [departments, setDepartments] = useState<any[]>([]);
   const [availableRegulations, setAvailableRegulations] = useState<string[]>(['R2021', 'R2025']);
-  
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   const [rowsPerPage, setRowsPerPage] = useState('10');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -38,13 +41,13 @@ export default function AdminStudentsPage() {
   const [bulkDepartment, setBulkDepartment] = useState('');
   const [bulkPromoteTo, setBulkPromoteTo] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  
+
   const selectedDept = departments.find(d => d.id === departmentFilter);
   const maxYears = selectedDept?.durationYears || 4;
 
   const selectedBulkDept = departments.find(d => d.id === bulkDepartment);
   const bulkMaxYears = selectedBulkDept?.durationYears || 4;
-  
+
   const toast = useToast();
 
   const fetchStudents = async () => {
@@ -82,7 +85,7 @@ export default function AdminStudentsPage() {
       try {
         const { data } = await api.get('/api/departments');
         setDepartments(data.departments || []);
-      } catch (err) {}
+      } catch (err) { }
     })();
   }, []);
 
@@ -164,22 +167,22 @@ export default function AdminStudentsPage() {
   return (
     <div className="px-3 sm:px-6 py-4 sm:py-6 w-full relative">
       {/* Header - mobile responsive */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-8 sm:mt-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-8 p-2 sm:mt-0">
         <h1 className="text-[16px] font-medium text-[#ECECEA]">Students</h1>
         <div className="flex flex-wrap gap-2">
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
             Add Student
           </button>
-          <button 
+          <button
             onClick={handleDownloadCSV}
             className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
             Download
           </button>
-          <button 
+          <button
             onClick={() => setShowBulkModal(true)}
             className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-3 py-1.5 text-[12px] sm:text-[14px] text-[#ECECEA] hover:bg-[#333331] transition-colors"
           >
@@ -188,138 +191,234 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
-      {/* Filters - mobile responsive */}
-      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
-        {/* Search */}
-        <div className="relative flex-1 sm:flex-none min-w-[120px] sm:min-w-[180px]">
-          <Search size={14} className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-[#5A5A58]" />
-          <input 
-            placeholder="Search name" 
+      {/* Mobile Search and Filter Button */}
+      <div className="sm:hidden mt-4 flex gap-2">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#5A5A58]" />
+          <input
+            placeholder="Search name"
             value={searchName}
             onChange={(e) => {
               setSearchName(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-7 sm:pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
+            className="w-full pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
           />
         </div>
-
-        {/* Department */}
-        <select 
-          value={departmentFilter}
-          onChange={(e) => {
-            setDepartmentFilter(e.target.value);
-            setYearFilter('All');
-            setBatchYearFilter('All');
-            setRegulationFilter('All');
-            setPage(1);
-          }}
-          className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[150px]"
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[13px] text-[#ECECEA] flex items-center gap-1.5"
         >
-          <option value="">All Departments</option>
-          {departments.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.branch} - {opt.name}</option>
-          ))}
-        </select>
+          <SlidersHorizontal size={14} />
+          Filters
+        </button>
+      </div>
 
-        {/* Batch Year */}
-        <select 
-          value={batchYearFilter} 
-          onFocus={() => {
-            if (!departmentFilter) {
-              toast.error('Select a department first');
-            }
-          }}
-          onChange={(e) => {
-            if (!departmentFilter) return;
-            setBatchYearFilter(e.target.value);
-            setPage(1);
-          }}
-          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
-            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
-          }`}
-        >
-          <option value="All">All Batches</option>
-          {Array.from({ length: 6 }, (_, i) => {
-            const startYear = 2019 + i;
-            const endYear = startYear + maxYears;
-            const batch = `${startYear}-${endYear}`;
-            return <option key={batch} value={batch}>{batch}</option>;
-          })}
-        </select>
+      {/* Desktop Filters */}
 
-        {/* Regulation */}
-        <select 
-          value={regulationFilter} 
-          onFocus={() => {
-            if (!departmentFilter) {
-              toast.error('Select a department first');
-            }
-          }}
-          onChange={(e) => {
-            if (!departmentFilter) return;
-            setRegulationFilter(e.target.value);
-            setPage(1);
-          }}
-          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
-            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
-          }`}
-        >
-          <option value="All">All Regulations</option>
-          {availableRegulations.length > 0 ? (
-            availableRegulations.map(reg => (
-              <option key={reg} value={reg}>{reg}</option>
-            ))
-          ) : (
-            <option value="" disabled>No regulations</option>
-          )}
-        </select>
 
-        {/* Year */}
-        <select 
-          value={yearFilter} 
-          onFocus={() => {
-            if (!departmentFilter) {
-              toast.error('Select a department first');
-            }
-          }}
-          onChange={(e) => {
-            if (!departmentFilter) return;
-            setYearFilter(e.target.value);
-            setPage(1);
-          }}
-          className={`flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${
-            !departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
-          }`}
-        >
-          <option value="All">All Years</option>
-          {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => (
-            <option key={y} value={String(y)}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>
-          ))}
-        </select>
-        
-        {/* Section */}
-        {departmentFilter ? (
-          <select 
-            value={sectionFilter}
-            onChange={(e) => {
-              setSectionFilter(e.target.value);
-              setPage(1);
-            }}
-            className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px]"
-          >
-            <option value="">All Sections</option>
-            {departments.find(d => d.id === departmentFilter)?.sections?.map((s: string) => (
-              <option key={s} value={s}>Section {s}</option>
-            ))}
-          </select>
+      {(() => {
+        const filterControls = (
+          <>
+            {/* Department */}
+            <select
+              value={departmentFilter}
+              onChange={(e) => {
+                setDepartmentFilter(e.target.value);
+                setYearFilter('All');
+                setBatchYearFilter('All');
+                setRegulationFilter('All');
+                setPage(1);
+              }}
+              className="w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[150px]"
+            >
+              <option value="">All Departments</option>
+              {departments.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.branch} - {opt.name}</option>
+              ))}
+            </select>
+
+            {/* Batch Year */}
+            <select
+              value={batchYearFilter}
+              onFocus={() => {
+                if (!departmentFilter) {
+                  toast.error('Select a department first');
+                }
+              }}
+              onChange={(e) => {
+                if (!departmentFilter) return;
+                setBatchYearFilter(e.target.value);
+                setPage(1);
+              }}
+              className={`w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${!departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+                }`}
+            >
+              <option value="All">All Batches</option>
+              {Array.from({ length: 6 }, (_, i) => {
+                const startYear = 2019 + i;
+                const endYear = startYear + maxYears;
+                const batch = `${startYear}-${endYear}`;
+                return <option key={batch} value={batch}>{batch}</option>;
+              })}
+            </select>
+
+            {/* Regulation */}
+            <select
+              value={regulationFilter}
+              onFocus={() => {
+                if (!departmentFilter) {
+                  toast.error('Select a department first');
+                }
+              }}
+              onChange={(e) => {
+                if (!departmentFilter) return;
+                setRegulationFilter(e.target.value);
+                setPage(1);
+              }}
+              className={`w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${!departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+                }`}
+            >
+              <option value="All">All Regulations</option>
+              {availableRegulations.length > 0 ? (
+                availableRegulations.map(reg => (
+                  <option key={reg} value={reg}>{reg}</option>
+                ))
+              ) : (
+                <option value="" disabled>No regulations</option>
+              )}
+            </select>
+
+            {/* Year */}
+            <select
+              value={yearFilter}
+              onFocus={() => {
+                if (!departmentFilter) {
+                  toast.error('Select a department first');
+                }
+              }}
+              onChange={(e) => {
+                if (!departmentFilter) return;
+                setYearFilter(e.target.value);
+                setPage(1);
+              }}
+              className={`w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[130px] ${!departmentFilter ? 'text-[#5A5A58] cursor-not-allowed opacity-60' : 'text-[#ECECEA]'
+                }`}
+            >
+              <option value="All">All Years</option>
+              {Array.from({ length: maxYears }, (_, i) => i + 1).map(y => (
+                <option key={y} value={String(y)}>{y}{y === 1 ? 'st' : y === 2 ? 'nd' : y === 3 ? 'rd' : 'th'} Year</option>
+              ))}
+            </select>
+
+            {/* Section */}
+            {departmentFilter ? (
+              <select
+                value={sectionFilter}
+                onChange={(e) => {
+                  setSectionFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px]"
+              >
+                <option value="">All Sections</option>
+                {departments.find(d => d.id === departmentFilter)?.sections?.map((s: string) => (
+                  <option key={s} value={s}>Section {s}</option>
+                ))}
+              </select>
+            ) : (
+              <select
+                disabled
+                className="w-full sm:w-auto sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-2 sm:py-1.5 text-[13px] text-[#5A5A58] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px] opacity-50 cursor-not-allowed"
+              >
+                <option value="">All Sections</option>
+              </select>
+            )}
+          </>
+        );
+
+        return (
+          <>
+            {/* Desktop filters wrapper */}
+            <div className="hidden sm:flex mt-4 items-center gap-2 sm:gap-3 w-full">
+              {/* Search */}
+              <div className="relative w-[200px] flex-none">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A5A58]"
+                />
+                <input
+                  placeholder="Search name"
+                  value={searchName}
+                  onChange={(e) => {
+                    setSearchName(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full pl-8 bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-1.5 text-[13px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none focus:border-[#4A4A48]"
+                />
+              </div>
+
+              {/* Filters */}
+              {filterControls}
+            </div>
+
+            {/* Mobile Filter Modal - rendered outside the hidden sm:flex div! */}
+            {showMobileFilters && (
+              <div className="fixed inset-0 z-50 flex items-center sm:hidden bg-black/60 backdrop-blur-sm transition-opacity p-2">
+                <div className="w-full bg-[#1F1F1E] rounded-t-xl border-t border-[#3A3A38] p-5 flex flex-col gap-4 animate-in slide-in-from-bottom-full duration-200">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[15px] font-medium text-[#ECECEA]">Filters</span>
+                    <button onClick={() => setShowMobileFilters(false)} className="text-[#8C8C8A] p-1 bg-[#2C2C2A] rounded-md">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-center gap-3">
+                    {filterControls}
+                  </div>
+                  <button
+                    onClick={() => setShowMobileFilters(false)}
+                    className="w-full mt-2 bg-[#ECECEA] text-[#1C1C1B] py-2.5 rounded-lg text-[14px] font-medium transition-colors hover:bg-white"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* Mobile card list — hidden on sm+ */}
+      <div className="sm:hidden mt-4 flex flex-col divide-y divide-[#2E2E2C] border border-[#3A3A38] rounded-lg overflow-hidden bg-[#1F1F1E]">
+        {isLoading ? (
+          <p className="px-4 py-6 text-[13px] text-[#5A5A58]">Loading...</p>
+        ) : students.length === 0 ? (
+          <p className="px-4 py-6 text-[13px] text-[#5A5A58] text-center">No students found</p>
         ) : (
-          <select 
-            disabled
-            className="flex-1 sm:flex-none rounded-md border border-[#3A3A38] bg-[#2C2C2A] px-2 sm:px-3 py-1.5 text-[12px] sm:text-[13px] text-[#5A5A58] focus:outline-none focus:border-[#4A4A48] min-w-[0px] sm:min-w-[120px] opacity-50 cursor-not-allowed"
-          >
-            <option value="">All Sections</option>
-          </select>
+          students.map((s) => (
+            <StudentTableRow
+              key={s.id}
+              student={{
+                id: s.id,
+                name: s.name,
+                email: s.email,
+                year: s.year ? `${s.year} Year` : '-',
+                branch: s.department?.branch || '-',
+                department: s.department?.name || '-',
+                departmentId: s.departmentId || s.department?.id,
+                section: s.section || '-',
+                joined: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-',
+                role: s.role || 'student',
+                batchYear: s.batchYear,
+                rollNo: s.rollNo,
+              }}
+              onDelete={handleDelete}
+              onPromoteSuccess={fetchStudents}
+              variant="card"
+              isExpanded={expandedId === s.id}
+              onToggleExpand={() => setExpandedId(expandedId === s.id ? null : s.id)}
+            />
+          ))
         )}
       </div>
 
@@ -379,12 +478,12 @@ export default function AdminStudentsPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-lg p-4 sm:p-6 max-w-sm w-full shadow-xl mx-2 sm:mx-0">
             <h2 className="text-[14px] font-medium text-[#ECECEA] mb-4">Bulk Promote Students</h2>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Current Year</label>
-                <select 
-                  value={bulkYear} 
+                <select
+                  value={bulkYear}
                   onChange={(e) => {
                     setBulkYear(e.target.value);
                     setBulkPromoteTo('');
@@ -401,8 +500,8 @@ export default function AdminStudentsPage() {
 
               <div>
                 <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Branch</label>
-                <select 
-                  value={bulkBranch} 
+                <select
+                  value={bulkBranch}
                   onChange={(e) => setBulkBranch(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
@@ -415,8 +514,8 @@ export default function AdminStudentsPage() {
 
               <div>
                 <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Department</label>
-                <select 
-                  value={bulkDepartment} 
+                <select
+                  value={bulkDepartment}
                   onChange={(e) => setBulkDepartment(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
@@ -424,15 +523,15 @@ export default function AdminStudentsPage() {
                   {departments
                     .filter(d => !bulkBranch || d.branch === bulkBranch)
                     .map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.name}</option>
-                  ))}
+                      <option key={opt.id} value={opt.id}>{opt.name}</option>
+                    ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-[11px] sm:text-[12px] text-[#8C8C8A] mb-1">Promote To</label>
-                <select 
-                  value={bulkPromoteTo} 
+                <select
+                  value={bulkPromoteTo}
                   onChange={(e) => setBulkPromoteTo(e.target.value)}
                   className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-md px-3 py-2 text-[12px] sm:text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#4A4A48]"
                 >
@@ -445,13 +544,13 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-6">
-              <button 
+              <button
                 onClick={() => setShowBulkModal(false)}
                 className="text-[12px] sm:text-[13px] text-[#5A5A58] hover:text-[#8C8C8A] transition-colors py-2 sm:py-0"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleBulkUpdate}
                 disabled={!bulkDepartment || !bulkPromoteTo}
                 className="bg-[#2C2C2A] border border-[#4A4A48] rounded-md px-4 py-2 sm:py-1.5 text-[12px] sm:text-[13px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full sm:w-auto"
@@ -464,10 +563,10 @@ export default function AdminStudentsPage() {
       )}
 
       {showAddModal && (
-        <AddProfileModal 
-          defaultRole="student" 
-          onClose={() => setShowAddModal(false)} 
-          onSuccess={() => { setShowAddModal(false); fetchStudents(); }} 
+        <AddProfileModal
+          defaultRole="student"
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => { setShowAddModal(false); fetchStudents(); }}
         />
       )}
     </div>

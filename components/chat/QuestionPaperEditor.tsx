@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { Plus, X } from 'lucide-react';
+import { extractDiagramTag } from '../ui/layoutUtils';
 
 interface QuestionPaperEditorProps {
   initialContent: string;
@@ -55,12 +56,11 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       let diagramSpec = undefined;
       let diagramType = undefined;
 
-      const DIAGRAM_PREFIX_RE = /\[\[(graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/i;
-      const diagMatch = extraContent.match(DIAGRAM_PREFIX_RE);
+      const diagMatch = extractDiagramTag(extraContent, 0);
       if (diagMatch) {
-        diagramType = diagMatch[1].toLowerCase();
+        diagramType = diagMatch.type.toLowerCase();
         try {
-          diagramSpec = JSON.parse(diagMatch[2]);
+          diagramSpec = JSON.parse(diagMatch.json);
         } catch (e) { }
       }
 
@@ -194,7 +194,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const renderQuestion = (q: EditableQuestion) => (
-    <div id={`question-${q.id}`} key={q.id} className={`flex flex-col py-6 border-b border-[#2E2E2C] last:border-b-0 transition-colors ${q.selected ? 'bg-[#1C1C1B]/50 rounded-lg -mx-4 px-4' : ''}`}>
+    <div id={`question-${q.id}`} key={q.id} className={`flex flex-col mt-4 py-6  border-[#2C2C2A] last:border-b-0 transition-colors bg-[#2C2C2A]/40 rounded-lg -mx-4 px-4 ${q.selected ? 'bg-[#1C1C1B]/80 ring-1 ring-amber-500/30' : ''}`}>
       <div className="flex flex-col gap-4">
 
         {/* Top Row: Checkbox, Question Number and Text Area */}
@@ -205,8 +205,8 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
             onChange={() => handleToggleSelection(q.id)}
             className="mt-3 cursor-pointer w-4 h-4 rounded border-[#3A3A38] bg-[#161615] text-amber-500 focus:ring-amber-500/50"
           />
-          <span className="text-[#ECECEA] font-medium text-[14.5px] mt-2.5 flex-shrink-0 min-w-[20px]">{q.qNo}.</span>
-          <div className="relative w-full group">
+          <span className="text-[#ECECEA] font-medium text-[14.5px] mt-2.5 flex-shrink-0 min-w-[10px]">{q.qNo}.</span>
+          <div className="w-full">
             <textarea
               ref={el => {
                 if (el) {
@@ -217,16 +217,9 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
               value={q.text}
               onChange={(e) => handleUpdate(q.id, 'text', e.target.value)}
               disabled={isSaving}
-              className="w-full bg-[#1C1C1B] border border-[#3A3A38] text-[#ECECEA] text-[14.5px] rounded-lg p-3 pr-10 min-h-[80px] resize-none overflow-hidden focus:outline-none focus:border-amber-500/50 transition-colors leading-relaxed"
+              className="w-full bg-transparent border-b border-[#3A3A38] text-[#ECECEA] text-[14.5px] rounded-none py-3 px-1 min-h-[100px] resize-none overflow-hidden focus:outline-none focus:border-white/50 transition-colors leading-relaxed"
               placeholder="Enter question text here..."
             />
-            <button
-              onClick={() => handleDelete(q.id)}
-              className="absolute top-2 right-2 p-1 text-[#8C8C8A] hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-              title="Remove question"
-            >
-              <X size={16} />
-            </button>
           </div>
         </div>
 
@@ -235,62 +228,74 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
           const diagSubtype = q.diagramSpec.subtype || '';
           return (
-            <div className="flex justify-start ml-12 relative">
-              <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only</div>
-              <div className="rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-4 opacity-70 pointer-events-none shadow-sm">
-                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={400} height={200} />
+            <div className="flex justify-center w-full relative mb-2">
+              <div className="w-full max-w-[360px] aspect-video relative rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-2 opacity-70 pointer-events-none flex items-center justify-center">
+                <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only</div>
+                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={340} height={180} />
               </div>
             </div>
           );
         })()}
 
         {/* Bottom Row: Metadata Edit Controls */}
-        <div className="flex flex-wrap items-center justify-end gap-3 ml-12 mt-1">
+        <div className="flex flex-wrap items-center gap-6 ml-10 mt-1">
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#8C8C8A] uppercase tracking-wider font-semibold">Marks</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-[#8C8C8A] uppercase tracking-wider font-semibold">Marks</span>
             <select
               value={q.marks}
               onChange={(e) => handleUpdate(q.id, 'marks', parseInt(e.target.value, 10))}
               disabled={isSaving}
-              className="bg-[#242422] border border-[#3A3A38] text-[#ECECEA] text-[12px] rounded-md px-2 py-1.5 focus:outline-none focus:border-amber-500/50"
+              className="bg-transparent  text-[#ECECEA] text-[13px] px-0 py-1  cursor-pointer"
             >
-              <option value={q.marks}>{q.marks} Marks</option>
+              <option className="bg-[#1C1C1B]" value={q.marks}>{q.marks} Marks</option>
               {MARKS_OPTIONS.filter(m => m !== q.marks).map(m => (
-                <option key={m} value={m}>{m} Marks</option>
+                <option className="bg-[#1C1C1B]" key={m} value={m}>{m} Marks</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#8C8C8A] uppercase tracking-wider font-semibold">CO</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-[#8C8C8A] uppercase tracking-wider font-semibold">CO</span>
             <select
               value={q.meta.co}
               onChange={(e) => handleMetaUpdate(q.id, 'co', e.target.value)}
               disabled={isSaving}
-              className="bg-[#242422] border border-[#3A3A38] text-[#ECECEA] text-[12px] rounded-md px-2 py-1.5 focus:outline-none focus:border-amber-500/50"
+              className="bg-transparent  text-[#ECECEA] text-[13px] px-0 py-1  cursor-pointer"
             >
-              <option value={q.meta.co}>{q.meta.co}</option>
+              <option className="bg-[#1C1C1B]" value={q.meta.co}>{q.meta.co}</option>
               {CO_OPTIONS.filter(co => co !== q.meta.co).map(co => (
-                <option key={co} value={co}>{co}</option>
+                <option className="bg-[#1C1C1B]" key={co} value={co}>{co}</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#8C8C8A] uppercase tracking-wider font-semibold">RBT</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-[#8C8C8A] uppercase tracking-wider font-semibold">RBT</span>
             <select
               value={q.meta.rbt}
               onChange={(e) => handleMetaUpdate(q.id, 'rbt', e.target.value)}
               disabled={isSaving}
-              className="bg-[#242422] border border-[#3A3A38] text-[#ECECEA] text-[12px] rounded-md px-2 py-1.5 focus:outline-none focus:border-amber-500/50"
+              className="bg-transparent  text-[#ECECEA] text-[13px] px-0 py-1 cursor-pointer"
             >
-              <option value={q.meta.rbt}>{q.meta.rbt}</option>
+              <option className="bg-[#1C1C1B]" value={q.meta.rbt}>{q.meta.rbt}</option>
               {RBT_OPTIONS.filter(rbt => rbt !== q.meta.rbt).map(rbt => (
-                <option key={rbt} value={rbt}>{rbt}</option>
+                <option className="bg-[#1C1C1B]" key={rbt} value={rbt}>{rbt}</option>
               ))}
             </select>
           </div>
+
+          <div className="flex-1" />
+
+          {/* <button
+            onClick={() => handleDelete(q.id)}
+            className="flex items-center gap-1.5 p-2 text-[#8C8C8A] hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors mt-3"
+            title="Remove question"
+          >
+            <X size={15} />
+            <span className="text-[12px] font-medium hidden sm:inline">Remove</span>
+          </button> */}
+        </div>
 
           {/* <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#8C8C8A] uppercase tracking-wider font-semibold">PO</span>
@@ -309,23 +314,14 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           </div> */}
         </div>
 
-      </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col relative bg-[#161615] rounded-xl overflow-hidden shadow-2xl shadow-black/40 ring-1 ring-[#3A3A38] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full my-4">
-
-      {/* Header */}
-      <div className="bg-[#1C1C1B] border-b border-[#3A3A38] px-4 py-2.5 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          <span className="text-[12px] font-semibold text-[#D1D1C7] uppercase tracking-wider">Structured Edit Mode</span>
-        </div>
-      </div>
+    <div className="flex flex-col relative bg-[#1C1C1B]/50 rounded-xl border border-[#3A3A38] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full my-4">
 
       {/* Editor Body */}
-      <div className="max-h-[65vh] overflow-y-auto custom-scrollbar p-6 bg-[#161615]">
+      <div className="flex flex-col px-6 pt-6 pb-2">
         {partA.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#3A3A38]">
@@ -369,7 +365,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
       {/* Bulk Action Bar (Only visible if something is selected) */}
       {anySelected && (
-        <div className="flex items-center justify-between px-4 py-3 bg-amber-500/5 border-t border-amber-500/20">
+        <div className="flex items-center justify-between px-4 py-3 bg-amber-500/10 border-t border-amber-500/20 backdrop-blur-md sticky bottom-[60px] z-30 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.5)]">
           <span className="text-[12px] text-amber-500 font-medium">
             {questions.filter(q => q.selected).length} question(s) selected
           </span>
@@ -393,7 +389,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       )}
 
       {/* Footer Controls */}
-      <div className="flex justify-end gap-3 p-4 bg-[#1C1C1B] border-t border-[#3A3A38]">
+      <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#2E2E2C] sticky bottom-0 z-40 bg-[#1C1C1A] backdrop-blur-md">
         <button
           onClick={onCancel}
           disabled={isSaving}

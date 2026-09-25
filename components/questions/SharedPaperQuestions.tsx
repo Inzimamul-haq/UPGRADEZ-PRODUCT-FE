@@ -35,11 +35,11 @@ function QuestionBlock({
   return (
     <div className="flex flex-col py-4 border-b border-[#2E2E2C] last:border-0 gap-3">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
           <span className="text-[15px] font-semibold flex-shrink-0 text-white mt-[2px]">
             {label}.
           </span>
-          <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{question.text}</p>
+          <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap break-words flex-1 min-w-0">{question.text}</p>
         </div>
         {question.marks && (
           <span className={`text-[12px] font-medium flex-shrink-0 mt-[4px] ${getMarksColor(question.marks)}`}>
@@ -50,13 +50,15 @@ function QuestionBlock({
 
       {/* Diagram */}
       {question.diagramSpec && (
-        <div className="mt-2 flex justify-center bg-[#1C1C1B] rounded-lg p-3 ">
-          <DiagramRenderer
-            type={question.diagramSpec.type || question.diagramType || 'unknown'}
-            spec={question.diagramSpec}
-            width={400}
-            height={250}
-          />
+        <div className="mt-2 w-full bg-[#1C1C1B] rounded-lg p-3 overflow-x-auto">
+          <div className="flex justify-center min-w-0">
+            <DiagramRenderer
+              type={question.diagramSpec.type || question.diagramType || 'unknown'}
+              spec={question.diagramSpec}
+              width={400}
+              height={250}
+            />
+          </div>
         </div>
       )}
     </div>

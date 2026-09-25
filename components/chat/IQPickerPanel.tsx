@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
+import { extractDiagramTag } from '../ui/layoutUtils';
+
 interface IQQuestion {
   id: string;
   number: number;
@@ -49,13 +51,28 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
             let diagramSpec = undefined;
 
             // 1. Extract diagram spec if present (either ```diagram...``` or [[diagram:{...}]])
-            const diagramMatch = text.match(/\[\[diagram:(.*?)\]\]/) || text.match(/```diagram\n([\s\S]*?)\n```/);
-            if (diagramMatch) {
+            const diagMatch = extractDiagramTag(text, 0);
+            if (diagMatch) {
               try {
-                diagramSpec = JSON.parse(diagramMatch[1]);
-                text = text.replace(diagramMatch[0], '');
+                diagramSpec = JSON.parse(diagMatch.json);
+                text = text.replace(diagMatch.tagMatch, '');
+                // Also normalize 'diagram' to specific type if provided
+                if (diagMatch.type.toLowerCase() !== 'diagram' && !diagramSpec.type) {
+                  diagramSpec.type = diagMatch.type.toLowerCase();
+                }
               } catch (e) {
                 console.error("Failed to parse diagram JSON", e);
+              }
+            } else {
+              // Legacy fallback for ```diagram...``` blocks
+              const blockMatch = text.match(/```diagram\n([\s\S]*?)\n```/);
+              if (blockMatch) {
+                try {
+                  diagramSpec = JSON.parse(blockMatch[1]);
+                  text = text.replace(blockMatch[0], '');
+                } catch (e) {
+                  console.error("Failed to parse diagram block", e);
+                }
               }
             }
 
