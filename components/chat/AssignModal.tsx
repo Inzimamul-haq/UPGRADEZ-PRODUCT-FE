@@ -209,11 +209,11 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-[#2C2C2A] border border-[#3A3A38] rounded-2xl p-6 w-[460px] shadow-2xl mx-4 text-[#ECECEA]"
+        className="bg-[#2C2C2A] border border-[#3A3A38] rounded-2xl p-5 sm:p-6 w-full max-w-[460px] max-h-[95vh] overflow-y-auto custom-scrollbar shadow-2xl text-[#ECECEA]"
         onClick={e => e.stopPropagation()}
       >
         <h2 className="text-[17px] font-medium mb-4">Assign {kindLabel}</h2>

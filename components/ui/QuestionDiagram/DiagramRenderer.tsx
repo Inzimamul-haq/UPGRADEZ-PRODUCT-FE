@@ -66,6 +66,22 @@ export function DiagramRenderer({ type, subtype, spec, width = 260, height = 260
     case 'linked_list':
     case 'doubly_linked_list':
       return <StructuralDisplay data={spec} subtype={type} width={width} height={height} />;
+    case 'image':
+      if (!spec.url) {
+        return (
+          <div className="text-xs text-[#6C6C6A] italic flex items-center justify-center border border-dashed border-[#3A3A38] rounded-md h-[100px] w-full mt-2">
+            [Image: URL missing]
+          </div>
+        );
+      }
+      return (
+        <img
+          src={spec.url}
+          alt="Uploaded diagram"
+          className="uploaded-diagram-image"
+          style={{ maxWidth: '100%', maxHeight: height, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+        />
+      );
     default:
       // Unknown type — show a placeholder so the question isn't broken
       return (

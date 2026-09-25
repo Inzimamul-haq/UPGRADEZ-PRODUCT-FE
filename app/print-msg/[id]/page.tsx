@@ -51,10 +51,20 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
 
   useEffect(() => {
     if (content) {
-      Promise.all([document.fonts.ready]).then(() => {
+      const waitForImages = () => {
+        const imgs = Array.from(document.querySelectorAll('img'));
+        const imagePromises = imgs.map(img =>
+          img.complete
+            ? Promise.resolve()
+            : new Promise<void>(resolve => { img.onload = () => resolve(); img.onerror = () => resolve(); })
+        );
+        return Promise.all(imagePromises);
+      };
+
+      Promise.all([document.fonts.ready, waitForImages()]).then(() => {
         setTimeout(() => {
           (window as any).__PRINT_READY__ = true;
-        }, 1500); 
+        }, 300);
       });
     }
   }, [content]);
@@ -163,8 +173,18 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
           
           /* Force any SVG or canvas diagrams to stay within max height on print */
           canvas, svg, img {
-            max-height: 400px !important;
+            max-width: 100% !important;
+            max-height: 350px !important;
             object-fit: contain;
+          }
+
+          .uploaded-diagram-image {
+            max-width: 400px !important;
+            max-height: 250px !important;
+            padding: 4px !important;
+            margin: 10px auto !important;
+            object-fit: contain !important;
+            display: block !important;
           }
         }
       `}} />
