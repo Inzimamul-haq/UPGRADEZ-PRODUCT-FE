@@ -5,6 +5,7 @@ import { ArrowUp, Mic, Square, Loader2, Settings2 } from "lucide-react";
 import { ChatInputProps } from "@/lib/types";
 import api from "@/lib/api";
 
+
 type MicState = "idle" | "recording" | "processing" | "error";
 
 export function ChatInput({
