@@ -59,9 +59,8 @@ interface CountStepperProps {
 function CountStepper({ value, onChange, disabled }: CountStepperProps) {
   return (
     <div
-      className={`flex items-center gap-0 rounded-lg overflow-hidden border border-[#3A3A38] ${
-        disabled ? "opacity-40" : ""
-      }`}
+      className={`flex items-center gap-0 rounded-lg overflow-hidden border border-[#3A3A38] ${disabled ? "opacity-40" : ""
+        }`}
     >
       <button
         onClick={() => onChange(Math.max(1, value - 1))}
@@ -101,9 +100,8 @@ function MarksButtonGroup({
 }: MarksButtonGroupProps) {
   return (
     <div
-      className={`flex rounded-lg overflow-hidden border border-[#3A3A38] ${
-        disabled ? "opacity-40" : ""
-      }`}
+      className={`flex rounded-lg overflow-hidden border border-[#3A3A38] ${disabled ? "opacity-40" : ""
+        }`}
     >
       {options.map((opt, i) => (
         <button
@@ -113,10 +111,9 @@ function MarksButtonGroup({
           className={`
             px-2.5 py-1 text-[12px] font-semibold transition-all duration-150
             ${i > 0 ? "border-l border-[#3A3A38]" : ""}
-            ${
-              selected === opt
-                ? "bg-[#1A2A1A] text-[#7AC87A] border-[#3A6A3A]"
-                : "bg-[#242422] text-[#6C6C6A] hover:text-[#ECECEA] hover:bg-[#2C2C2A]"
+            ${selected === opt
+              ? "bg-[#1A2A1A] text-[#7AC87A] border-[#3A6A3A]"
+              : "bg-[#242422] text-[#6C6C6A] hover:text-[#ECECEA] hover:bg-[#2C2C2A]"
             }
           `}
           aria-pressed={selected === opt}
@@ -177,12 +174,12 @@ export function ContextSetupCard({
     if (prefillTopicsConfig && syllabusEntries.length > 0 && !prefilled && mode !== 'topicsOnly') {
       const isAll = prefillTopicsConfig.chapters.length === 0;
       const chToSelect = isAll ? syllabusEntries.map(e => e.chapter) : prefillTopicsConfig.chapters;
-      
+
       setAllChapters(isAll);
       setSelectedChapters(new Set(chToSelect));
 
       const newTopicStates: Record<number, { all: boolean; selected: Set<string>; customText: string; expanded?: boolean }> = {};
-      
+
       Object.entries(prefillTopicsConfig.topics).forEach(([chStr, topics]) => {
         const ch = parseInt(chStr);
         if (topics.includes('all')) {
@@ -192,16 +189,16 @@ export function ContextSetupCard({
           const chTopics = syllabusCh?.topics || [];
           const selectedSet = new Set<string>();
           const customList: string[] = [];
-          
+
           topics.forEach(t => {
             if (chTopics.includes(t)) selectedSet.add(t);
             else customList.push(t);
           });
-          
+
           newTopicStates[ch] = { all: false, selected: selectedSet, customText: customList.join(', '), expanded: true };
         }
       });
-      
+
       setTopicStates(newTopicStates);
       setStep(3);
       setPrefilled(true);
@@ -281,7 +278,7 @@ export function ContextSetupCard({
   // ── Summary strip ─────────────────────────────────────────────────────────
   const summaryParts: string[] = [];
   summaryParts.push(chapterLabel);
-  
+
   if (step > 1) {
     const isAllTopics = Array.from(selectedChapters).every(ch => topicStates[ch]?.all !== false);
     summaryParts.push(isAllTopics ? "All Topics" : "Specific Topics");
@@ -292,16 +289,16 @@ export function ContextSetupCard({
     if (dist.partB.enabled) summaryParts.push(`${dist.partB.count}×${dist.partB.marks}B`);
     if (dist.partC.enabled) summaryParts.push(`${dist.partC.count}×${dist.partC.marks}C`);
   }
-  
+
   if (mode === 'full' && step > 3 && difficulty) {
     summaryParts.push(DIFFICULTY_LABELS[difficulty]);
   }
-  
+
   const summaryLine = summaryParts.join(" · ");
 
   // ── Validation ────────────────────────────────────────────────────────────
   const hasChapterSelection = !hasChapters || allChapters || selectedChapters.size > 0;
-  
+
   // Topic validation: if a chapter has 'all: false', it must have customText or selected pills
   const hasValidTopics = Array.from(selectedChapters).every(ch => {
     const ts = topicStates[ch];
@@ -322,8 +319,8 @@ export function ContextSetupCard({
         : Array.from(selectedChapters).sort((a, b) => a - b);
 
     const topics: Record<number, string[]> = {};
-    const chaptersToProcess = chapters.length === 0 && selectedChapters.size > 0 
-      ? Array.from(selectedChapters) 
+    const chaptersToProcess = chapters.length === 0 && selectedChapters.size > 0
+      ? Array.from(selectedChapters)
       : chapters;
 
     chaptersToProcess.forEach((c) => {
@@ -421,10 +418,9 @@ export function ContextSetupCard({
                     className={`
                       flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-medium
                       transition-all duration-150 w-full text-left
-                      ${
-                        allChapters
-                          ? "bg-[#343432] text-[#ECECEA]"
-                          : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
+                      ${allChapters
+                        ? "bg-[#343432] text-[#ECECEA]"
+                        : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
                       }
                     `}
                     aria-pressed={allChapters}
@@ -451,10 +447,9 @@ export function ContextSetupCard({
                           className={`
                             flex items-center gap-3 px-3 py-1.5 rounded-lg text-[12px] font-medium
                             transition-all duration-150 text-left w-full
-                            ${
-                              isSelected
-                                ? "bg-[#343432] text-[#ECECEA]"
-                                : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
+                            ${isSelected
+                              ? "bg-[#343432] text-[#ECECEA]"
+                              : "bg-transparent text-[#8C8C8A] hover:bg-[#2A2A28] hover:text-[#ECECEA]"
                             }
                           `}
                           aria-pressed={isSelected}
@@ -483,14 +478,14 @@ export function ContextSetupCard({
               </div>
 
               {(!hasChapters || selectedChapters.size === 0) ? (
-                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#2C2C2A] border border-[#3A3A38]">
-                   <span className="text-[12px] text-[#6C6C6A]">
-                     All topics will be used. Click continue.
-                   </span>
-                 </div>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#2C2C2A] border border-[#3A3A38]">
+                  <span className="text-[12px] text-[#6C6C6A]">
+                    All topics will be used. Click continue.
+                  </span>
+                </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {Array.from(selectedChapters).sort((a,b) => a - b).map(ch => {
+                  {Array.from(selectedChapters).sort((a, b) => a - b).map(ch => {
                     const entry = syllabusEntries.find(e => e.chapter === ch);
                     if (!entry) return null;
                     const ts = topicStates[ch] || { all: true, selected: new Set(), customText: "" };
@@ -499,35 +494,34 @@ export function ContextSetupCard({
                     return (
                       <div key={ch} className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
                         {/* Header for chapter */}
-                        <div 
+                        <div
                           className="flex items-center justify-between px-3 py-2 bg-[#2C2C2A] border-b border-[#3A3A38] cursor-pointer hover:bg-[#343432] transition-colors"
                           onClick={() => updateTopicState(ch, { expanded: !ts.expanded })}
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <ChevronDown 
-                              size={16} 
-                              className={`text-[#8C8C8A] transition-transform duration-200 ${!ts.expanded ? "-rotate-90" : ""}`} 
+                            <ChevronDown
+                              size={16}
+                              className={`text-[#8C8C8A] transition-transform duration-200 ${!ts.expanded ? "-rotate-90" : ""}`}
                             />
                             <span className="text-[12px] font-semibold text-[#ECECEA] truncate">
                               Ch {entry.chapter}: {entry.title}
                             </span>
                           </div>
-                          
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               updateTopicState(ch, { all: !ts.all });
                             }}
-                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ml-2 ${
-                              ts.all ? "bg-[#1A2A1A] text-[#7AC87A]" : "bg-[#1C1C1B] text-[#6C6C6A] hover:text-[#ECECEA]"
-                            }`}
+                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ml-2 ${ts.all ? "bg-[#1A2A1A] text-[#7AC87A]" : "bg-[#1C1C1B] text-[#6C6C6A] hover:text-[#ECECEA]"
+                              }`}
                           >
                             All Topics
                           </button>
                         </div>
-                        
+
                         {/* Topic selection body */}
-                        {(!ts.all && ts.expanded !== false) && (
+                        {ts.expanded !== false && (
                           <div className="p-3 animate-in fade-in duration-200">
                             {hasPills && (
                               <div className="flex flex-wrap gap-1.5 mb-3">
@@ -542,9 +536,8 @@ export function ContextSetupCard({
                                         else nextSet.add(t);
                                         updateTopicState(ch, { selected: nextSet });
                                       }}
-                                      className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${
-                                        selected ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]" : "bg-[#1C1C1B] border-[#3A3A38] text-[#8C8C8A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
-                                      }`}
+                                      className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${selected ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]" : "bg-[#1C1C1B] border-[#3A3A38] text-[#8C8C8A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
+                                        }`}
                                     >
                                       {t}
                                     </button>
@@ -641,14 +634,13 @@ export function ContextSetupCard({
                     onClick={() => onDifficultyChange(d)}
                     className={`
                       flex-1 py-4 flex flex-col items-center justify-center gap-1 rounded-xl text-[13px] font-semibold border transition-all duration-150
-                      ${
-                        difficulty === d
-                          ? d === "SIMPLE"
-                            ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
-                            : d === "MEDIUM"
+                      ${difficulty === d
+                        ? d === "SIMPLE"
+                          ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
+                          : d === "MEDIUM"
                             ? "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
                             : "bg-[#1A2A1A] border-[#3A6A3A]/60 text-[#7AC87A]"
-                          : "bg-[#242422] border-[#3A3A38] text-[#6C6C6A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
+                        : "bg-[#242422] border-[#3A3A38] text-[#6C6C6A] hover:border-[#4A4A48] hover:text-[#ECECEA]"
                       }
                     `}
                     aria-pressed={difficulty === d}
@@ -694,10 +686,9 @@ export function ContextSetupCard({
                 flex-1 flex items-center justify-center gap-2
                 py-3 rounded-xl text-[14px] font-semibold
                 border transition-all duration-200
-                ${
-                  ((step === 1 && hasChapterSelection) || (step === 2 && hasValidTopics) || (step === 3 && hasAtLeastOnePart))
-                    ? "bg-[#ECECEA] border-[#ECECEA] text-[#1A1710] hover:bg-white shadow-lg shadow-black/20"
-                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
+                ${((step === 1 && hasChapterSelection) || (step === 2 && hasValidTopics) || (step === 3 && hasAtLeastOnePart))
+                  ? "bg-[#ECECEA] border-[#ECECEA] text-[#1A1710] hover:bg-white shadow-lg shadow-black/20"
+                  : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
                 }
               `}
             >
@@ -712,10 +703,9 @@ export function ContextSetupCard({
                 flex-1 flex items-center justify-center gap-2
                 py-2.5 sm:py-3 rounded-xl text-[13px] font-semibold
                 border transition-all duration-200
-                ${
-                  canSaveTopics
-                    ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
-                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
+                ${canSaveTopics
+                  ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
+                  : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
                 }
               `}
             >
@@ -731,10 +721,9 @@ export function ContextSetupCard({
                 flex-1 flex items-center justify-center gap-2
                 py-2.5 sm:py-3 rounded-xl text-[13px] font-semibold
                 border transition-all duration-200
-                ${
-                  canGenerate
-                    ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
-                    : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
+                ${canGenerate
+                  ? "bg-[#7AC87A] border-[#7AC87A] text-[#1A1710] hover:bg-[#8CD88C] hover:border-[#8CD88C] hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-[#7AC87A]/20"
+                  : "bg-[#242422] border-[#3A3A38] text-[#4A4A48] cursor-not-allowed"
                 }
               `}
             >
@@ -743,8 +732,8 @@ export function ContextSetupCard({
             </button>
           )}
         </div>
-        </div>
       </div>
+    </div>
   );
 }
 
@@ -777,18 +766,16 @@ function PartRow({
 }: PartRowProps) {
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 bg-[#343432] transition-opacity duration-150 ${
-        !enabled ? "opacity-50" : ""
-      }`}
+      className={`flex items-center gap-3 px-4 py-3 bg-[#343432] transition-opacity duration-150 ${!enabled ? "opacity-50" : ""
+        }`}
     >
       <button
         onClick={() => onToggle(!enabled)}
         className={`
           flex-shrink-0 w-9 h-5 rounded-full border transition-all duration-200 relative
-          ${
-            enabled
-              ? "bg-[#7AC87A]/20 border-[#7AC87A]/50"
-              : "bg-[#2C2C2A] border-[#3A3A38]"
+          ${enabled
+            ? "bg-[#7AC87A]/20 border-[#7AC87A]/50"
+            : "bg-[#2C2C2A] border-[#3A3A38]"
           }
         `}
         aria-checked={enabled}
@@ -817,7 +804,7 @@ function PartRow({
             <MarksButtonGroup
               options={marksOptions ?? []}
               selected={selectedMarks ?? 0}
-              onChange={onMarksChange ?? (() => {})}
+              onChange={onMarksChange ?? (() => { })}
               disabled={!enabled}
             />
             <span className="text-[11px]">marks</span>
