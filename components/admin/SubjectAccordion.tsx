@@ -296,7 +296,7 @@ export function SubjectAccordion({
         {isOpen && (
           <div className="border-t border-[#3A3A38] bg-[#1F1F1E] p-3 sm:p-4">
             {/* Processing Status */}
-            {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
+            {/* {subject.embeddingStatus && subject.embeddingStatus !== 'completed' && (() => {
               const totalFiles = subject.files?.length || 0;
               const completedFiles = subject.files?.filter(f => f.status === 'done').length || 0;
               const totalProgress = subject.files?.reduce((acc, f) => acc + (f.progress ?? (f.status === 'done' ? 100 : 0)), 0) || 0;
@@ -337,7 +337,7 @@ export function SubjectAccordion({
                   )}
                 </div>
               );
-            })()}
+            })()} */}
 
             {/* Materials & Textbooks Header */}
             <div className="mb-3 flex items-center justify-between">

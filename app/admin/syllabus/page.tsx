@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import api from "@/lib/api";
-import SubjectFormModal, {
-} from "@/components/admin/SubjectFormModal";
+import SubjectFormModal from "@/components/admin/SubjectFormModal";
+import { Play, Trash2 } from "lucide-react";
+import { loadDraft, clearDraft, SubjectDraft } from "@/lib/subjectDraft";
 import {
   SubjectAccordion,
   Subject,
@@ -11,6 +12,7 @@ import {
 import { useToast } from "@/context/ToastContext";
 import { SubjectFormValues } from "@/lib/types";
 import { extractErrorMessage } from "@/lib/utils";
+import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
 
 type SubjectApiRow = {
   id: string;
@@ -88,6 +90,13 @@ export default function AdminSyllabusPage() {
   const [poFrameworkVersion, setPoFrameworkVersion] = useState("NBA_12PO_LEGACY");
   const [isSavingFramework, setIsSavingFramework] = useState(false);
 
+  const [draft, setDraft] = useState<SubjectDraft | null>(null);
+  const [showDraftDeleteModal, setShowDraftDeleteModal] = useState(false);
+
+  const fetchDraft = () => {
+    setDraft(loadDraft());
+  };
+
   useEffect(() => {
     const saved = localStorage.getItem('lastSyllabusRegulation');
     if (saved) {
@@ -129,6 +138,7 @@ export default function AdminSyllabusPage() {
   };
   // fetch subjects
   useEffect(() => {
+    fetchDraft();
     const load = async () => {
       setIsLoading(true);
 
@@ -533,6 +543,8 @@ export default function AdminSyllabusPage() {
           </select>
           <button
             onClick={() => {
+              clearDraft();
+              fetchDraft();
               setShowAddModal(true);
             }}
             className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] w-full sm:w-auto"
@@ -579,6 +591,72 @@ export default function AdminSyllabusPage() {
       </div>
 
       <div className="flex flex-col gap-2">
+        {draft && (
+          <div className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/5 shadow-sm">
+            <div className="flex cursor-default items-center justify-between p-4 sm:p-5">
+              <div className="flex flex-1 items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                  <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 flex items-center justify-center">
+                    <span className="text-[10px] font-medium text-amber-400">DRAFT</span>
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-[14px] font-medium text-[#ECECEA]">
+                        {draft.name || "Untitled Subject"}
+                      </span>
+                      {draft.code && (
+                        <span className="rounded bg-[#2C2C2A] px-1.5 py-0.5 text-[10px] font-medium text-[#B0B0AE]">
+                          {draft.code}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-[#8C8C8A]">
+                      <span>{draft.year}{draft.year === "1" ? "st" : draft.year === "2" ? "nd" : draft.year === "3" ? "rd" : "th"} Year</span>
+                      <span>•</span>
+                      <span>{draft.regulation || "—"}</span>
+                      {draft.departmentIds.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{draft.departmentIds.length} Department(s)</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-1.5 rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[13px] font-medium text-[#ECECEA] transition-colors hover:bg-[#333331]"
+                >
+                  <Play size={14} className="fill-current" />
+                  Continue
+                </button>
+                <button
+                  onClick={() => setShowDraftDeleteModal(true)}
+                  className="rounded-md p-1.5 text-[#8C8C8A] transition-colors hover:bg-[#2C2C2A] hover:text-red-400"
+                  title="Delete Draft"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <ConfirmDeleteModal
+          isOpen={showDraftDeleteModal}
+          title="Delete Draft"
+          description="Are you sure you want to delete this draft? This action cannot be undone."
+          onConfirm={() => {
+            clearDraft();
+            fetchDraft();
+            setShowDraftDeleteModal(false);
+          }}
+          onClose={() => setShowDraftDeleteModal(false)}
+        />
+
         {isLoading ? (
           <p className="text-[13px] text-[#5A5A58]">Loading subjects...</p>
         ) : filteredSubjects.length === 0 ? (
@@ -609,6 +687,7 @@ export default function AdminSyllabusPage() {
         onClose={() => {
           if (isSubmitting) return;
           setShowAddModal(false);
+          fetchDraft();
         }}
         onSubmit={handleAddSubject}
       />
