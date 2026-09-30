@@ -12,9 +12,11 @@ interface ExtendedChatMessagesProps extends ChatMessagesProps {
   generationSteps?: GenerationStepData[];
   generationStatus?: GenerationStatusType;
   generationElapsed?: number;
+  sessionLocked?: boolean;
+  onRetry?: (messageId: string) => void;
 }
 
-export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit, isFaculty, generationSteps, generationStatus, generationElapsed }: ExtendedChatMessagesProps) {
+export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction, onEditSubmit, isFaculty, generationSteps, generationStatus, generationElapsed, sessionLocked, onRetry }: ExtendedChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const prevLastMsgId = useRef<string | null>(null);
@@ -43,7 +45,17 @@ export function ChatMessages({ messages, chatId, paperId, isStreaming, onAction,
             const isLastUser = i === lastUserIndex;
             return (
               <React.Fragment key={m.id}>
-                <ChatMessage message={m} chatId={chatId} paperId={paperId} onAction={onAction} onEditSubmit={onEditSubmit} />
+                <ChatMessage 
+                  message={m} 
+                  chatId={chatId} 
+                  paperId={paperId} 
+                  onAction={onAction} 
+                  onEditSubmit={onEditSubmit} 
+                  sessionLocked={sessionLocked} 
+                  onRetry={onRetry} 
+                  isLastMessage={i === messages.length - 1} 
+                  isStreaming={isStreaming} 
+                />
                 {isFaculty && isLastUser && generationSteps && generationSteps.length > 0 && generationStatus && (
                   <div className="flex justify-start -mt-5 -mb-1 z-10 relative">
                     <GenerationStatus steps={generationSteps} status={generationStatus} elapsed={generationElapsed || 0} />

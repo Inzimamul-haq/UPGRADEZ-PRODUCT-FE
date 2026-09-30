@@ -117,6 +117,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [generationElapsed, setGenerationElapsed] = useState(0);
 
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const messagesRef = React.useRef<Message[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     return () => {
@@ -226,18 +231,24 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           if (chat.messages && chat.messages.length > 0) {
             mapped = chat.messages.map((m: any) => {
               if (m.role === 'assistant') {
-                const parsed = parseActionSentinel(m.content as string);
+                let parsed: any = { content: m.content };
+                if (!m.isError) {
+                  parsed = parseActionSentinel(m.content as string);
+                }
                 return {
                   id: m.id,
                   role: m.role,
                   ...parsed,
                   figures: m.figures,
                   isAssigned: m.isAssigned,
+                  isError: m.isError,
+                  errorCode: m.errorCode,
+                  retryDifficulty: m.retryDifficulty,
                   ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
                   ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}),
                 };
               }
-              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned, ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}) };
+              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned, isError: m.isError, errorCode: m.errorCode, retryDifficulty: m.retryDifficulty, ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}) };
             });
 
             if (isFaculty && mapped.length > 0) {
@@ -253,7 +264,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                     (/important questions?/i.test(text) && hasNumberedList) ||
                     (hasNumberedList && hasMarks && hasQuestionWords)
                   );
-                  if (isLikelyPaper && !m.actions?.some(a => a.id === 'generate_pdf')) {
+                  if (!m.isError && isLikelyPaper && !m.actions?.some(a => a.id === 'generate_pdf')) {
                     return {
                       ...m,
                       actions: [...(m.actions || []), { id: 'generate_pdf', label: 'Assign', icon: 'file-down' }]
@@ -287,8 +298,12 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           // Bug 3: always mark difficulty as confirmed when reloading an existing session.
           // Faculty already went through difficulty setup before generating — requiring them
           // to re-confirm on every reload would lock the input unnecessarily.
-          if (isFaculty) {
-            setDifficultyConfirmed(true);
+          if (isFaculty && mapped.length > 0) {
+            const lastAssistantMsg = [...mapped].reverse().find(m => m.role === 'assistant' && m.retryDifficulty);
+            if (lastAssistantMsg) {
+              setDifficultyMode(lastAssistantMsg.retryDifficulty as any);
+              setDifficultyConfirmed(true);
+            }
           }
 
           setMessages(mapped);
@@ -808,45 +823,47 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string, editMessageId?: string, forceDifficulty?: DifficultyMode) => {
-    if (!isFaculty && questionsToday >= 10) return;
-    if (!isFaculty) setQuestionsToday(p => p + 1);
+  const handleSend = async (content: string, editMessageId?: string, forceDifficulty?: DifficultyMode): Promise<boolean> => {
+    if (!isFaculty && questionsToday >= 10) return false;
 
     // Gate: branch question not answered yet — only for NEW sessions before IQ/Exam is chosen
     if (isFaculty && sessionData?.paperKind === null && !chatId) {
-      setMessages(prev => [...prev,
-      { id: crypto.randomUUID(), role: 'user', content },
-      pushMsg('Please use the buttons above to choose between Important Questions or Exam Paper first. 👆'),
-      ]);
-      return;
+      toast.error('Please choose between Important Questions or Exam Paper first.');
+      return false;
     }
+
+    if (isFaculty) {
+      if (!forceDifficulty && (!difficultyMode || !difficultyConfirmed)) {
+        toast.error("Please confirm the difficulty mode on top to start generating.");
+        return false;
+      }
+    }
+
+    if (!isFaculty) setQuestionsToday(p => p + 1);
 
     const newUserMsgId = crypto.randomUUID();
     const newUserMsg = { id: newUserMsgId, role: 'user', content };
     let newMessagesList: Message[] = [];
     
-    setMessages(prev => {
-      if (editMessageId) {
-        const idx = prev.findIndex(m => m.id === editMessageId);
-        if (idx !== -1) {
-          newMessagesList = [...prev.slice(0, idx), newUserMsg as Message];
-          return newMessagesList;
-        }
+    if (editMessageId) {
+      const idx = messagesRef.current.findIndex(m => m.id === editMessageId);
+      if (idx !== -1) {
+        newMessagesList = [...messagesRef.current.slice(0, idx), newUserMsg as Message];
       }
-      newMessagesList = [...prev, newUserMsg as Message];
-      return newMessagesList;
-    });
+    }
+    
+    if (newMessagesList.length === 0) {
+      newMessagesList = [...messagesRef.current, newUserMsg as Message];
+    }
+
+    messagesRef.current = newMessagesList;
+    setMessages(newMessagesList);
 
     setIsStreaming(true);
+    let currentBubbleId: string | null = null;
 
     try {
       if (isFaculty) {
-        if (!forceDifficulty && (!difficultyMode || !difficultyConfirmed)) {
-          toast.error("Please confirm the difficulty mode on top to start generating.");
-          setIsStreaming(false);
-          setMessages(prev => prev.slice(0, -1)); // Remove the optimistically added message
-          return;
-        }
 
         let effectivePaperKind = sessionData?.paperKind || 'EXAM_PAPER';
         // Auto-transition to EXAM_PAPER if they ask for one, even if they reload the chat later
@@ -855,8 +872,20 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           setSessionData(prev => prev ? { ...prev, paperKind: 'EXAM_PAPER' } : prev);
         }
 
-        const historyToUse = newMessagesList.slice(0, -1);
-        const history = historyToUse.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
+        const rawHistory = newMessagesList.slice(0, -1);
+        const cleanHistory: Message[] = [];
+        for (let i = 0; i < rawHistory.length; i++) {
+          const m = rawHistory[i];
+          if (m.isError) {
+            if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === 'user') {
+              cleanHistory.pop();
+            }
+            continue;
+          }
+          cleanHistory.push(m);
+        }
+
+        const history = cleanHistory.map(m => ({ role: m.role, parts: [{ text: m.content }] }));
         
         const payload = {
           subjectId: sessionData?.subjectId || undefined,
@@ -910,7 +939,11 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
           if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.message || errData.error || 'Generation failed');
+            const msg = errData.message || errData.error || 'Generation failed';
+            if ([400, 401, 429].includes(response.status)) {
+              throw { error: msg, toastOnly: true, chatBusy: response.status === 429 };
+            }
+            throw new Error(msg);
           }
 
           if (!response.body) throw new Error('ReadableStream not supported');
@@ -1022,7 +1055,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                 try {
                   const dataStr = chunk.slice(errorPrefix.length);
                   const data = JSON.parse(dataStr);
-                  throw new Error(data.error);
+                  if (data.isError || data.error || data.chatBusy) {
+                    throw data;
+                  }
                 } catch (e) {
                   throw e;
                 }
@@ -1076,20 +1111,24 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.message || errData.error || 'Network response was not ok');
+          const msg = errData.message || errData.error || 'Network response was not ok';
+          if ([400, 401, 429].includes(response.status)) {
+            throw { error: msg, toastOnly: true, chatBusy: response.status === 429 };
+          }
+          throw new Error(msg);
         }
 
         if (!response.body) throw new Error('ReadableStream not supported');
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder('utf-8');
-        const currentBubbleId = crypto.randomUUID();
+        currentBubbleId = crypto.randomUUID();
 
         let doneReading = false;
         let buffer = '';
         let streamedText = '';
 
-        setMessages(prev => [...prev, { id: currentBubbleId, role: 'assistant', content: '' }]);
+        setMessages(prev => [...prev, { id: currentBubbleId!, role: 'assistant', content: '' }]);
 
         while (!doneReading) {
           const { value, done } = await reader.read();
@@ -1111,7 +1150,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
               if (dataStr.trim() === '[DONE]') continue;
               try {
                 const data = JSON.parse(dataStr);
-                if (data.error) throw new Error(data.error);
+                if (data.isError || data.error || data.chatBusy) {
+                  throw data;
+                }
 
                 if (data.batch) {
                   setMessages(prev => prev.map(m => m.id === currentBubbleId ? {
@@ -1125,7 +1166,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                   setSessionLocked(true);
                   const parsedLocked = parseActionSentinel(data.data as string);
                   setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsedLocked, figures: data.figures } : m));
-                  return;
+                  return true;
                 }
 
                 if (data.text) {
@@ -1145,7 +1186,10 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
                   const parsed = parseActionSentinel(finalContent || streamedText);
                   setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, ...parsed, figures: data.figures, id: data.messageId || m.id } : m));
                 }
-              } catch (e) {
+              } catch (e: any) {
+                if (e && (e.isError || e.error || e.chatBusy)) {
+                  throw e;
+                }
                 console.error("Error parsing chunk", chunk, e);
               }
             }
@@ -1153,11 +1197,122 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
         }
       }
     } catch (err: any) {
-      setMessages(prev => [...prev, pushMsg('Unable to process your request. Please try again in a few moments.')]);
+      if (err.name === 'AbortError') {
+        setMessages(prev => {
+          const next = prev.filter(m => m.id !== currentBubbleId && m.id !== newUserMsgId);
+          messagesRef.current = next;
+          return next;
+        });
+        setGenerationSteps([]);
+        if (isFaculty) setGenerationStatus('completed');
+        return false;
+      }
+
+
+      const toastOnly = err.toastOnly || err.chatBusy;
+      const isError = err.isError;
+      const errorCode = err.errorCode;
+      const targetId = currentBubbleId || crypto.randomUUID();
+
+      if (toastOnly) {
+        toast.error(err.error || err.data || err.message || 'Server is Busy right now please try later');
+        setMessages(prev => {
+          const next = prev.filter(m => m.id !== currentBubbleId && m.id !== newUserMsgId);
+          messagesRef.current = next;
+          return next;
+        });
+        setGenerationSteps([]);
+        if (!isFaculty) setQuestionsToday(p => Math.max(0, p - 1));
+        if (isFaculty) setGenerationStatus('completed');
+        return false;
+      }
+
+      if (isError && !toastOnly) {
+        setMessages(prev => {
+          const base = currentBubbleId ? prev.filter(m => m.id !== currentBubbleId) : prev;
+          const next = [...base, {
+            id: err.messageId || targetId,
+            role: 'assistant',
+            content: err.error || 'Generation failed',
+            isError: true,
+            errorCode,
+            retryDifficulty: forceDifficulty || difficultyMode || undefined,
+            isLocalOnly: !err.messageId
+          } as Message];
+          messagesRef.current = next;
+          return next;
+        });
+        if (err.chatId && !chatId) {
+          setChatId(err.chatId);
+          refreshSessions();
+          window.history.replaceState(null, '', `/chat/${err.chatId}${isFaculty ? `?role=${role}` : ''}`);
+        }
+        if (isFaculty) setGenerationStatus('failed');
+        return true;
+      }
+
+      // Network or unhandled failure -> local error bubble
+      const localErrorId = crypto.randomUUID();
+      setMessages(prev => {
+        const base = currentBubbleId ? prev.filter(m => m.id !== currentBubbleId) : prev;
+        const next = [...base, {
+          id: localErrorId,
+          role: 'assistant',
+          content: 'Unable to process your request. Please try again in a few moments.',
+          isError: true,
+          isLocalOnly: true,
+          retryDifficulty: forceDifficulty || difficultyMode || undefined
+        } as Message];
+        messagesRef.current = next;
+        return next;
+      });
       toast.error(err?.message || 'Server is Busy right now please try later');
+      if (isFaculty) setGenerationStatus('failed');
+      return true;
     } finally {
       setIsStreaming(false);
     }
+    return true;
+  };
+
+  const handleRetry = async (messageId: string) => {
+    const errorMsgIdx = messagesRef.current.findIndex(m => m.id === messageId);
+    if (errorMsgIdx <= 0) return; // Need a user message before it
+
+    const errorMsg = messagesRef.current[errorMsgIdx];
+    const userMsg = messagesRef.current[errorMsgIdx - 1];
+
+    if (userMsg.role !== 'user') return;
+
+    if (!isFaculty && questionsToday >= 10) {
+      toast.error('You have reached your daily limit of 10 questions. Please try again tomorrow.');
+      return;
+    }
+
+    if (isFaculty && sessionData?.paperKind === null && !chatId) {
+      toast.error('Please choose between Important Questions or Exam Paper first.');
+      return;
+    }
+
+    const difficultyToUse = (errorMsg.retryDifficulty as DifficultyMode) || difficultyMode;
+    if (isFaculty && !difficultyToUse) {
+      toast.error("Please confirm the difficulty mode before retrying.");
+      return;
+    }
+
+    if (!errorMsg.isLocalOnly && chatId) {
+      try {
+        await api.delete(`/api/chats/${chatId}/messages/${messageId}/failed-turn`);
+      } catch (e) {
+        console.error('Failed to delete error pair on retry', e);
+      }
+    }
+    const cleaned = messagesRef.current.filter((_, idx) => idx !== errorMsgIdx && idx !== errorMsgIdx - 1);
+    
+    messagesRef.current = cleaned;
+    setMessages(cleaned);
+
+    await handleSend(userMsg.content, undefined, difficultyToUse);
   };
 
   const handleIQPickerConfirm = async (paperMarkdown: string) => {
@@ -1288,6 +1443,8 @@ return (
       generationSteps={generationSteps}
       generationStatus={generationStatus}
       generationElapsed={generationElapsed}
+      sessionLocked={sessionLocked}
+      onRetry={handleRetry}
     />
 
     {assignModalOpen && sessionData && (
