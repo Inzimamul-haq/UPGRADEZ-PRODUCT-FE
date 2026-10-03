@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { DiagramImageEditor } from '../ui/QuestionDiagram/DiagramImageEditor';
 import { Plus, X, Pencil } from 'lucide-react';
@@ -33,6 +33,8 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [editingDiagramFor, setEditingDiagramFor] = useState<string | null>(null);
+  const [newQuestionId, setNewQuestionId] = useState<string | null>(null);
+  const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Helper to extract all storage paths from initial content
   const parseImageStoragePathsFromContent = (content: string): string[] => {
@@ -50,15 +52,13 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
   useEffect(() => {
     const parsedQuestions: EditableQuestion[] = [];
-    const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
+    const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
 
     let match;
     while ((match = questionRegex.exec(initialContent)) !== null) {
       const qNo = parseInt(match[1], 10);
-      const text = match[2].trim();
-      const marks = parseFloat(match[3]);
-      const extraContent = match[4];
-      const metaStr = match[5];
+      let body = match[2];
+      const metaStr = match[3];
 
       let meta = { co: "", rbt: "", po: "" };
       try {
@@ -70,16 +70,26 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
         };
       } catch (e) { }
 
+      let marks = 0;
+      const marksRegex = /\(([\d\.]+)\s*Marks?\)/i;
+      const marksMatch = body.match(marksRegex);
+      if (marksMatch) {
+        marks = parseFloat(marksMatch[1]);
+        body = body.replace(marksMatch[0], '');
+      }
+
       let diagramSpec = undefined;
       let diagramType = undefined;
-
-      const diagMatch = extractDiagramTag(extraContent, 0);
+      const diagMatch = extractDiagramTag(body, 0);
       if (diagMatch) {
         diagramType = diagMatch.type.toLowerCase();
         try {
           diagramSpec = JSON.parse(diagMatch.json);
         } catch (e) { }
+        body = body.substring(0, diagMatch.startIndex) + body.substring(diagMatch.endIndex);
       }
+
+      const text = body.trim();
 
       parsedQuestions.push({
         id: Math.random().toString(36).substring(7),
@@ -94,6 +104,15 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     }
     setQuestions(parsedQuestions);
   }, [initialContent]);
+
+  useEffect(() => {
+    if (!newQuestionId) return;
+    const el = questionRefs.current.get(newQuestionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setNewQuestionId(null);
+    }
+  }, [questions, newQuestionId]);
 
   const handleUpdate = (id: string, field: keyof EditableQuestion, value: any) => {
     setHasChanges(true);
@@ -169,9 +188,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
       const newArray = [...prev.slice(0, idxToInsert), newQuestion, ...prev.slice(idxToInsert)];
 
-      setTimeout(() => {
-        document.getElementById(`question-${newQuestion.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      setNewQuestionId(newQuestion.id);
 
       return renumberQuestions(newArray);
     });
@@ -184,7 +201,10 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     }
 
     const serialized = questions.map(q => {
-      let block = `${q.qNo}. ${q.text.trim()} (${q.marks} Marks)`;
+      let block = `${q.qNo}. ${q.text.trim()}`;
+      if (q.marks > 0) {
+        block += ` (${q.marks} Marks)`;
+      }
       if (q.diagramSpec) {
         block += `\n[[${q.diagramType || 'diagram'}:${JSON.stringify(q.diagramSpec)}]]`;
       }
@@ -222,7 +242,15 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const renderQuestion = (q: EditableQuestion) => (
-    <div id={`question-${q.id}`} key={q.id} className={`flex flex-col mt-4 py-6  border-[#2C2C2A] last:border-b-0 transition-colors bg-[#2C2C2A]/40 rounded-lg -mx-4 px-4 ${q.selected ? 'bg-[#1C1C1B]/80 ring-1 ring-amber-500/30' : ''}`}>
+    <div
+      id={`question-${q.id}`}
+      key={q.id}
+      ref={(el) => {
+        if (el) questionRefs.current.set(q.id, el);
+        else questionRefs.current.delete(q.id);
+      }}
+      className={`flex flex-col mt-4 py-6  border-[#2C2C2A] last:border-b-0 transition-colors bg-[#2C2C2A]/40 rounded-lg -mx-4 px-4 ${q.selected ? 'bg-[#1C1C1B]/80 ring-1 ring-amber-500/30' : ''}`}
+    >
       <div className="flex flex-col gap-4">
 
         {/* Top Row: Checkbox, Question Number and Text Area */}
@@ -251,29 +279,42 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           </div>
         </div>
 
-        {/* Diagram (Read-only for now) */}
-        {q.diagramSpec && (() => {
-          const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
-          const diagSubtype = q.diagramSpec.subtype || '';
-          return (
-            <div className="flex justify-center w-full relative mb-2 group">
-              <div className="w-full max-w-[360px] aspect-video relative rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-2 flex items-center justify-center diagram-card-wrapper transition-all duration-300">
-                <div className="absolute top-2 right-2 text-[10px] text-gray-500 bg-black/50 px-2 py-1 rounded z-10">Read-only</div>
-                <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={340} height={180} />
-                
-                {/* Overlay for editing image diagrams */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-                  <button
-                    onClick={() => setEditingDiagramFor(q.id)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-black/80 text-white rounded-md hover:bg-black transition-colors text-xs font-medium border border-[#3A3A38]"
-                  >
-                    <Pencil size={14} /> Replace Image
-                  </button>
+        {/* Diagram area */}
+        {q.diagramSpec ? (
+          (() => {
+            const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
+            const diagSubtype = q.diagramSpec.subtype || '';
+            return (
+              <div className="flex justify-center w-full relative mb-2 group">
+                <div className="w-full max-w-[360px] aspect-video relative rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] p-2 flex items-center justify-center diagram-card-wrapper transition-all duration-300">
+                  <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={340} height={180} />
+                  
+                  {/* Overlay for editing image diagrams */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                    <button
+                      onClick={() => setEditingDiagramFor(q.id)}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-black/80 text-white rounded-md hover:bg-black transition-colors text-xs font-medium border border-[#3A3A38]"
+                    >
+                      <Pencil size={14} /> Replace Diagram
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
+            );
+          })()
+        ) : (
+          <div className="ml-10 mb-3 mt-1">
+            <button
+              onClick={() => setEditingDiagramFor(q.id)}
+              disabled={isSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-[#8C8C8A] text-amber-400 border border-dashed border-[#3A3A38] border-amber-500/40 rounded-md transition-colors"
+            >
+              <Plus size={13} />
+              Add Diagram
+            </button>
+          </div>
+        )}
 
         {/* Bottom Row: Metadata Edit Controls */}
         <div className="flex flex-wrap items-center gap-6 ml-10 mt-1">

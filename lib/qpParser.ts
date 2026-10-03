@@ -232,7 +232,10 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
       /^Note:/i.test(line) ||
       /^Marks:/i.test(line) ||
       /^={3,}/.test(line) ||
-      /^\*{3,}/.test(line)
+      /^\*{3,}/.test(line) ||
+      /swap or modify any other questions/i.test(line) ||
+      /feel free to/i.test(line) ||
+      /let me know/i.test(line)
     ) {
       continue;
     }
