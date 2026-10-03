@@ -9,6 +9,8 @@ interface SyllabusPdfGeneratorModalProps {
   open: boolean;
   onClose: () => void;
   subjectName: string;
+  /** Called with the generated File so the parent can attach it to the form. */
+  onGenerated?: (file: File) => void;
 }
 
 interface ParsedUnit {
@@ -22,6 +24,7 @@ export default function SyllabusPdfGeneratorModal({
   open,
   onClose,
   subjectName,
+  onGenerated,
 }: SyllabusPdfGeneratorModalProps) {
   const [text, setText] = useState("");
   const [parsedUnits, setParsedUnits] = useState<ParsedUnit[]>([]);
@@ -503,7 +506,15 @@ export default function SyllabusPdfGeneratorModal({
       "_"
     )}_Syllabus.pdf`;
 
+    // Hand the generated file back to the parent wizard (if a callback is provided)
+    if (onGenerated) {
+      const pdfBlob = doc.output("blob");
+      const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
+      onGenerated(pdfFile);
+    }
+
     doc.save(fileName);
+    onClose();
   };
 
   return (
