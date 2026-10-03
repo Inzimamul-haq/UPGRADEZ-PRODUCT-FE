@@ -147,7 +147,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     setQuestions(prev => renumberQuestions(prev.filter(q => q.selected).map(q => ({ ...q, selected: false }))));
   };
 
-  const handleAddQuestion = (part: 'A' | 'B' | 'C', marks: number) => {
+  const handleAddQuestion = (part: 'A' | 'B' | 'C' | 'D' | 'E', marks: number) => {
     const newQuestion: EditableQuestion = {
       id: Math.random().toString(36).substring(7),
       qNo: 0,

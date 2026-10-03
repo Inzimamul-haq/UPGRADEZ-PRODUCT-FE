@@ -15,7 +15,7 @@
 export interface StructuredQuestion {
   /** Clean question text, no numbering prefix, no trailing marks string. */
   text: string;
-  /** 'A' | 'B' | 'C' */
+  /** 'A' | 'B' | 'C' | 'D' | 'E' */
   part: string;
   /**
    * 1-based group index within the part.
@@ -31,7 +31,7 @@ export interface StructuredQuestion {
 
 // ─── Prefix codec ─────────────────────────────────────────────────────────────
 
-const QP_PREFIX_RE = /^\[\[qp:([A-C]),g:(\d+),sub:([ab]*)\]\]/;
+const QP_PREFIX_RE = /^\[\[qp:([A-E]),g:(\d+),sub:([ab]*)\]\]/;
 
 export interface DecodedQPPrefix {
   text: string;
@@ -216,7 +216,7 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
 
     // ── Part header ──────────────────────────────────────────────────────────
     // Matches: "Part A", "Part B (2 x 13 = 26)", "**Part C**", etc.
-    const partMatch = line.match(/^\*{0,2}Part\s+([ABC])(?:\s*[\(\-–].*)?$/i);
+    const partMatch = line.match(/^\*{0,2}Part\s+([A-E])(?:\s*[\(\-–].*)?$/i);
     if (partMatch) {
       flushBuffer();
       currentPart = partMatch[1].toUpperCase();
