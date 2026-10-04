@@ -80,6 +80,59 @@ function parseActionSentinel(raw: string): { content: string; actions?: Message[
   return { content: raw };
 }
 
+function mapServerMessage(m: any, isFaculty: boolean): Message {
+  if (m.role === 'user') {
+    return {
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      figures: m.figures,
+      isAssigned: m.isAssigned,
+      isError: m.isError,
+      errorCode: m.errorCode,
+      retryDifficulty: m.retryDifficulty,
+      ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}),
+    };
+  }
+
+  // Assistant message mapping
+  let parsed: any = { content: m.content };
+  if (!m.isError) {
+    parsed = parseActionSentinel(m.content as string);
+  }
+
+  const result: Message = {
+    id: m.id,
+    role: m.role,
+    ...parsed,
+    figures: m.figures,
+    isAssigned: m.isAssigned,
+    isError: m.isError,
+    errorCode: m.errorCode,
+    retryDifficulty: m.retryDifficulty,
+    ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
+    ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}),
+  };
+
+  if (isFaculty) {
+    const text = result.content as string;
+    const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(text);
+    const hasMarks = /\d+\s*marks?/i.test(text);
+    const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(text);
+    
+    const isLikelyPaper = text.length > 100 && (
+      /(?:part|section)\s*[-_]?\s*[a-c]/i.test(text) || 
+      (/important questions?/i.test(text) && hasNumberedList) ||
+      (hasNumberedList && hasMarks && hasQuestionWords)
+    );
+    if (!result.isError && isLikelyPaper && !result.actions?.some(a => a.id === 'generate_pdf')) {
+      result.actions = [...(result.actions || []), { id: 'generate_pdf', label: 'Assign', icon: 'file-down' }];
+    }
+  }
+
+  return result;
+}
+
 export function ChatContainer({ initialShowOverlay = false, initialSessionId, initialPaperId, initialSubjectId, initialExamType, role: roleProp }: ChatContainerExtendedProps) {
   const router = useRouter();
   const { refreshSessions } = useSidebar();
@@ -92,6 +145,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [questionsToday, setQuestionsToday] = useState(0);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -116,8 +170,15 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   const [generationStatus, setGenerationStatus] = useState<GenerationStatusType>('completed');
   const [generationElapsed, setGenerationElapsed] = useState(0);
 
+  // Pagination state
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const messagesRef = React.useRef<Message[]>([]);
+  const loadingRef = React.useRef(false);
+  const activeChatRef = React.useRef<string | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -229,51 +290,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
           let mapped: Message[] = [];
           if (chat.messages && chat.messages.length > 0) {
-            mapped = chat.messages.map((m: any) => {
-              if (m.role === 'assistant') {
-                let parsed: any = { content: m.content };
-                if (!m.isError) {
-                  parsed = parseActionSentinel(m.content as string);
-                }
-                return {
-                  id: m.id,
-                  role: m.role,
-                  ...parsed,
-                  figures: m.figures,
-                  isAssigned: m.isAssigned,
-                  isError: m.isError,
-                  errorCode: m.errorCode,
-                  retryDifficulty: m.retryDifficulty,
-                  ...(m.batchAnswers && m.batchAnswers.length > 0 ? { batchAnswers: m.batchAnswers } : {}),
-                  ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}),
-                };
-              }
-              return { id: m.id, role: m.role, content: m.content, figures: m.figures, isAssigned: m.isAssigned, isError: m.isError, errorCode: m.errorCode, retryDifficulty: m.retryDifficulty, ...(m.stepExplanations && m.stepExplanations.length > 0 ? { stepExplanations: m.stepExplanations } : {}) };
-            });
-
-            if (isFaculty && mapped.length > 0) {
-              mapped = mapped.map((m, i) => {
-                if (m.role === 'assistant') {
-                  const text = m.content as string;
-                  const hasNumberedList = /(?:^\s*\d+\.|Q\d+)/m.test(text);
-                  const hasMarks = /\d+\s*marks?/i.test(text);
-                  const hasQuestionWords = /\b(what|define|list|explain|describe|how|why|discuss|state)\b/i.test(text);
-                  
-                  const isLikelyPaper = text.length > 100 && (
-                    /(?:part|section)\s*[-_]?\s*[a-c]/i.test(text) || 
-                    (/important questions?/i.test(text) && hasNumberedList) ||
-                    (hasNumberedList && hasMarks && hasQuestionWords)
-                  );
-                  if (!m.isError && isLikelyPaper && !m.actions?.some(a => a.id === 'generate_pdf')) {
-                    return {
-                      ...m,
-                      actions: [...(m.actions || []), { id: 'generate_pdf', label: 'Assign', icon: 'file-down' }]
-                    };
-                  }
-                }
-                return m;
-              });
-            }
+            mapped = chat.messages.map((m: any) => mapServerMessage(m, isFaculty));
           }
 
           // Proactively lock the chat if the exam paper already exists elsewhere —
@@ -298,22 +315,81 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           // Bug 3: always mark difficulty as confirmed when reloading an existing session.
           // Faculty already went through difficulty setup before generating — requiring them
           // to re-confirm on every reload would lock the input unnecessarily.
-          if (isFaculty && mapped.length > 0) {
-            const lastAssistantMsg = [...mapped].reverse().find(m => m.role === 'assistant' && m.retryDifficulty);
-            if (lastAssistantMsg) {
-              setDifficultyMode(lastAssistantMsg.retryDifficulty as any);
+          if (isFaculty) {
+            if (data.lastRetryDifficulty) {
+              setDifficultyMode(data.lastRetryDifficulty as any);
               setDifficultyConfirmed(true);
+            } else if (mapped.length > 0) {
+              const lastAssistantMsg = [...mapped].reverse().find(m => m.role === 'assistant' && m.retryDifficulty);
+              if (lastAssistantMsg) {
+                setDifficultyMode(lastAssistantMsg.retryDifficulty as any);
+                setDifficultyConfirmed(true);
+              }
             }
           }
 
           setMessages(mapped);
+          setHasMore(data.hasMore || false);
+          setNextCursor(data.nextCursor || null);
+          activeChatRef.current = initialSessionId;
+          setSessionLocked(chat.isLocked || false);
         } catch (error) {
           console.error('Failed to load existing chat', error);
+          toast.error("Failed to load chat history.");
         }
       };
+
+      setHasMore(false);
+      setNextCursor(null);
+      activeChatRef.current = null;
       loadExistingChat();
+    } else {
+      setMessages([]);
+      setSessionData(null);
+      setSessionLocked(false);
+      setResolvedPaperId(null);
+      setResolvedQuestions([]);
+      setDifficultyMode('medium' as any);
+      setDifficultyConfirmed(false);
+      setHasMore(false);
+      setNextCursor(null);
+      activeChatRef.current = null;
     }
   }, [initialSessionId]);
+
+  const loadOlder = React.useCallback(async () => {
+    if (loadingRef.current || !hasMore || !nextCursor || !activeChatRef.current) return;
+    loadingRef.current = true;
+    setIsLoadingOlder(true);
+    const chatId = activeChatRef.current;
+
+    try {
+      const { data } = await api.get(`/api/chats/${chatId}/messages?cursor=${encodeURIComponent(nextCursor)}&limit=10`);
+      
+      // If the user switched chats while this was loading, discard
+      if (activeChatRef.current !== chatId) return;
+      
+      const newMessages = data.data.messages.map((m: any) => mapServerMessage(m, isFaculty));
+      
+      setMessages(prev => {
+        // De-duplicate by ID
+        const existingIds = new Set(prev.map(m => m.id));
+        const filteredNew = newMessages.filter((m: any) => !existingIds.has(m.id));
+        return [...filteredNew, ...prev];
+      });
+      
+      setHasMore(data.data.hasMore);
+      setNextCursor(data.data.nextCursor);
+    } catch (error) {
+      console.error('Failed to load older messages', error);
+      toast.error('Failed to load older messages. Please try again.');
+    } finally {
+      if (activeChatRef.current === chatId) {
+        setIsLoadingOlder(false);
+      }
+      loadingRef.current = false;
+    }
+  }, [hasMore, nextCursor, isFaculty]);
 
   useEffect(() => {
     if (initialPaperId && !isFaculty) {
@@ -1389,6 +1465,25 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
 
+  // ── Stable callbacks for memoized children ───────────────────────────────
+  // The handlers above close over fresh state each render. Route them through
+  // a ref so the identities passed to ChatMessage never change, otherwise
+  // React.memo(ChatMessage) would re-render every message on every update.
+  const handlersRef = React.useRef({ handleAction, handleEditSubmit, handleRetry });
+  handlersRef.current = { handleAction, handleEditSubmit, handleRetry };
+  const stableOnAction = React.useCallback(
+    (messageId: string, actionId: string) => handlersRef.current.handleAction(messageId, actionId),
+    []
+  );
+  const stableOnEditSubmit = React.useCallback(
+    (messageId: string, content: string) => handlersRef.current.handleEditSubmit(messageId, content),
+    []
+  );
+  const stableOnRetry = React.useCallback(
+    (messageId: string) => handlersRef.current.handleRetry(messageId),
+    []
+  );
+
 return (
   <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#1C1C1B] pb-[70px] sm:pb-[80px]">
     {showOverlay && <ChatStepOverlay role={role} onComplete={handleCompleteOverlay} />}
@@ -1437,14 +1532,18 @@ return (
       chatId={chatId || ''} 
       paperId={resolvedPaperId} 
       isStreaming={isStreaming} 
-      onAction={handleAction} 
-      onEditSubmit={handleEditSubmit} 
+      onAction={stableOnAction} 
+      onEditSubmit={stableOnEditSubmit} 
       isFaculty={isFaculty}
       generationSteps={generationSteps}
       generationStatus={generationStatus}
       generationElapsed={generationElapsed}
       sessionLocked={sessionLocked}
-      onRetry={handleRetry}
+      onRetry={stableOnRetry}
+      hasMore={hasMore}
+      isLoadingOlder={isLoadingOlder}
+      onLoadOlder={loadOlder}
+      isInitialLoading={isLoading}
     />
 
     {assignModalOpen && sessionData && (

@@ -229,7 +229,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
-export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId, isLastMessage, isStreaming, sessionLocked, onRetry }: ChatMessageProps) {
+const ChatMessageComponent = ({ message, onAction, onEditSubmit, chatId, paperId, isLastMessage, isStreaming, sessionLocked, onRetry }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -983,4 +983,6 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId, 
       </div>
     </div>
   );
-}
+};
+
+export const ChatMessage = React.memo(ChatMessageComponent);

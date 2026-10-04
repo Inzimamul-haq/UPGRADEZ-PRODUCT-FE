@@ -12,18 +12,13 @@ import { isStudentProfileReadyForSubjects } from '@/lib/profile';
 export default function StudentDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, notifRes] = await Promise.all([
-          api.get('/api/student/dashboard/stats'),
-          api.get('/api/notifications')
-        ]);
+        const statsRes = await api.get('/api/student/dashboard/stats');
         setStats(statsRes.data.data);
-        setNotifications(notifRes.data.data);
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
       } finally {
@@ -107,7 +102,7 @@ export default function StudentDashboardPage() {
           <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-3 sm:px-4 pt-2.5 sm:pt-3 pb-1">
             Recent
           </p>
-          <ActivityFeed notifications={notifications} />
+          <ActivityFeed />
         </div>
       </div>
     </div>

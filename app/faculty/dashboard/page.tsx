@@ -11,18 +11,13 @@ import { useAuth } from '@/context/AuthContext';
 export default function FacultyDashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, notifRes] = await Promise.all([
-          api.get('/api/faculty/dashboard/stats'),
-          api.get('/api/notifications')
-        ]);
+        const statsRes = await api.get('/api/faculty/dashboard/stats');
         setStats(statsRes.data.data);
-        setNotifications(notifRes.data.data);
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);
       } finally {
@@ -79,7 +74,7 @@ export default function FacultyDashboardPage() {
         </div>
         <div className="bg-[#242422] border border-[#2E2E2C] rounded-xl overflow-hidden">
           <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-4 pt-3 pb-1">Recent</p>
-          <ActivityFeed notifications={notifications} />
+          <ActivityFeed />
         </div>
       </div>
     </div>

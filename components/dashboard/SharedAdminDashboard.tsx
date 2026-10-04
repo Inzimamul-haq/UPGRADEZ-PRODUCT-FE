@@ -20,7 +20,6 @@ interface AdminStats {
 export const SharedAdminDashboard = ({ collegeId, collegeName }: { collegeId?: string; collegeName?: string }) => {
   const { user } = useAuth();
   const [data, setData] = useState<AdminStats | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,15 +34,6 @@ export const SharedAdminDashboard = ({ collegeId, collegeName }: { collegeId?: s
           setData(statsRes.data.data);
         } catch (err) {
           console.error('Failed to fetch admin dashboard stats:', err);
-        }
-
-        try {
-          const notifEndpoint = collegeId ? `/api/notifications?collegeId=${collegeId}` : '/api/notifications';
-          const notifRes = await api.get(notifEndpoint);
-          setNotifications(notifRes.data.data);
-        } catch (err) {
-          console.error('Failed to fetch notifications:', err);
-          setNotifications([]);
         }
       } finally {
         setLoading(false);
@@ -114,7 +104,7 @@ export const SharedAdminDashboard = ({ collegeId, collegeName }: { collegeId?: s
             </div>
             <div className=" flex-1 px-1 sm:px-0">
               <p className="text-[10px] uppercase tracking-widest text-[#5A5A58] px-3 sm:px-5 pt-1 pb-1">Recent</p>
-              <ActivityFeed notifications={notifications} />
+              <ActivityFeed collegeId={collegeId} />
             </div>
           </div>
         </div>

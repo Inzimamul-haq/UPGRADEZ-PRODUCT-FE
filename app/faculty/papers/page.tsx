@@ -12,6 +12,9 @@ import { extractErrorMessage, cleanQuestionText } from '@/lib/utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { toDecoded } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
+import { useProgressiveList } from '@/hooks/useProgressiveList';
+import { SkeletonList, PaperCardSkeleton, QuestionModalSkeleton } from '@/components/ui/Skeletons';
+import { LoadingNext } from '@/components/ui/LoadingNext';
 
 type PaperKind = 'IMPORTANT_QUESTIONS' | 'EXAM_PAPER' | 'TOPIC_ASSIGNMENT';
 
@@ -71,6 +74,9 @@ export default function PapersPage() {
   const [activeTab, setActiveTab] = useState('CAT1');
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [loadingPapers, setLoadingPapers] = useState(false);
+  const hasLoadedSubjects = React.useRef(false);
+  const hasLoadedPapers = React.useRef(false);
+  const reqIdRef = React.useRef(0);
 
   const [questionModal, setQuestionModal] = useState<PaperDetail | null>(null);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -93,23 +99,34 @@ export default function PapersPage() {
         toast.error('Failed to load subjects');
       } finally {
         setLoadingSubjects(false);
+        hasLoadedSubjects.current = true;
       }
     })();
   }, []);
 
   useEffect(() => {
     if (!selectedSubject) return;
+    const currentReq = ++reqIdRef.current;
+    hasLoadedPapers.current = false; // Need to show skeleton again when switching subjects
+
     (async () => {
       try {
         setLoadingPapers(true);
         const res = await api.get(
           `/api/question-papers/my/${selectedSubject.id}/papers`
         );
-        setPapers(res.data.papers || []);
+        if (currentReq === reqIdRef.current) {
+          setPapers(res.data.papers || []);
+        }
       } catch {
-        toast.error('Failed to load papers');
+        if (currentReq === reqIdRef.current) {
+          toast.error('Failed to load papers');
+        }
       } finally {
-        setLoadingPapers(false);
+        if (currentReq === reqIdRef.current) {
+          setLoadingPapers(false);
+          hasLoadedPapers.current = true;
+        }
       }
     })();
   }, [selectedSubject]);
@@ -186,6 +203,15 @@ export default function PapersPage() {
     .filter(p => p.examType === activeTab)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const { visible: visibleSubjects, hasMore: hasMoreSubjects, isRevealing: isRevealingSubjects, sentinelRef: subjectSentinel } = useProgressiveList(subjects, {
+    root: () => document.getElementById('app-main'),
+  });
+
+  const { visible: visiblePapers, hasMore: hasMorePapers, isRevealing: isRevealingPapers, sentinelRef: papersSentinel } = useProgressiveList(filtered, {
+    root: () => document.getElementById('app-main'),
+    resetKey: `${selectedSubject?.id}-${activeTab}`,
+  });
+
   // ─── Subject list ──────────────────────────────────────────────────────────
   if (!selectedSubject) {
     return (
@@ -215,8 +241,8 @@ export default function PapersPage() {
 
           {/* Subject List */}
           <div className="mt-4 sm:mt-6 flex flex-col gap-2">
-            {loadingSubjects ? (
-              <p className="text-[13px] text-[#5A5A58]">Loading subjects…</p>
+            {loadingSubjects && !hasLoadedSubjects.current ? (
+              <SkeletonList count={5} Row={PaperCardSkeleton} />
             ) : subjects.length === 0 ? (
               <div className="flex flex-col items-center py-14">
                 <FileText size={28} className="text-[#3A3A38] mb-3" />
@@ -224,22 +250,29 @@ export default function PapersPage() {
                 <p className="text-[12px] text-[#3A3A38] mt-1">Use Generate to create your first paper</p>
               </div>
             ) : (
-              subjects.map(subject => (
-                <button
-                  key={subject.id}
-                  onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
-                  className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
-                    <p className="text-[13px] sm:text-[14px] font-medium text-[#ECECEA] mt-0.5 truncate">{subject.name}</p>
-                    <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
-                      {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
-                    </p>
+              <>
+                {visibleSubjects.map(subject => (
+                  <button
+                    key={subject.id}
+                    onClick={() => { setSelectedSubject(subject); setActiveTab('CAT1'); setPapers([]); }}
+                    className="w-full text-left bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between hover:bg-[#333331] transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider">{subject.code}</p>
+                      <p className="text-[13px] sm:text-[14px] font-medium text-[#ECECEA] mt-0.5 truncate">{subject.name}</p>
+                      <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
+                        {subject._count.questionPapers} paper{subject._count.questionPapers !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors flex-shrink-0 ml-2" />
+                  </button>
+                ))}
+                {hasMoreSubjects && (
+                  <div ref={subjectSentinel} className="min-h-[48px]">
+                    {isRevealingSubjects && <LoadingNext showEndOfList={false} hasMore={true} />}
                   </div>
-                  <ChevronRight size={16} className="text-[#5A5A58] group-hover:text-[#8C8C8A] transition-colors flex-shrink-0 ml-2" />
-                </button>
-              ))
+                )}
+              </>
             )}
           </div>
         </div>
@@ -298,90 +331,100 @@ export default function PapersPage() {
 
       {/* Papers list */}
       <div className="mt-4 flex flex-col gap-2">
-        {loadingPapers ? (
-          <p className="text-[13px] text-[#5A5A58] py-4">Loading papers…</p>
+        {loadingPapers && !hasLoadedPapers.current ? (
+          <SkeletonList count={4} Row={PaperCardSkeleton} />
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center py-12">
             <FileText size={24} className="text-[#5A5A58] mb-2" />
             <p className="text-[13px] text-[#8C8C8A]">No papers for this exam type</p>
           </div>
         ) : (
-          filtered.map(paper => (
-            <div key={paper.id} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-3 sm:px-5 py-3 sm:py-4">
-              {/* Badges row */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className={`text-[10px] sm:text-[11px] font-medium border rounded px-1.5 sm:px-2 py-0.5 ${examTypeColors[paper.examType] || 'text-[#8C8C8A] bg-[#333331] border-[#3A3A38]'}`}>
-                  {examLabel[paper.examType] || paper.examType}
-                </span>
-                <span className={`text-[9px] sm:text-[10px] font-medium rounded px-1.5 sm:px-2 py-0.5 ${paper.kind === 'IMPORTANT_QUESTIONS'
-                    ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
-                    : paper.kind === 'TOPIC_ASSIGNMENT'
-                    ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
-                    : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
-                  }`}>
-                  {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : paper.kind === 'TOPIC_ASSIGNMENT' ? 'Topics' : 'Exam'}
-                </span>
-                <span className="text-[10px] sm:text-[11px] text-[#5A5A58] flex items-center gap-1">
-                  <Clock size={10} /> {paper.academicYear}
-                </span>
-              </div>
-
-              {/* Question count */}
-              <p className="text-[12px] sm:text-[13px] text-[#8C8C8A] mt-2">
-                {paper._count.questions} question{paper._count.questions !== 1 ? 's' : ''}
-              </p>
-
-              {/* Exam date */}
-              {paper.examDate && (
-                <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
-                  Exam date:{' '}
-                  <span className="text-[#ECECEA]">
-                    {paper.examDate}
+          <>
+            {visiblePapers.map(paper => (
+              <div key={paper.id} className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-3 sm:px-5 py-3 sm:py-4">
+                {/* Badges row */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span className={`text-[10px] sm:text-[11px] font-medium border rounded px-1.5 sm:px-2 py-0.5 ${examTypeColors[paper.examType] || 'text-[#8C8C8A] bg-[#333331] border-[#3A3A38]'}`}>
+                    {examLabel[paper.examType] || paper.examType}
                   </span>
+                  <span className={`text-[9px] sm:text-[10px] font-medium rounded px-1.5 sm:px-2 py-0.5 ${paper.kind === 'IMPORTANT_QUESTIONS'
+                      ? 'bg-amber-400/10 text-amber-400 border border-amber-400/20'
+                      : paper.kind === 'TOPIC_ASSIGNMENT'
+                      ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
+                      : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
+                    }`}>
+                    {paper.kind === 'IMPORTANT_QUESTIONS' ? 'IQ' : paper.kind === 'TOPIC_ASSIGNMENT' ? 'Topics' : 'Exam'}
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] text-[#5A5A58] flex items-center gap-1">
+                    <Clock size={10} /> {paper.academicYear}
+                  </span>
+                </div>
+
+                {/* Question count */}
+                <p className="text-[12px] sm:text-[13px] text-[#8C8C8A] mt-2">
+                  {paper._count.questions} question{paper._count.questions !== 1 ? 's' : ''}
                 </p>
-              )}
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-1.5 sm:gap-2 mt-3 flex-wrap">
-                <button
-                  onClick={() => openQuestions(paper.id)}
-                  className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
-                >
-                  <Eye size={13} /> View
-                </button>
-
-                {paper.kind === 'EXAM_PAPER' && paper.examType !== 'ARREAR' && (
-                  <button
-                    onClick={() => setEditDateModal({
-                      paperId: paper.id,
-                      currentDate: paper.examDate,
-                      subjectName: selectedSubject.name,
-                      examType: paper.examType,
-                    })}
-                    className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
-                  >
-                    <Pencil size={12} /> Edit Date
-                  </button>
+                {/* Exam date */}
+                {paper.examDate && (
+                  <p className="text-[11px] sm:text-[12px] text-[#5A5A58] mt-1">
+                    Exam date:{' '}
+                    <span className="text-[#ECECEA]">
+                      {paper.examDate}
+                    </span>
+                  </p>
                 )}
 
-                {paper.kind === 'EXAM_PAPER' && (
+                {/* Action buttons */}
+                <div className="flex items-center gap-1.5 sm:gap-2 mt-3 flex-wrap">
                   <button
-                    onClick={() => handleDownloadPDF(paper)}
+                    onClick={() => openQuestions(paper.id)}
                     className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
                   >
-                    <Download size={12} /> Download
+                    <Eye size={13} /> View
                   </button>
-                )}
 
-                <button
-                  onClick={() => setDeleteModal({ paperId: paper.id, kind: paper.kind })}
-                  className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-red-500/20 transition-colors"
-                >
-                  <Trash2 size={12} /> Delete
-                </button>
+                  {paper.kind === 'EXAM_PAPER' && paper.examType !== 'ARREAR' && (
+                    <button
+                      onClick={() => setEditDateModal({
+                        paperId: paper.id,
+                        currentDate: paper.examDate,
+                        subjectName: selectedSubject.name,
+                        examType: paper.examType,
+                      })}
+                      className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
+                    >
+                      <Pencil size={12} /> Edit Date
+                    </button>
+                  )}
+
+                  {paper.kind === 'EXAM_PAPER' && (
+                    <button
+                      onClick={() => handleDownloadPDF(paper)}
+                      className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-[#ECECEA] bg-[#333331] border border-[#3A3A38] rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-[#3A3A38] transition-colors"
+                    >
+                      <Download size={12} /> Download
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setDeleteModal({ paperId: paper.id, kind: paper.kind })}
+                    className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-[12px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 sm:px-3 py-1.5 hover:bg-red-500/20 transition-colors"
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+            {hasMorePapers && (
+              <div ref={papersSentinel} className="min-h-[48px]">
+                {isRevealingPapers && <LoadingNext showEndOfList={false} hasMore={true} />}
+              </div>
+            )}
+            {!hasMorePapers && filtered.length > 0 && (
+              <LoadingNext showEndOfList={true} hasMore={false} />
+            )}
+          </>
         )}
       </div>
 
@@ -391,7 +434,10 @@ export default function PapersPage() {
           <div className="w-full max-w-lg rounded-xl border border-[#3A3A38] bg-[#1A1A19] shadow-2xl flex flex-col max-h-[80vh]">
             <div className="flex items-start justify-between px-4 sm:px-6 py-4 border-b border-[#2E2E2C]">
               {loadingQuestions ? (
-                <p className="text-[13px] text-[#8C8C8A]">Loading…</p>
+                <div className="min-w-0 flex-1">
+                  <div className="h-[14px] bg-[#2E2E2C] rounded w-[30%] mb-2 animate-pulse motion-reduce:animate-none"></div>
+                  <div className="h-[20px] bg-[#2E2E2C] rounded w-[60%] animate-pulse motion-reduce:animate-none"></div>
+                </div>
               ) : questionModal && (
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] sm:text-[11px] text-[#8C8C8A] uppercase tracking-wider truncate">
@@ -415,7 +461,9 @@ export default function PapersPage() {
               </button>
             </div>
 
-            {!loadingQuestions && questionModal && (
+            {loadingQuestions ? (
+              <QuestionModalSkeleton />
+            ) : questionModal && (
               <div className="overflow-y-auto px-4 sm:px-6 py-4 flex flex-col gap-3">
                 {questionModal.kind === 'TOPIC_ASSIGNMENT' ? (
                   questionModal.content?.chapters?.length === 0 ? (
