@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { X, SlidersHorizontal, Check } from "lucide-react";
+import { AIDetailsPanel } from "./AIDetailsPanel";
 
 const PROMPT_TYPE_OPTIONS = [
   { value: "THEORY", label: "Theory" },
@@ -21,7 +22,7 @@ const DIAGRAM_TYPE_OPTIONS = [
   { value: "block", label: "Block" },
   { value: "schematic", label: "Schematic" },
   // { value: "table", label: "Table" },
-  { value: "geometry", label: "Geometry" },
+  // { value: "geometry", label: "Geometry" },
   // { value: "waveform", label: "Waveform" },
   // { value: "architecture", label: "Architecture" },
   { value: "mech_structural", label: "Mech Structural" },
@@ -56,6 +57,7 @@ export function SubjectConfigModal({
   const [diagramTypes, setDiagramTypes] = useState<string[]>(
     initialDiagramTypes || []
   );
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Reset state whenever modal opens with new subject values
   React.useEffect(() => {
@@ -85,12 +87,20 @@ export function SubjectConfigModal({
       <div className="w-full max-w-md rounded-xl border border-[#3A3A38] bg-[#1F1F1E] shadow-2xl">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-[#3A3A38] px-4 py-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <SlidersHorizontal size={14} className="text-[#8C8C8A] flex-shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-[13px] font-medium text-[#ECECEA] truncate">AI Config</p>
-              <p className="text-[11px] text-[#5A5A58] truncate">{subjectName}</p>
+          <div className="flex flex-col min-w-0 w-full pr-3">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal size={14} className="text-[#8C8C8A] flex-shrink-0" />
+                <p className="text-[13px] font-medium text-[#ECECEA] truncate">AI Config</p>
+              </div>
+              <button 
+                onClick={() => setIsDetailsOpen(true)}
+                className="text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] hover:underline focus:outline-none focus:ring-1 focus:ring-[#8C8C8A] rounded px-1 transition-colors whitespace-nowrap"
+              >
+                View details
+              </button>
             </div>
+            <p className="text-[11px] text-[#5A5A58] truncate mt-1">Choose how the AI writes questions for this subject.</p>
           </div>
           <button
             onClick={onClose}
@@ -186,6 +196,7 @@ export function SubjectConfigModal({
           </button>
         </div>
       </div>
+      <AIDetailsPanel isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} />
     </div>
   );
 }

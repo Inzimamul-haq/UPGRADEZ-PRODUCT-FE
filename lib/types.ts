@@ -89,7 +89,7 @@ export interface Paper {
 }
 
 export interface ChatInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string) => boolean | Promise<boolean>;
   disabled: boolean;
 }
 
@@ -98,6 +98,24 @@ export interface ChatHeaderProps {
   examType: string;
   paperResolved: boolean;
   onOpenQuestions: () => void;
+}
+
+export interface ChatMessageProps {
+  message: Message;
+  isLastMessage?: boolean;
+  isStreaming?: boolean;
+  sessionLocked?: boolean;
+  onRetry?: (messageId: string) => void;
+  onUpdateMessage?: (messageId: string, content: string) => void;
+}
+
+export interface ChatMessagesProps {
+  messages: Message[];
+  chatId: string;
+  paperId?: string | null;
+  isStreaming: boolean;
+  onAction?: (actionId: string, messageId: string) => void;
+  onEditSubmit?: (messageId: string, newContent: string) => void;
 }
 
 export interface Question {
@@ -139,6 +157,10 @@ export interface Message {
   }[];
   isAssigned?: boolean;
   stepExplanations?: StepExplanation[];
+  isError?: boolean;
+  errorCode?: string;
+  retryDifficulty?: string;
+  isLocalOnly?: boolean;
 }
 
 export interface Notification {
@@ -204,8 +226,12 @@ export interface ChatMessageProps {
   message: Message;
   chatId: string;
   paperId?: string | null;
+  isLastMessage?: boolean;
+  isStreaming?: boolean;
+  sessionLocked?: boolean;
+  onRetry?: (messageId: string) => void;
   onAction?: (messageId: string, actionId: string) => void;
-  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
+  onEditSubmit?: (messageId: string, newContent: string) => void;
 }
 
 export interface ChatMessagesProps {
@@ -214,7 +240,7 @@ export interface ChatMessagesProps {
   paperId?: string | null;
   isStreaming: boolean;
   onAction?: (messageId: string, actionId: string) => void;
-  onEditSubmit?: (messageId: string, content: string) => Promise<void>;
+  onEditSubmit?: (messageId: string, newContent: string) => void;
 }
 
 export interface ChatStepOverlayProps {

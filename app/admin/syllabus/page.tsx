@@ -13,6 +13,11 @@ import { useToast } from "@/context/ToastContext";
 import { SubjectFormValues } from "@/lib/types";
 import { extractErrorMessage } from "@/lib/utils";
 import { ConfirmDeleteModal } from "@/components/ui/ConfirmDeleteModal";
+import { useProgressiveList } from "@/hooks/useProgressiveList";
+import { SkeletonList, SubjectRowSkeleton } from "@/components/ui/Skeletons";
+import { LoadingNext } from "@/components/ui/LoadingNext";
+
+const MemoizedSubjectAccordion = React.memo(SubjectAccordion);
 
 type SubjectApiRow = {
   id: string;
@@ -92,6 +97,7 @@ export default function AdminSyllabusPage() {
 
   const [draft, setDraft] = useState<SubjectDraft | null>(null);
   const [showDraftDeleteModal, setShowDraftDeleteModal] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   const fetchDraft = () => {
     setDraft(loadDraft());
@@ -134,6 +140,7 @@ export default function AdminSyllabusPage() {
       toast.error("Failed to load subjects. Please refresh.");
     } finally {
       setIsLoading(false);
+      hasLoadedOnce.current = true;
     }
   };
   // fetch subjects
@@ -525,6 +532,12 @@ export default function AdminSyllabusPage() {
     }
   };
 
+  const resetKey = `${filterDepartmentId}-${filterYear}-${filterRegulation}`;
+  const { visible, hasMore, isRevealing, sentinelRef } = useProgressiveList(filteredSubjects, {
+    root: () => document.getElementById('app-main'),
+    resetKey,
+  });
+
   return (
     <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 py-4 sm:py-6">
       {/* Header - proper mobile responsive */}
@@ -657,24 +670,34 @@ export default function AdminSyllabusPage() {
           onClose={() => setShowDraftDeleteModal(false)}
         />
 
-        {isLoading ? (
-          <p className="text-[13px] text-[#5A5A58]">Loading subjects...</p>
+        {isLoading && !hasLoadedOnce.current ? (
+          <SkeletonList count={5} Row={SubjectRowSkeleton} />
         ) : filteredSubjects.length === 0 ? (
           <p className="text-[13px] text-[#5A5A58]">
             No subjects yet. Add one to get started.
           </p>
         ) : (
-          filteredSubjects.map((subject) => (
-            <SubjectAccordion
-              key={subject.id}
-              subject={subject}
-              onDelete={handleDelete}
-              onEdit={handleOpenEdit}
-              onTogglePublish={handleTogglePublish}
-              onRefresh={fetchSubjects}
-              onConfigSave={handleConfigSave}
-            />
-          ))
+          <>
+            {visible.map((subject) => (
+              <MemoizedSubjectAccordion
+                key={subject.id}
+                subject={subject}
+                onDelete={handleDelete}
+                onEdit={handleOpenEdit}
+                onTogglePublish={handleTogglePublish}
+                onRefresh={fetchSubjects}
+                onConfigSave={handleConfigSave}
+              />
+            ))}
+            {hasMore && (
+              <div ref={sentinelRef} className="min-h-[48px]">
+                {isRevealing && <LoadingNext showEndOfList={false} hasMore={true} />}
+              </div>
+            )}
+            {!hasMore && filteredSubjects.length > 0 && (
+              <LoadingNext showEndOfList={true} hasMore={false} />
+            )}
+          </>
         )}
       </div>
 

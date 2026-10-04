@@ -61,7 +61,7 @@ export function toDecoded(q: any): DecodedQuestion {
     .replace(/\[\[meta:(\{.*?\})\]\]/gi, '')
     .replace(/\[\[(?:graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/gi, '')
     .replace(/\[\[flagged:.*?\]\]/gi, '')
-    .replace(/[\s#*]*Part\s+[ABC]\b[^\n]{0,30}?marks?\.?[\s*]*/gi, '')
+    .replace(/[\s#*]*Part\s+[A-E]\b[^\n]{0,30}?marks?\.?[\s*]*/gi, '')
     .replace(/^\s*\**OR\**\s*$/gim, '')
     .replace(/\s*[\(\[]\s*\d+\s*marks?\s*[\)\]]\s*/gi, '')
     .replace(new RegExp(`\\s*[\\(\\[]\\s*${displayMarks || '\\d+'}\\s*(?:marks?)?\\s*[\\)\\]]\\s*$`, 'gi'), '')

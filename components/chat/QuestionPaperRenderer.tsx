@@ -11,7 +11,7 @@ interface QuestionPaperRendererProps {
 }
 
 interface ParsedQuestion {
-  qNo: number;
+  qNo: number;  
   text: string;
   marks: number;
   meta: { co: string; rbt: string; po?: string };
@@ -23,15 +23,13 @@ interface ParsedQuestion {
 export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   const questions: ParsedQuestion[] = [];
 
-  const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\s*\(([\d\.]+)\s*Marks?\)([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
+  const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
 
   let match;
   while ((match = questionRegex.exec(content)) !== null) {
     const qNo = parseInt(match[1], 10);
-    const text = match[2].trim();
-    const marks = parseFloat(match[3]);
-    const extraContent = match[4];
-    const metaStr = match[5];
+    let body = match[2];
+    const metaStr = match[3];
 
     let meta = { co: "", rbt: "", po: "" };
     try {
@@ -43,16 +41,26 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
       };
     } catch (e) { }
 
+    let marks = 0;
+    const marksRegex = /\(([\d\.]+)\s*Marks?\)/i;
+    const marksMatch = body.match(marksRegex);
+    if (marksMatch) {
+      marks = parseFloat(marksMatch[1]);
+      body = body.replace(marksMatch[0], '');
+    }
+
     let diagramSpec = undefined;
     let diagramType = undefined;
-
-    const diagMatch = extractDiagramTag(extraContent, 0);
+    const diagMatch = extractDiagramTag(body, 0);
     if (diagMatch) {
       diagramType = diagMatch.type.toLowerCase();
       try {
         diagramSpec = JSON.parse(diagMatch.json);
       } catch (e) { }
+      body = body.substring(0, diagMatch.startIndex) + body.substring(diagMatch.endIndex);
     }
+
+    const text = body.trim();
 
     questions.push({
       qNo,

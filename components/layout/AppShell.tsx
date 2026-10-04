@@ -8,11 +8,14 @@ import { useRouter } from 'next/navigation';
 import { Search, X, ChevronDown } from 'lucide-react';
 import { AppShellProps } from '@/lib/types';
 import api from '@/lib/api';
+import React from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { LoadingNext } from '@/components/ui/LoadingNext';
 
 
 
 function SearchModal() {
-  const { isSearchOpen, closeSearch, sessions, availableMonths, selectedMonth, setSelectedMonth } = useSidebar();
+  const { isSearchOpen, closeSearch, availableMonths, selectedMonth, setSelectedMonth } = useSidebar();
   const [query, setQuery] = useState('');
   const router = useRouter();
 
@@ -24,10 +27,76 @@ function SearchModal() {
     return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
-  const filtered = sessions.filter(s =>
-    s.subject_name.toLowerCase().includes(query.toLowerCase()) ||
-    s.exam_type.toLowerCase().includes(query.toLowerCase())
-  );
+  const debouncedQuery = useDebouncedValue(query, 250);
+
+  const [results, setResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
+  const fetchSearch = React.useCallback(async (q: string, month: string | null, cursor?: string | null) => {
+    const isLoadMore = !!cursor;
+    if (isLoadMore) setIsFetchingMore(true);
+    else setIsSearching(true);
+    
+    const params = new URLSearchParams();
+    if (q) params.append('q', q);
+    if (month) params.append('month', month);
+    if (cursor) params.append('cursor', cursor);
+    params.append('limit', '20');
+    
+    try {
+      const res = await api.get(`/api/chats/search?${params.toString()}`);
+      if (res.data.success) {
+        const items = res.data.data.items.map((c: any) => {
+          const rawTitle = c.title || c.subject?.name || 'Untitled';
+          const cleanTitle = rawTitle.replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{4}\)\s*$/, '').trim();
+          return {
+            id: c.id,
+            subject_name: cleanTitle,
+            exam_type: c.examType,
+            created_at: c.createdAt,
+          };
+        });
+        
+        if (isLoadMore) {
+          setResults(prev => [...prev, ...items]);
+        } else {
+          setResults(items);
+        }
+        setNextCursor(res.data.data.nextCursor);
+        setHasMore(res.data.data.hasMore);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+      setIsFetchingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      fetchSearch(debouncedQuery, selectedMonth, null);
+    }
+  }, [debouncedQuery, selectedMonth, isSearchOpen, fetchSearch]);
+
+  const resultsRef = React.useRef<HTMLDivElement>(null);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!hasMore || isSearching || !isSearchOpen) return;
+    
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !isFetchingMore && nextCursor) {
+        fetchSearch(debouncedQuery, selectedMonth, nextCursor);
+      }
+    }, { root: resultsRef.current, rootMargin: '200px' });
+
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, fetchSearch, debouncedQuery, selectedMonth, nextCursor, isSearching, isSearchOpen]);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm" onClick={closeSearch}>
@@ -68,32 +137,42 @@ function SearchModal() {
         )}
 
         {/* Results */}
-        <div className="max-h-[42vh] overflow-y-auto py-1">
-          {filtered.length === 0 && (
+        <div ref={resultsRef} className="max-h-[42vh] overflow-y-auto py-1">
+          {isSearching ? (
+            <p className="text-[13px] text-[#5A5A58] text-center py-8">Searching...</p>
+          ) : results.length === 0 ? (
             <p className="text-[13px] text-[#5A5A58] text-center py-8">
               {selectedMonth ? 'No chats in this month' : 'No chats found'}
             </p>
-          )}
-          {filtered.map(session => {
-            const sessionMonth = session.created_at
-              ? new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-              : null;
-            return (
-              <button
-                key={session.id}
-                onClick={() => { closeSearch(); router.push(`/chat/${session.id}`); }}
-                className="w-full text-left px-4 py-3 hover:bg-[#333331] transition-colors"
-              >
-                <p className="text-[14px] text-[#ECECEA]">{session.subject_name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-[12px] text-[#8C8C8A]">{session.exam_type}</p>
-                  {sessionMonth && (
-                    <span className="text-[10px] text-[#5A5A58]">· {sessionMonth}</span>
-                  )}
+          ) : (
+            <>
+              {results.map(session => {
+                const sessionMonth = session.created_at
+                  ? new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : null;
+                return (
+                  <button
+                    key={session.id}
+                    onClick={() => { closeSearch(); router.push(`/chat/${session.id}`); }}
+                    className="w-full text-left px-4 py-3 hover:bg-[#333331] transition-colors min-h-[40px]"
+                  >
+                    <p className="text-[14px] text-[#ECECEA]">{session.subject_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[12px] text-[#8C8C8A]">{session.exam_type}</p>
+                      {sessionMonth && (
+                        <span className="text-[10px] text-[#5A5A58]">· {sessionMonth}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+              {hasMore && (
+                <div ref={sentinelRef} className="min-h-[48px]">
+                  {isFetchingMore && <LoadingNext showEndOfList={false} hasMore={true} />}
                 </div>
-              </button>
-            );
-          })}
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -156,6 +235,7 @@ function AppShellInner({ children, role, navItems }: AppShellProps) {
 
       {/* Main content — smoothly expands to full width when sidebar is closed */}
       <main
+        id="app-main"
         className={`flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain relative w-full transition-all duration-300 ease-in-out pt-[var(--safe-top)] bg-[#1C1C1B] pb-[calc(4rem+var(--safe-bottom))] md:pb-0 ${isSidebarOpen ? 'md:ml-[240px]' : 'md:ml-0'}`}      >        {/* Open toggle — only visible when sidebar is closed */}
         {!isSidebarOpen && (
           <button

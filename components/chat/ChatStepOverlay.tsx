@@ -83,9 +83,21 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   }, [step, year, department, isFaculty]);
 
   const goBack = () => {
-    if (step === 4.5) setStep(4);
-    else if (step === 5 && isFaculty) setStep(4.5);
-    else if (step > initialStep) setStep(step - 1);
+    setDuplicateError('');
+    if (step === 4.5) {
+      setPaperKind(null);
+      setStep(4);
+    } else if (step === 5 && isFaculty) {
+      setSection('');
+      if (examType.toLowerCase().includes('university') || examType.toLowerCase().includes('semester')) {
+        setStep(4.5);
+      } else {
+        setPaperKind(null);
+        setStep(4);
+      }
+    } else if (step > initialStep) {
+      setStep(step - 1);
+    }
   };
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };

@@ -56,14 +56,17 @@ export function ChatInput({
     adjustTextareaHeight();
   }, [input]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim() || disabled) return;
 
-    onSend(input);
-    setInput("");
+    const result = await onSend(input);
+    
+    if (result !== false) {
+      setInput("");
 
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "32px";
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "32px";
+      }
     }
   };
 

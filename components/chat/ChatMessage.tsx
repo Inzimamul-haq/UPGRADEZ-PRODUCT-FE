@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect ,useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessageProps } from '@/lib/types';
 import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
-import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check } from 'lucide-react';
+import { FileDown, Users, CheckCircle, RefreshCcw, Copy, Pencil, Check, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -229,7 +229,7 @@ function parseMathSolutions(text: string): SolutionSegment[] {
   return segmentsWithGraph.length > 0 ? segmentsWithGraph : [{ type: 'text', content: text }];
 }
 
-export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }: ChatMessageProps) {
+const ChatMessageComponent = ({ message, onAction, onEditSubmit, chatId, paperId, isLastMessage, isStreaming, sessionLocked, onRetry }: ChatMessageProps) => {
   const isUser = message.role === 'user';
   const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -238,6 +238,8 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
   const [copied, setCopied] = useState(false);
   const [editingDiagramIdx, setEditingDiagramIdx] = useState<number | null>(null);
   const messageRef = useRef<HTMLDivElement>(null);
+
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content || '');
@@ -595,7 +597,31 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
   return (
     <div className="flex justify-start w-full" ref={messageRef}>
       <div className="max-w-full md:max-w-[85%] w-full">
-        {message.batchAnswers && message.batchAnswers.length > 0 ? (
+        {message.isError ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertTriangle size={16} />
+              <span className="text-[13px] font-medium">Unable to process your request</span>
+            </div>
+            {message.content && (
+              <p className="text-[13px] text-red-200/80 leading-relaxed">
+                {message.content}
+              </p>
+            )}
+            {!sessionLocked && onRetry && isLastMessage && (
+              <div className="mt-2 flex justify-start">
+                <button
+                  onClick={() => onRetry(message.id)}
+                  disabled={isStreaming}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[12px] font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCcw size={14} /> 
+                  Retry
+                </button>
+              </div>
+            )}
+          </div>
+        ) : message.batchAnswers && message.batchAnswers.length > 0 ? (
           <div className="flex flex-col gap-8">
             {message.batchAnswers.map((batch, index) => {
               let processedBatchContent = (batch.answer || '')
@@ -888,7 +914,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
           />
         )}
 
-        {message.figures && message.figures.length > 0 && (
+        {!message.isError && message.figures && message.figures.length > 0 && (
           <div className="mt-6 mb-4 flex flex-col gap-4 items-center w-full">
             {message.figures.map((fig, idx) => {
               // If the URL is already in the markdown content (inline diagram), don't render it again at the bottom
@@ -949,7 +975,7 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
           </div>
         )}
 
-        {message.content && (
+        {!message.isError && message.content && (
           <p className="text-[11px] text-[#5A5A58] mt-2">
             {message.rag_used ? 'Context-matched' : 'AI generated'}
           </p>
@@ -957,4 +983,6 @@ export function ChatMessage({ message, onAction, onEditSubmit, chatId, paperId }
       </div>
     </div>
   );
-}
+};
+
+export const ChatMessage = React.memo(ChatMessageComponent);

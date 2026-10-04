@@ -6,6 +6,9 @@ import { SubjectRow } from '@/components/questions/SubjectRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
+import { useProgressiveList } from '@/hooks/useProgressiveList';
+import { SkeletonList, GlobalSubjectSkeleton } from '@/components/ui/Skeletons';
+import { LoadingNext } from '@/components/ui/LoadingNext';
 
 export default function FacultyGlobalQuestionsPage() {
   const { user, role } = useAuth();
@@ -81,6 +84,12 @@ export default function FacultyGlobalQuestionsPage() {
     new Set(subjects.map((s) => s.regulation).filter(Boolean))
   ).sort();
 
+  const resetKey = `${departmentFilter}-${yearFilter}-${regulationFilter}`;
+  const { visible, hasMore, isRevealing, sentinelRef } = useProgressiveList(filteredSubjects, {
+    root: () => document.getElementById('app-main'),
+    resetKey,
+  });
+
 return (
     <div className="px-6 py-6 w-full max-w-4xl mx-auto">
       <div className='mt-8 sm:mt-0'>
@@ -123,9 +132,7 @@ return (
 
       <div className="flex flex-col gap-2">
         {loading ? (
-          <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E] flex justify-center">
-            <span className="text-[13px] text-[#5A5A58]">Loading subjects...</span>
-          </div>
+          <SkeletonList count={8} Row={GlobalSubjectSkeleton} />
         ) : filteredSubjects.length === 0 ? (
           <div className="py-12 border border-[#3A3A38] rounded-lg bg-[#1F1F1E]">
             <EmptyState
@@ -135,13 +142,23 @@ return (
             />
           </div>
         ) : (
-          filteredSubjects.map((s) => (
-            <SubjectRow
-              key={s.id}
-              subject={s}
-              href={`${basePath}/questions/${s.id}?department=${departmentFilter}`}
-            />
-          ))
+          <>
+            {visible.map((s) => (
+              <SubjectRow
+                key={s.id}
+                subject={s}
+                href={`${basePath}/questions/${s.id}?department=${departmentFilter}`}
+              />
+            ))}
+            {hasMore && (
+              <div ref={sentinelRef} className="min-h-[48px]">
+                {isRevealing && <LoadingNext showEndOfList={false} hasMore={true} />}
+              </div>
+            )}
+            {!hasMore && filteredSubjects.length > 0 && (
+              <LoadingNext showEndOfList={true} hasMore={false} />
+            )}
+          </>
         )}
       </div>
     </div>

@@ -242,7 +242,7 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
             <span className="text-[12px] text-[#ECECEA]">Assign as Important Questions instead?</span>
             <button
               onClick={() => setCurrentKind('IMPORTANT_QUESTIONS')}
-              className="text-[12px] font-medium text-amber-400 hover:text-amber-300 transition-colors"
+              className="text-[12px] hover:underline font-medium text-amber-400 hover:text-amber-300 transition-colors"
             >
               Swap to IQ
             </button>
@@ -254,9 +254,9 @@ export function AssignModal({ sessionData, rawText, onClose, onSuccess, chatId, 
             <span className="text-[12px] text-[#ECECEA]">Assign as Exam Paper instead?</span>
             <button
               onClick={() => setCurrentKind('EXAM_PAPER')}
-              className="text-[12px] font-medium text-blue-400 hover:text-blue-400 transition-colors"
+              className="text-[12px] hover:underline font-medium text-blue-400 hover:text-blue-400 transition-colors"
             >
-              Swap to Exam Paper
+              Swap to EP
             </button>
           </div>
         )}
