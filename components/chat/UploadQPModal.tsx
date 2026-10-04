@@ -6,8 +6,9 @@ import api from '@/lib/api';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/hooks/useAuth';
 import { REGEX_PATTERNS } from '@/lib/utils';
+import { getAcademicYear, getAcademicYearOptions } from '@/lib/academicYear';
 
-type ExamType = 'CAT1' | 'CAT2' | 'CAT3' | 'MODEL' | 'UNIVERSITY';
+type ExamType = 'CAT1' | 'CAT2' | 'CAT3' | 'MODEL' | 'UNIVERSITY' | 'ARREAR';
 type PaperKind = 'EXAM_PAPER' | 'IMPORTANT_QUESTIONS';
 
 interface Department { id: string; name: string; branch: string; sections: string[] }
@@ -48,14 +49,9 @@ interface UploadQPModalProps {
   preSelectedSubject?: Subject | null;
 }
 
-const EXAM_TYPES: ExamType[] = ['CAT1', 'CAT2', 'CAT3', 'MODEL', 'UNIVERSITY'];
-const DEFAULT_EXAM_LABELS: Record<string, string> = { CAT1: 'CAT 1', CAT2: 'CAT 2', CAT3: 'CAT 3', MODEL: 'Model', UNIVERSITY: 'University' };
-const ARTS_EXAM_LABELS: Record<string, string> = { CAT1: 'CIA 1', CAT2: 'CIA 2', CAT3: 'CIA 3', MODEL: 'Model', UNIVERSITY: 'University' };
-
-function currentAcYear() {
-  const y = new Date().getFullYear();
-  return `${y}-${String(y + 1).slice(-2)}`;
-}
+const EXAM_TYPES: ExamType[] = ['CAT1', 'CAT2', 'CAT3', 'MODEL', 'UNIVERSITY', 'ARREAR'];
+const DEFAULT_EXAM_LABELS: Record<string, string> = { CAT1: 'CAT 1', CAT2: 'CAT 2', CAT3: 'CAT 3', MODEL: 'Model', UNIVERSITY: 'University', ARREAR: 'Arrear' };
+const ARTS_EXAM_LABELS: Record<string, string> = { CAT1: 'CIA 1', CAT2: 'CIA 2', CAT3: 'CIA 3', MODEL: 'Model', UNIVERSITY: 'University', ARREAR: 'Arrear' };
 
 export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: UploadQPModalProps) {
   const toast = useToast();
@@ -73,12 +69,14 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(preSelectedSubject ?? null);
   const [examType, setExamType] = useState<ExamType>('CAT1');
-  const [academicYear, setAcademicYear] = useState(currentAcYear());
+  const acYearOptions = getAcademicYearOptions();
+  const [academicYear, setAcademicYear] = useState(acYearOptions[0]);
   const [paperKind, setPaperKind] = useState<PaperKind>('EXAM_PAPER');
   const [departmentId, setDepartmentId] = useState('');
   const [assignedToYear, setAssignedToYear] = useState<number>(1);
   const [section, setSection] = useState('A');
   const [examDate, setExamDate] = useState('');
+  const [arrearMonth, setArrearMonth] = useState('');
   const [availableSections, setAvailableSections] = useState<string[]>(['A', 'B']);
 
   // ── Duplicate check state ─────────────────────────────────────────────────
@@ -96,11 +94,34 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   const [unassignedDiagrams, setUnassignedDiagrams] = useState<UnassignedDiagram[]>([]);
   const [confirming, setConfirming] = useState(false);
 
-  const isUniversityExamPaper = paperKind === 'EXAM_PAPER' && examType === 'UNIVERSITY';
+  const isExamPaper = paperKind === 'EXAM_PAPER';
+  const isUniversityExam = examType === 'UNIVERSITY';
+  const isArrearExam = examType === 'ARREAR';
+
+  let scopeMode: 'REGULAR' | 'UNIVERSITY_ALL' | 'ARREAR' = 'REGULAR';
+  if (isArrearExam) {
+    scopeMode = 'ARREAR';
+  } else if (isUniversityExam && isExamPaper) {
+    scopeMode = 'UNIVERSITY_ALL';
+  }
+  
+  const isDepartmentLocked = scopeMode !== 'REGULAR';
+  const isSectionLocked = scopeMode !== 'REGULAR';
 
   useEffect(() => {
-    if (isUniversityExamPaper) setSection('BOTH');
-  }, [isUniversityExamPaper]);
+    if (isDepartmentLocked) setDepartmentId('ALL');
+    if (isSectionLocked) setSection('BOTH');
+    
+    if (scopeMode === 'REGULAR' && departments.length > 0) {
+      if (departmentId === 'ALL' || !departmentId) {
+        setDepartmentId(departments[0].id);
+      }
+      if (section === 'BOTH') {
+        const secs = departments[0]?.sections?.length ? departments[0].sections : ['A', 'B'];
+        setSection(secs[0] || 'A');
+      }
+    }
+  }, [scopeMode, departments]);
 
   useEffect(() => {
     api.get('/api/departments')
@@ -114,11 +135,12 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
   }, []);
 
   useEffect(() => {
-    if (!departmentId || !assignedToYear) {
+    if ((scopeMode === 'REGULAR' && !departmentId) || !assignedToYear) {
       setSubjects(preSelectedSubject ? [preSelectedSubject] : []);
       return;
     }
-    api.get('/api/subjects', { params: { departmentId, year: assignedToYear } })
+    const params = scopeMode === 'REGULAR' ? { departmentId, year: assignedToYear } : { year: assignedToYear, scope: 'college' };
+    api.get('/api/subjects', { params })
       .then(res => {
         const fetchedSubjects = res.data.subjects || [];
         setSubjects(fetchedSubjects);
@@ -140,13 +162,14 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
 
   useEffect(() => {
     setExistingPaper(null);
-    if (!selectedSubject || !examType || !academicYear || !departmentId || !assignedToYear) return;
+    if (!selectedSubject || !examType || !academicYear || (scopeMode === 'REGULAR' && !departmentId) || !assignedToYear) return;
     const timer = setTimeout(async () => {
       setCheckingExists(true);
       try {
-        const { data } = await api.get('/api/question-papers/check-exists', {
-          params: { subjectId: selectedSubject.id, examType, academicYear, departmentId, paperKind, assignedToYear },
-        });
+        const checkParams: any = { subjectId: selectedSubject.id, examType, academicYear, paperKind, assignedToYear };
+        if (scopeMode === 'REGULAR') checkParams.departmentId = departmentId;
+        if (isArrearExam && arrearMonth) checkParams.examDate = `${arrearMonth}-01`;
+        const { data } = await api.get('/api/question-papers/check-exists', { params: checkParams });
         setExistingPaper(data);
       } catch (err) { 
         console.error('[UploadQPModal] /check-exists ERR:', err);
@@ -157,10 +180,10 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
     return () => clearTimeout(timer);
   }, [selectedSubject, examType, academicYear, departmentId, paperKind, assignedToYear]);
 
-  const isSameKindBlocked = !!existingPaper?.exists && (isUniversityExamPaper || !!existingPaper.assignedSections?.includes(section));
-  const isOtherKindBlocked = paperKind === 'IMPORTANT_QUESTIONS' && !!existingPaper?.otherKindExists && (isUniversityExamPaper || !!existingPaper.otherKindAssignedSections?.includes(section));
+  const isSameKindBlocked = !!existingPaper?.exists && (isSectionLocked || !!existingPaper.assignedSections?.includes(section));
+  const isOtherKindBlocked = paperKind === 'IMPORTANT_QUESTIONS' && !!existingPaper?.otherKindExists && (isSectionLocked || !!existingPaper.otherKindAssignedSections?.includes(section));
   const isBlocked = isSameKindBlocked || isOtherKindBlocked;
-  const showOtherKindInfo = !isBlocked && !!existingPaper?.otherKindExists && (isUniversityExamPaper || !!existingPaper.otherKindAssignedSections?.includes(section));
+  const showOtherKindInfo = !isBlocked && !!existingPaper?.otherKindExists && (isSectionLocked || !!existingPaper.otherKindAssignedSections?.includes(section));
   const blockedCreatorName = isSameKindBlocked ? existingPaper?.creatorName : existingPaper?.otherKindCreatorName;
   const blockedSections = isSameKindBlocked ? existingPaper?.assignedSections : existingPaper?.otherKindAssignedSections;
   const blockedLabel = isSameKindBlocked ? (paperKind === 'EXAM_PAPER' ? 'Exam Paper' : 'Important Questions') : 'Exam Paper';
@@ -171,7 +194,12 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
     if (!departmentId) { toast.error('Please select a department'); return; }
     if (!REGEX_PATTERNS.ACADEMIC_YEAR.test(academicYear)) { toast.error('Academic year must be YYYY-YY (e.g. 2025-26)'); return; }
 
-    if (isUniversityExamPaper && academicYear === currentAcYear()) {
+    if (isArrearExam && !arrearMonth) {
+      toast.error('Arrear month is mandatory for Arrear Exams.');
+      return;
+    }
+
+    if (isUniversityExam && academicYear === acYearOptions[0]) {
       if (!examDate) { toast.error("Exam date is mandatory for current academic year's University Exam Papers."); return; }
       const selected = new Date(examDate);
       selected.setHours(0, 0, 0, 0);
@@ -235,11 +263,11 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
         subjectId: selectedSubject!.id,
         examType,
         academicYear,
-        departmentId: departmentId === 'ALL' ? null : departmentId,
+        departmentId: scopeMode === 'REGULAR' ? departmentId : null,
         assignedToYear,
-        section,
+        section: scopeMode === 'REGULAR' ? section : null,
         paperKind,
-        examDate: examDate || null,
+        examDate: isArrearExam ? `${arrearMonth}-01` : (examDate || null),
         questions: parsedQuestions.map(q => ({
           text: q.text,
           marks: q.marks,
@@ -310,9 +338,9 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
               {/* Department */}
               <div>
                 <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Department</label>
-                <select value={departmentId} onChange={e => setDepartmentId(e.target.value)} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]">
+                <select value={departmentId} onChange={e => setDepartmentId(e.target.value)} disabled={isDepartmentLocked} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] disabled:opacity-50">
                   <option value="">Select department…</option>
-                  {isUniversityExamPaper && <option value="ALL">All Departments</option>}
+                  {isDepartmentLocked && <option value="ALL">All Departments</option>}
                   {departments.map(d => <option key={d.id} value={d.id}>{d.branch} - {d.name}</option>)}
                 </select>
               </div>
@@ -327,7 +355,7 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                 </div>
                 <div>
                   <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Section</label>
-                  <select value={section} onChange={e => setSection(e.target.value)} disabled={isUniversityExamPaper} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] disabled:opacity-50">
+                  <select value={section} onChange={e => setSection(e.target.value)} disabled={isSectionLocked} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] disabled:opacity-50">
                     {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
                     <option value="BOTH">Both A &amp; B</option>
                   </select>
@@ -356,7 +384,9 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                 </div>
                 <div>
                   <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Academic Year</label>
-                  <input type="text" value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="2025-26" className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"/>
+                  <select value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]">
+                    {acYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -372,11 +402,18 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                 </div>
               </div>
 
-              {/* Exam Date */}
-              <div>
-                <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Exam Date <span className="normal-case text-[#3A3A38]">(optional)</span></label>
-                <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"/>
-              </div>
+              {/* Exam Date / Month */}
+              {isArrearExam ? (
+                <div>
+                  <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Arrear Month <span className="text-red-400">*</span></label>
+                  <input type="month" value={arrearMonth} onChange={e => setArrearMonth(e.target.value)} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"/>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[11px] text-[#8C8C8A] uppercase tracking-wider mb-1.5 block">Exam Date <span className="normal-case text-[#3A3A38]">(optional)</span></label>
+                  <input type="date" value={examDate} onChange={e => setExamDate(e.target.value)} className="w-full bg-[#2C2C2A] border border-[#3A3A38] rounded-lg px-3 py-2 text-[13px] text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"/>
+                </div>
+              )}
 
               {/* Warnings */}
               {checkingExists && <div className="flex items-center gap-2 text-[12px] text-[#5A5A58]"><Loader2 size={12} className="animate-spin" /> Checking for existing papers…</div>}
