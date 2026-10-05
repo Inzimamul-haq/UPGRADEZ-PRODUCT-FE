@@ -19,14 +19,6 @@ function SearchModal() {
   const [query, setQuery] = useState('');
   const router = useRouter();
 
-  if (!isSearchOpen) return null;
-
-  /** Format "YYYY-MM" → "Jul 2026" */
-  const formatMonthLabel = (ym: string) => {
-    const [y, m] = ym.split('-').map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
-
   const debouncedQuery = useDebouncedValue(query, 250);
 
   const [results, setResults] = useState<any[]>([]);
@@ -97,6 +89,14 @@ function SearchModal() {
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [hasMore, isFetchingMore, fetchSearch, debouncedQuery, selectedMonth, nextCursor, isSearching, isSearchOpen]);
+
+  if (!isSearchOpen) return null;
+
+  /** Format "YYYY-MM" → "Jul 2026" */
+  const formatMonthLabel = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm" onClick={closeSearch}>

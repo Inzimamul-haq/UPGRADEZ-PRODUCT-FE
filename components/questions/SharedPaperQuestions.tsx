@@ -164,7 +164,7 @@ export function SharedPaperQuestions({ subjectId, paperId }: { subjectId: string
     );
   };
 
-  const partBStartNum = partA.length > 0 ? 11 : 1;
+  const partBStartNum = partA.length > 0 ? partA.length + 1 : 1;
   const partBGroups = groupByIndex(partB);
   const partCStartNum = partBStartNum + partBGroups.length;
 
