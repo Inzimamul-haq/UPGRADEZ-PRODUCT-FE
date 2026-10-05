@@ -183,7 +183,9 @@ export function ContextSetupCard({
       Object.entries(prefillTopicsConfig.topics).forEach(([chStr, topics]) => {
         const ch = parseInt(chStr);
         if (topics.includes('all')) {
-          newTopicStates[ch] = { all: true, selected: new Set(), customText: "", expanded: true };
+          const syllabusCh = syllabusEntries.find(e => e.chapter === ch);
+          const chTopics = syllabusCh?.topics || [];
+          newTopicStates[ch] = { all: true, selected: new Set(chTopics), customText: "", expanded: false };
         } else {
           const syllabusCh = syllabusEntries.find(e => e.chapter === ch);
           const chTopics = syllabusCh?.topics || [];
@@ -236,13 +238,15 @@ export function ContextSetupCard({
       let changed = false;
       for (const ch of Array.from(selectedChapters)) {
         if (!next[ch]) {
-          next[ch] = { all: true, selected: new Set(), customText: "", expanded: true };
+          const entry = syllabusEntries.find(e => e.chapter === ch);
+          const chTopics = entry?.topics || [];
+          next[ch] = { all: true, selected: new Set(chTopics), customText: "", expanded: false };
           changed = true;
         }
       }
       return changed ? next : prev;
     });
-  }, [selectedChapters]);
+  }, [selectedChapters, prefillTopicsConfig, prefilled, syllabusEntries]);
 
   const updateTopicState = (ch: number, patch: Partial<{ all: boolean; selected: Set<string>; customText: string; expanded: boolean }>) => {
     setTopicStates((prev) => ({
@@ -280,7 +284,14 @@ export function ContextSetupCard({
   summaryParts.push(chapterLabel);
 
   if (step > 1) {
-    const isAllTopics = Array.from(selectedChapters).every(ch => topicStates[ch]?.all !== false);
+    const isAllTopics = Array.from(selectedChapters).every(ch => {
+      const ts = topicStates[ch];
+      const entry = syllabusEntries.find(e => e.chapter === ch);
+      const chTopics = entry?.topics || [];
+      if (!ts) return true;
+      if (chTopics.length === 0) return true;
+      return chTopics.every(t => ts.selected.has(t));
+    });
     summaryParts.push(isAllTopics ? "All Topics" : "Specific Topics");
   }
 
@@ -302,7 +313,12 @@ export function ContextSetupCard({
   // Topic validation: if a chapter has 'all: false', it must have customText or selected pills
   const hasValidTopics = Array.from(selectedChapters).every(ch => {
     const ts = topicStates[ch];
-    if (!ts || ts.all) return true;
+    if (!ts) return true;
+    const entry = syllabusEntries.find(e => e.chapter === ch);
+    const chTopics = entry?.topics || [];
+    const allTopicsSelected = chTopics.length > 0 ? chTopics.every(t => ts.selected.has(t)) : true;
+    
+    if (allTopicsSelected) return true;
     return ts.selected.size > 0 || ts.customText.trim().length > 0;
   });
 
@@ -325,7 +341,11 @@ export function ContextSetupCard({
 
     chaptersToProcess.forEach((c) => {
       const ts = topicStates[c];
-      if (!ts || ts.all) {
+      const entry = syllabusEntries.find(e => e.chapter === c);
+      const chTopics = entry?.topics || [];
+      const allTopicsSelected = ts && chTopics.length > 0 ? chTopics.every(t => ts.selected.has(t)) : (!ts || ts.selected.size === 0 && ts.customText === "");
+
+      if (!ts || allTopicsSelected) {
         topics[c] = ["all"];
       } else {
         const customTopics = ts.customText.split(',').map(t => t.trim()).filter(Boolean);
@@ -511,9 +531,19 @@ export function ContextSetupCard({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateTopicState(ch, { all: !ts.all });
+                              const hasTopics = entry.topics && entry.topics.length > 0;
+                              if (!hasTopics) return;
+                              
+                              const allSelected = entry.topics.every(t => ts.selected.has(t));
+                              if (allSelected) {
+                                // Deselect all
+                                updateTopicState(ch, { selected: new Set() });
+                              } else {
+                                // Select all
+                                updateTopicState(ch, { selected: new Set(entry.topics) });
+                              }
                             }}
-                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ml-2 ${ts.all ? "bg-[#1A2A1A] text-[#7AC87A]" : "bg-[#1C1C1B] text-[#6C6C6A] hover:text-[#ECECEA]"
+                            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-1 rounded transition-colors ml-2 ${(entry.topics && entry.topics.length > 0 && entry.topics.every(t => ts.selected.has(t))) || (!entry.topics || entry.topics.length === 0) ? "bg-[#1A2A1A] text-[#7AC87A]" : "bg-[#1C1C1B] text-[#6C6C6A] hover:text-[#ECECEA]"
                               }`}
                           >
                             All Topics
