@@ -7,9 +7,9 @@ import { AIDetailsPanel } from "./AIDetailsPanel";
 const PROMPT_TYPE_OPTIONS = [
   { value: "THEORY", label: "Theory" },
   { value: "HYBRID_THEORY_PROBLEM", label: "Hybrid (Theory + Problem)" },
-  { value: "PROBLEM_FOCUSED", label: "Problem Focused" },
-  { value: "APPLIED_DESIGN", label: "Applied Design" },
-  { value: "DIAGRAM_DRIVEN_PROBLEM", label: "Diagram Driven" },
+  { value: "PROBLEM_FOCUSED", label: "Problem Focused (Only Problems)" },
+  { value: "APPLIED_DESIGN", label: "Applied Design (2 chapter problem and 3 chapter theory)" },
+  { value: "DIAGRAM_DRIVEN_PROBLEM", label: "Diagram Focused" },
 ] as const;
 
 const DIAGRAM_TYPE_OPTIONS = [

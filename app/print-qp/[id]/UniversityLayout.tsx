@@ -115,7 +115,7 @@ export function UniversityLayout({ paper, questions }: any) {
                             <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{grp.a.text}</ReactMarkdown>
                             {grp.a.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
-                                <DiagramRenderer type={grp.a.diagramSpec.type || grp.a.diagramType || 'unknown'} spec={grp.a.diagramSpec} width={400} height={250} />
+                                <DiagramRenderer type={grp.a.diagramSpec.type || grp.a.diagramType || 'unknown'} subtype={grp.a.diagramSpec.subtype} spec={grp.a.diagramSpec} width={400} height={250} />
                               </div>
                             )}
                           </div>
@@ -138,7 +138,7 @@ export function UniversityLayout({ paper, questions }: any) {
                             <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{grp.b.text}</ReactMarkdown>
                             {grp.b.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
-                                <DiagramRenderer type={grp.b.diagramSpec.type || grp.b.diagramType || 'unknown'} spec={grp.b.diagramSpec} width={400} height={250} />
+                                <DiagramRenderer type={grp.b.diagramSpec.type || grp.b.diagramType || 'unknown'} subtype={grp.b.diagramSpec.subtype} spec={grp.b.diagramSpec} width={400} height={250} />
                               </div>
                             )}
                           </div>
