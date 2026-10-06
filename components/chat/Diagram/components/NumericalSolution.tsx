@@ -3,12 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, FileDigit, List, ChevronDown, ChevronUp, HelpCircle, Loader2, User, Bot } from 'lucide-react';
 import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath, isCodeContent, formatMixedMath, isMarkdownTable, isPlainText, fixFlattenedMarkdown } from '@/lib/mathFormat';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
+import { MathBlock } from '@/components/ui/MathBlock';
+import { parseMathLines, isCodeContent, isMarkdownTable, isPlainText } from '@/lib/mathFormat';
 
 export interface NumericalExecutionStep {
   step_title?: string;
@@ -62,20 +59,10 @@ export function NumericalSolution({
                   >
                     <div className="w-1.5 h-1.5 shrink-0 rounded-full bg-[#F59E0B] mt-[7px]" />
 
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
-                        components={{
-                          p: ({ children }) => (
-                            <p className="m-0 min-w-0 break-words leading-relaxed">
-                              {children}
-                            </p>
-                          ),
-                        }}
-                      >
-                        {formatMixedMath(g)}
-                      </ReactMarkdown>
+                    <div className="min-w-0 flex-1 overflow-hidden prose-p:m-0 prose-p:min-w-0 prose-p:break-words prose-p:leading-relaxed">
+                      <MathMarkdown>
+                        {g}
+                      </MathMarkdown>
                     </div>
                   </div>
                 ))}
@@ -117,20 +104,10 @@ export function NumericalSolution({
                     </span>
 
                     <div className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-                      <div className="min-w-0 text-[13px] text-[#D1D1C7]">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkMath, remarkGfm]}
-                          rehypePlugins={[rehypeKatex]}
-                          components={{
-                            p: ({ children }) => (
-                              <p className="m-0 min-w-0 leading-relaxed">
-                                {children}
-                              </p>
-                            ),
-                          }}
-                        >
-                          {formatMixedMath(f)}
-                        </ReactMarkdown>
+                      <div className="min-w-0 text-[13px] text-[#D1D1C7] prose-p:m-0 prose-p:min-w-0 prose-p:leading-relaxed">
+                        <MathMarkdown>
+                          {f}
+                        </MathMarkdown>
                       </div>
                     </div>
                   </div>
@@ -159,30 +136,11 @@ export function NumericalSolution({
 
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
         <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
-          {(() => {
-            let ans = ensureBoxedIsMath(data.finalAnswer);
-            if (!ans || ans === 'undefined') return null;
-
-            if (isPlainText(ans) || isCodeContent(ans)) {
-              ans = ans.replace(/^\s*\$\$?|\$\$?\s*$/g, '');
-              ans = fixFlattenedMarkdown(ans);
-              return (
-                <div className="flex flex-col text-left w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {ans}
-                  </ReactMarkdown>
-                </div>
-              );
-            }
-
-            return (
-              <div className="flex flex-col text-left w-full overflow-x-auto">
-                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                  {ans}
-                </ReactMarkdown>
-              </div>
-            );
-          })()}
+          {data.finalAnswer && data.finalAnswer !== 'undefined' ? (
+            <div className="flex flex-col text-left w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] leading-relaxed">
+              <MathMarkdown>{data.finalAnswer}</MathMarkdown>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -296,9 +254,9 @@ function NumericalStepCard({
             className="overflow-hidden mb-4"
           >
             <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                {fixFlattenedMarkdown(step.explanation)}
-              </ReactMarkdown>
+              <MathMarkdown>
+                {step.explanation}
+              </MathMarkdown>
             </div>
           </motion.div>
         )}
@@ -324,9 +282,9 @@ function NumericalStepCard({
           if (isPlainText(calc) || isMarkdownTable(calc)) {
             return (
               <div className="w-full py-3 px-4 text-left text-[13.5px] text-[#D1D1C7] leading-relaxed bg-[#252523] rounded-lg border border-[#3A3A38]/50 overflow-x-auto">
-                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                <MathMarkdown>
                   {calc}
-                </ReactMarkdown>
+                </MathMarkdown>
               </div>
             );
           }
@@ -340,9 +298,7 @@ function NumericalStepCard({
             <div className={`${containerClass} flex flex-col gap-2 items-center`}>
               {lines.map((line, i) => (
                 <div key={i} className="flex justify-center w-full">
-                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                    {formatMixedMath(`${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content}`, true)}
-                  </ReactMarkdown>
+                  <MathBlock latex={`${line.isImplies ? '\\implies ' : ''}${line.content}`} display={true} />
                 </div>
               ))}
             </div>
@@ -369,7 +325,7 @@ function NumericalStepCard({
               <Bot size={12} className="text-amber-500" />
             </div>
             <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+              <MathMarkdown>{d.answer}</MathMarkdown>
             </div>
           </div>
         </motion.div>

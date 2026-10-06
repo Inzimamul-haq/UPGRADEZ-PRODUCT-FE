@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, CheckCircle2, Calculator } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import { parseMathLines, ensureBoxedIsMath, isCodeContent, isPlainText, fixFlattenedMarkdown } from '@/lib/mathFormat';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
+import { MathBlock } from '@/components/ui/MathBlock';
+import { parseMathLines, isCodeContent, isPlainText } from '@/lib/mathFormat';
 
 export interface MathWorkItem {
   explanation: string;
@@ -50,21 +47,11 @@ export function MathSolution({ data }: { data: MathSolutionData }) {
         </div>
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
         <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 py-2 w-full prose prose-invert prose-p:my-1 prose-math:justify-center">
-          {(() => {
-            const ans = ensureBoxedIsMath(data.final_answer.display);
-            if (!ans || ans === 'undefined') return null;
-            
-            return (
-              <div className="flex flex-col text-left w-full overflow-x-auto">
-                <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
-                >
-                  {ans}
-                </ReactMarkdown>
-              </div>
-            );
-          })()}
+          {data.final_answer?.display && data.final_answer.display !== 'undefined' ? (
+            <div className="flex flex-col text-left w-full overflow-x-auto">
+              <MathMarkdown>{data.final_answer.display}</MathMarkdown>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -103,9 +90,9 @@ function MathStepCard({ step }: { step: MathStep }) {
             <div className="p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed flex flex-col gap-2 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
               {step.work.map((w, i) => w.explanation ? (
                 <div key={i}>
-                  <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                    {fixFlattenedMarkdown(w.explanation)}
-                  </ReactMarkdown>
+                  <MathMarkdown>
+                    {w.explanation}
+                  </MathMarkdown>
                 </div>
               ) : null)}
             </div>
@@ -136,9 +123,9 @@ function MathStepCard({ step }: { step: MathStep }) {
                 if (isPlainText(eq)) {
                   return (
                     <div className="w-full py-2 px-4 text-[13.5px] text-[#D1D1C7] leading-relaxed">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                      <MathMarkdown>
                         {eq}
-                      </ReactMarkdown>
+                      </MathMarkdown>
                     </div>
                   );
                 }
@@ -150,12 +137,7 @@ function MathStepCard({ step }: { step: MathStep }) {
                   <div className="w-full py-2 px-4 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col gap-2 items-center">
                     {lines.map((line, pIdx) => (
                         <div key={pIdx} className="flex justify-center w-full">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                          >
-                            {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
-                          </ReactMarkdown>
+                          <MathBlock latex={`${line.isImplies ? '\\implies ' : ''}${line.content}`} display={true} />
                         </div>
                     ))}
                   </div>
@@ -186,9 +168,9 @@ function MathStepCard({ step }: { step: MathStep }) {
               if (isPlainText(res)) {
                 return (
                   <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed pb-1">
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                    <MathMarkdown>
                       {res}
-                    </ReactMarkdown>
+                    </MathMarkdown>
                   </div>
                 );
               }
@@ -200,12 +182,7 @@ function MathStepCard({ step }: { step: MathStep }) {
                 <div className="flex flex-col gap-2 items-center">
                   {lines.map((line, i) => (
                     <div key={i} className="flex justify-center w-full">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkMath]}
-                        rehypePlugins={[rehypeKatex]}
-                      >
-                        {`$$ ${line.isImplies ? '\\textcolor{#818CF8}{\\implies} ' : ''} ${line.content} $$`}
-                      </ReactMarkdown>
+                      <MathBlock latex={`${line.isImplies ? '\\implies ' : ''}${line.content}`} display={true} />
                     </div>
                   ))}
                 </div>

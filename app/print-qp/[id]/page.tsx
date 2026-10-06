@@ -93,50 +93,69 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
         body { background: white !important; color: black !important; }
         
         @media print {
-          body { background: white !important; color: black !important; }
-          * { 
-            color: black !important; 
-            border-color: #ccc !important; 
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
             background: white !important;
-            background-color: white !important;
+            color: black !important;
+          }
+
+          .qp-print-page {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .qp-layout {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+          }
+
+          .math-md p {
+            margin: 0 !important;
+          }
+
+          .math-md p + p {
+            margin-top: 4px !important;
+          }
+
+          tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          td {
+            overflow: visible !important;
+          }
+
+          .math-md, .math-md *, .katex, .katex *, .qp-question-text {
+            overflow: visible !important;
           }
           
-          /* Shape fills: white background, black outline — scoped to exclude <defs> */
-          svg > *:not(defs) circle,
-          svg > *:not(defs) ellipse,
-          svg > *:not(defs) rect,
-          svg > *:not(defs) polygon,
-          svg > *:not(defs) path,
-          svg > *:not(defs) polyline {
-            fill: white !important;
-            stroke: black !important;
+          .katex {
+            line-height: 1.4 !important;
+          }
+          
+          .math-md p {
+            line-height: 1.5;
           }
 
-          /* Arrowhead markers must stay solid black */
-          svg marker polygon,
-          svg marker path,
-          svg marker circle {
-            fill: black !important;
-            stroke: black !important;
-          }
-
-          /* All SVG text: black, no stroke */
-          svg text, svg tspan {
-            fill: black !important;
-            stroke: none !important;
-          }
-
-          /* Edge lines */
-          svg line {
-            stroke: black !important;
-            stroke-width: 1.5 !important;
-          }
-
-          canvas, svg, img {
+          .diagram-card-wrapper svg,
+          .diagram-card-wrapper canvas,
+          .diagram-card-wrapper img {
             max-width: 100% !important;
             max-height: 350px !important;
             object-fit: contain;
           }
+
 
           .uploaded-diagram-image {
             max-width: 400px !important;
@@ -150,7 +169,7 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
           }
         }
       `}} />
-      <div style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
+      <div className="qp-print-page" style={{ background:'white', minHeight:'100vh', margin:'0 auto' }}>
         {!isCAT
           ? <UniversityLayout paper={paperData} questions={paperData.questions || []} />
           : <CATLayout paper={paperData} questions={paperData.questions || []} />}

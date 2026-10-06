@@ -1,8 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import remarkGfm from 'remark-gfm';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
 import 'katex/dist/katex.min.css';
 import { toDecoded, groupByIndex } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
@@ -28,7 +25,7 @@ export function UniversityLayout({ paper, questions }: any) {
   const maxMarks = 100;
 
   return (
-    <div className="bg-white text-black max-w-[800px] mx-auto" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+    <div className="bg-white text-black qp-layout" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
       {/* Reg No Box */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, marginTop: 15 }}>
         <span style={{ marginRight: 12, fontSize: 16, fontWeight: 'bold' }}>Reg. No. :</span>
@@ -69,15 +66,15 @@ export function UniversityLayout({ paper, questions }: any) {
 
       {/* Part A */}
       {partA.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24 }}>PART A — ({partA.length} x 2 = {partA.length * 2} marks)</div>
+        <div style={{ marginBottom: 20, breakInside: 'auto' }}>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24, breakAfter: 'avoid' }}>PART A — ({partA.length} x 2 = {partA.length * 2} marks)</div>
           <div style={{ padding: '0 24px' }}>
             {partA.map((q: any, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{i + 1}.</span>
-                  <div style={{ fontSize: 16, flex: 1, wordBreak: 'break-word', lineHeight: 1.6 }}>
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{q.text}</ReactMarkdown>
+                  <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                    <MathMarkdown>{q.text}</MathMarkdown>
                   </div>
                 </div>
                 <div style={{ fontSize: 16, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({q.marks || 2})</div>
@@ -97,8 +94,8 @@ export function UniversityLayout({ paper, questions }: any) {
         const marksEach = part.qs[0]?.marks || part.defaultMarks;
 
         return (
-          <div key={part.title} style={{ marginBottom: 20 }}>
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24 }}>
+          <div key={part.title} style={{ marginBottom: 20, breakInside: 'auto' }}>
+            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24, breakAfter: 'avoid' }}>
               PART {part.title} — ({groups.length} x {marksEach} = {groups.length * marksEach} marks)
             </div>
             <div style={{ padding: '0 24px' }}>
@@ -111,8 +108,8 @@ export function UniversityLayout({ paper, questions }: any) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{qIdx}. {grp.b ? 'a)' : ''}</span>
-                          <div style={{ fontSize: 16, flex: 1, wordBreak: 'break-word', lineHeight: 1.6 }}>
-                            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{grp.a.text}</ReactMarkdown>
+                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                            <MathMarkdown>{grp.a.text}</MathMarkdown>
                             {grp.a.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
                                 <DiagramRenderer type={grp.a.diagramSpec.type || grp.a.diagramType || 'unknown'} subtype={grp.a.diagramSpec.subtype} spec={grp.a.diagramSpec} width={400} height={250} />
@@ -134,8 +131,8 @@ export function UniversityLayout({ paper, questions }: any) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>b)</span>
-                          <div style={{ fontSize: 16, flex: 1, wordBreak: 'break-word', lineHeight: 1.6 }}>
-                            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{grp.b.text}</ReactMarkdown>
+                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                            <MathMarkdown>{grp.b.text}</MathMarkdown>
                             {grp.b.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
                                 <DiagramRenderer type={grp.b.diagramSpec.type || grp.b.diagramType || 'unknown'} subtype={grp.b.diagramSpec.subtype} spec={grp.b.diagramSpec} width={400} height={250} />

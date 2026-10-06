@@ -3,12 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Sigma, HelpCircle, Loader2, User, Bot } from 'lucide-react';
 import { StepExplanation } from '@/lib/types';
 import { useStepDoubt } from '@/hooks/useStepDoubt';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import { isCodeContent, formatMixedMath, ensureBoxedIsMath, isMarkdownTable, isPlainText, fixFlattenedMarkdown } from '@/lib/mathFormat';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
+import { MathBlock } from '@/components/ui/MathBlock';
+import { isCodeContent, isMarkdownTable, isPlainText } from '@/lib/mathFormat';
 
 export interface DerivationOperation {
   type: string;
@@ -85,28 +82,11 @@ export function DerivationSolution({
       <div className="mt-2 bg-[#2C2C2A] rounded-lg px-4 py-3 shadow-md relative overflow-hidden">
         <h4 className="text-[12px] font-bold text-[#10B981] tracking-wider uppercase mb-1">Final Answer</h4>
         <div className="text-[15px] font-semibold text-[#ECECEA] relative z-10 overflow-x-auto py-2">
-          {(() => {
-            let ans = ensureBoxedIsMath(data.finalAnswer);
-            if (!ans || ans === 'undefined') return null;
-            
-            if (isPlainText(ans) || isCodeContent(ans)) {
-              ans = ans.replace(/^\s*\$\$?|\$\$?\s*$/g, '');
-              ans = fixFlattenedMarkdown(ans);
-              return (
-                <div className="flex flex-col text-left w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {ans}
-                  </ReactMarkdown>
-                </div>
-              );
-            }
-            
-            return (
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                {ans}
-              </ReactMarkdown>
-            );
-          })()}
+          {data.finalAnswer && data.finalAnswer !== 'undefined' ? (
+            <div className="flex flex-col text-left w-full overflow-x-auto text-[13.5px] text-[#D1D1C7] leading-relaxed">
+              <MathMarkdown>{data.finalAnswer}</MathMarkdown>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -162,9 +142,9 @@ function DerivationStepCard({
           <h3 className="text-[14px] font-semibold text-[#ECECEA]">{step.title}</h3>
           {step.explanation && (
             <div className="text-[12px] text-[#A1A1AA] mt-1 prose prose-invert prose-p:my-1 max-w-none prose-td:border prose-td:border-[#3A3A38] prose-th:border prose-th:border-[#3A3A38]">
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                {fixFlattenedMarkdown(step.explanation)}
-              </ReactMarkdown>
+              <MathMarkdown>
+                {step.explanation}
+              </MathMarkdown>
             </div>
           )}
         </div>
@@ -231,13 +211,13 @@ function DerivationStepCard({
                   {op.formula && (
                     <div className="flex gap-2 items-center text-[13px] text-[#818CF8]">
                       <span className="shrink-0 text-[#A1A1AA]">Using:</span>
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{formatMixedMath(op.formula)}</ReactMarkdown>
+                      <MathBlock latex={op.formula} display={false} className="py-0 my-0" />
                     </div>
                   )}
                   {op.substitution && (
                     <div className="flex gap-2 items-center text-[13px] text-[#F59E0B]">
                       <span className="shrink-0 text-[#A1A1AA]">Substitute:</span>
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{formatMixedMath(op.substitution)}</ReactMarkdown>
+                      <MathBlock latex={op.substitution} display={false} className="py-0 my-0" />
                     </div>
                   )}
                 </div>
@@ -257,14 +237,12 @@ function DerivationStepCard({
                     </pre>
                   ) : isPlainText(op.result) || isMarkdownTable(op.result) ? (
                     <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed px-2">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                      <MathMarkdown>
                         {op.result}
-                      </ReactMarkdown>
+                      </MathMarkdown>
                     </div>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                      {formatMixedMath(op.result, true)}
-                    </ReactMarkdown>
+                    <MathBlock latex={op.result} display={true} />
                   )}
                 </div>
               )}
@@ -280,9 +258,7 @@ function DerivationStepCard({
                           <span className="text-[#818CF8] font-bold mr-1.5">↳</span> Using {eq.label}
                         </div>
                         <div className="flex justify-center w-full overflow-x-auto text-[13px]">
-                          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                            {formatMixedMath(eq.latex, true)}
-                          </ReactMarkdown>
+                          <MathBlock latex={eq.latex} display={true} />
                         </div>
                       </div>
                     );
@@ -298,14 +274,12 @@ function DerivationStepCard({
                     </pre>
                   ) : isPlainText(op.before) || isMarkdownTable(op.before) ? (
                     <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed px-2">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                      <MathMarkdown>
                         {op.before}
-                      </ReactMarkdown>
+                      </MathMarkdown>
                     </div>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                      {formatMixedMath(op.before, true)}
-                    </ReactMarkdown>
+                    <MathBlock latex={op.before} display={true} />
                   )}
                 </div>
               )}
@@ -324,14 +298,12 @@ function DerivationStepCard({
                     </pre>
                   ) : isPlainText(op.after) || isMarkdownTable(op.after) ? (
                     <div className="w-full text-left text-[13.5px] text-[#D1D1C7] leading-relaxed px-2">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                      <MathMarkdown>
                         {op.after}
-                      </ReactMarkdown>
+                      </MathMarkdown>
                     </div>
                   ) : (
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                      {formatMixedMath(op.after, true)}
-                    </ReactMarkdown>
+                    <MathBlock latex={op.after} display={true} />
                   )}
                 </div>
               )}
@@ -366,7 +338,7 @@ function DerivationStepCard({
               <Bot size={12} className="text-amber-500" />
             </div>
             <div className="text-[13px] text-[#D1D1C7] prose prose-invert prose-p:my-0 prose-p:leading-relaxed w-full min-w-0">
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>{d.answer}</ReactMarkdown>
+              <MathMarkdown>{d.answer}</MathMarkdown>
             </div>
           </div>
         </motion.div>
