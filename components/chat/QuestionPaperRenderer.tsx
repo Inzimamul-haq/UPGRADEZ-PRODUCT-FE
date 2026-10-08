@@ -82,10 +82,10 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   }
 
   // Group by marks dynamically
-  const partA = questions.filter(q => q.marks === 2);
-  const partB = questions.filter(q => q.marks === 13 || q.marks === 16);
-  const partC = questions.filter(q => q.marks === 14 || q.marks === 15);
-  const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
+  const partA = questions.filter(q => q.marks === 2 || q.marks === 1);
+  const partB = questions.filter(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
+  const partC = questions.filter(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
+  const otherParts = questions.filter(q => q.marks !== 1 && q.marks !== 2 && q.marks !== 3 && q.marks !== 12 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const groupQuestions = (arr: ParsedQuestion[]) => {
     const groups: { [key: number]: ParsedQuestion[] } = {};

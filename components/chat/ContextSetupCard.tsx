@@ -13,7 +13,10 @@ import {
   List,
   ChevronDown,
   X,
+  Loader2
 } from "lucide-react";
+import api from '@/lib/api';
+import { QuestionPaperPatternType } from '@/lib/patternSchema';
 import {
   TocEntry,
   PaperKind,
@@ -139,6 +142,7 @@ export interface ContextSetupCardProps {
   mode?: 'full' | 'topicsOnly';
   onSaveTopics?: (config: { chapters: number[]; topics: Record<number, string[]> }) => void;
   prefillTopicsConfig?: { chapters: number[]; topics: Record<number, string[]> } | null;
+  regulation?: string;
 }
 
 export function ContextSetupCard({
@@ -153,10 +157,63 @@ export function ContextSetupCard({
   mode = 'full',
   onSaveTopics,
   prefillTopicsConfig,
+  regulation,
 }: ContextSetupCardProps) {
   const hasChapters = syllabusEntries.length > 0;
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+
+  const [pattern, setPattern] = useState<QuestionPaperPatternType | null>(null);
+  const [patternLoading, setPatternLoading] = useState(false);
+  const [slotConfigs, setSlotConfigs] = useState<{ slotId: string; count: number; marks: number; }[]>([]);
+
+  useEffect(() => {
+    if (
+      mode !== 'full' ||
+      !regulation
+    ) {
+      setPattern(null);
+      setSlotConfigs([]);
+      setPatternLoading(false);
+      return;
+    }
+
+    setPattern(null);
+    setSlotConfigs([]);
+    setPatternLoading(true);
+
+    api.get('/api/patterns/resolve', {
+      params: { regulation },
+    })
+      .then(res => {
+        const resolvedPattern = res.data.pattern;
+
+        if (!resolvedPattern) {
+          setPattern(null);
+          setSlotConfigs([]);
+          return;
+        }
+
+        setPattern(resolvedPattern);
+
+        setSlotConfigs(
+          resolvedPattern.parts.flatMap((part: any) =>
+            part.slots.map((slot: any) => ({
+              slotId: slot.id,
+              count: 1,
+              marks: slot.marks ?? slot.marksOptions?.[0] ?? 0,
+            }))
+          )
+        );
+      })
+      .catch(() => {
+        setPattern(null);
+        setSlotConfigs([]);
+      })
+      .finally(() => {
+        setPatternLoading(false);
+      });
+  }, [mode, paperKind, regulation]);
 
   // ── Chapter state ─────────────────────────────────────────────────────────
   const [allChapters, setAllChapters] = useState(false);
@@ -296,9 +353,35 @@ export function ContextSetupCard({
   }
 
   if (mode === 'full' && step > 2) {
-    if (dist.partA.enabled) summaryParts.push(`${dist.partA.count}×2A`);
-    if (dist.partB.enabled) summaryParts.push(`${dist.partB.count}×${dist.partB.marks}B`);
-    if (dist.partC.enabled) summaryParts.push(`${dist.partC.count}×${dist.partC.marks}C`);
+    if (pattern) {
+      const patternSummary = pattern.parts.flatMap((part: any) =>
+        part.slots
+          .map((slot: any) => {
+            const config = slotConfigs.find(
+              sc => sc.slotId === slot.id
+            );
+
+            if (!config || config.count <= 0) return null;
+
+            return `${config.count}×${config.marks}${part.partName.replace('Part ', '')}`;
+          })
+          .filter(Boolean)
+      );
+
+      summaryParts.push(...patternSummary);
+    } else {
+      if (dist.partA.enabled) {
+        summaryParts.push(`${dist.partA.count}×2A`);
+      }
+
+      if (dist.partB.enabled) {
+        summaryParts.push(`${dist.partB.count}×${dist.partB.marks}B`);
+      }
+
+      if (dist.partC.enabled) {
+        summaryParts.push(`${dist.partC.count}×${dist.partC.marks}C`);
+      }
+    }
   }
 
   if (mode === 'full' && step > 3 && difficulty) {
@@ -324,7 +407,7 @@ export function ContextSetupCard({
 
   const canSaveTopics = hasChapterSelection && hasValidTopics;
 
-  const hasAtLeastOnePart = dist.partA.enabled || dist.partB.enabled || dist.partC.enabled;
+  const hasAtLeastOnePart = pattern ? true : (dist.partA.enabled || dist.partB.enabled || dist.partC.enabled);
   const canGenerate = hasChapterSelection && hasValidTopics && hasAtLeastOnePart && !!difficulty;
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -364,7 +447,8 @@ export function ContextSetupCard({
     onGenerate({
       chapters,
       topics,
-      questionDistribution: dist,
+      questionDistribution: pattern ? undefined : dist,
+      slots: pattern ? slotConfigs : undefined,
       difficulty,
     });
   };
@@ -609,41 +693,80 @@ export function ContextSetupCard({
                 )}
               </div>
 
-              <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
-                <PartRow
-                  label="Part A"
-                  marksLabel="2 marks"
-                  marksFixed
-                  enabled={dist.partA.enabled}
-                  count={dist.partA.count}
-                  onToggle={(v) => setPart("partA", { enabled: v })}
-                  onCountChange={(v) => setPart("partA", { count: v })}
-                />
+              {patternLoading ? (
+                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#8C8C8A]" size={24} /></div>
+              ) : pattern ? (
+                 <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
+                    {pattern.parts.map((p: any) => (
+                       <div key={p.id} className="p-4 bg-[#242422]">
+                          <div className="text-[14px] font-semibold text-[#ECECEA] mb-3">{p.partName}</div>
+                          <div className="space-y-3">
+                            {p.slots.map((s: any) => {
+                               const conf = slotConfigs.find(sc => sc.slotId === s.id);
+                               return (
+                                  <div key={s.id} className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
+                                     <span className="text-[13px] text-[#8C8C8A] font-medium">{s.label} {s.isMcq ? '(MCQ)' : ''}</span>
+                                     <div className="flex items-center gap-4 self-end sm:self-auto">
+                                        <div className="text-[13px] text-[#ECECEA] flex items-center gap-2 bg-[#2C2C2A] px-2 py-1 rounded-lg border border-[#3A3A38]">
+                                           {s.isMcq ? s.marks : s.marksOptions?.length > 1 ? (
+                                              <select 
+                                                value={conf?.marks || s.marksOptions[0]} 
+                                                onChange={e => setSlotConfigs(prev => prev.map(sc => sc.slotId === s.id ? {...sc, marks: parseInt(e.target.value)} : sc))}
+                                                className="bg-transparent border-none outline-none text-[#ECECEA] font-semibold"
+                                              >
+                                                {s.marksOptions.map((m: number) => <option key={m} value={m}>{m}</option>)}
+                                              </select>
+                                           ) : s.marks} marks
+                                        </div>
+                                        <CountStepper 
+                                          value={conf?.count || 1}
+                                          onChange={v => setSlotConfigs(prev => prev.map(sc => sc.slotId === s.id ? {...sc, count: v} : sc))}
+                                        />
+                                     </div>
+                                  </div>
+                               )
+                            })}
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+              ) : (
+                <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
+                  <PartRow
+                    label="Part A"
+                    marksLabel="2 marks"
+                    marksFixed
+                    enabled={dist.partA.enabled}
+                    count={dist.partA.count}
+                    onToggle={(v) => setPart("partA", { enabled: v })}
+                    onCountChange={(v) => setPart("partA", { count: v })}
+                  />
 
-                <PartRow
-                  label="Part B"
-                  marksLabel={null}
-                  marksOptions={getMarksOptions("B")}
-                  selectedMarks={dist.partB.marks}
-                  onMarksChange={(v) => setPart("partB", { marks: v })}
-                  enabled={dist.partB.enabled}
-                  count={dist.partB.count}
-                  onToggle={(v) => setPart("partB", { enabled: v })}
-                  onCountChange={(v) => setPart("partB", { count: v })}
-                />
+                  <PartRow
+                    label="Part B"
+                    marksLabel={null}
+                    marksOptions={getMarksOptions("B")}
+                    selectedMarks={dist.partB.marks}
+                    onMarksChange={(v) => setPart("partB", { marks: v })}
+                    enabled={dist.partB.enabled}
+                    count={dist.partB.count}
+                    onToggle={(v) => setPart("partB", { enabled: v })}
+                    onCountChange={(v) => setPart("partB", { count: v })}
+                  />
 
-                <PartRow
-                  label="Part C"
-                  marksLabel={null}
-                  marksOptions={getMarksOptions("C")}
-                  selectedMarks={dist.partC.marks}
-                  onMarksChange={(v) => setPart("partC", { marks: v })}
-                  enabled={dist.partC.enabled}
-                  count={dist.partC.count}
-                  onToggle={(v) => setPart("partC", { enabled: v })}
-                  onCountChange={(v) => setPart("partC", { count: v })}
-                />
-              </div>
+                  <PartRow
+                    label="Part C"
+                    marksLabel={null}
+                    marksOptions={getMarksOptions("C")}
+                    selectedMarks={dist.partC.marks}
+                    onMarksChange={(v) => setPart("partC", { marks: v })}
+                    enabled={dist.partC.enabled}
+                    count={dist.partC.count}
+                    onToggle={(v) => setPart("partC", { enabled: v })}
+                    onCountChange={(v) => setPart("partC", { count: v })}
+                  />
+                </div>
+              )}
             </div>
           )}
 

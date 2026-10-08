@@ -16,10 +16,17 @@ export interface QuestionDistribution {
   partC: PartConfig;
 }
 
+export interface SlotConfig {
+  slotId: string;
+  count: number;
+  marks: number;
+}
+
 export interface ContextSetupConfig {
   chapters: number[]; // empty = all chapters
   topics: Record<number, string[]>; // { 1: ['all'], 3: ['all'] }
-  questionDistribution: QuestionDistribution;
+  questionDistribution?: QuestionDistribution;
+  slots?: SlotConfig[];
   difficulty: DifficultyMode;
 }
 
@@ -195,6 +202,7 @@ export interface SessionData {
   subjectId: string;
   subjectName?: string;
   subject?: Subject;
+  regulation?: string;
 
   examType: string;
   arrearMonth?: string;
@@ -255,6 +263,7 @@ export interface ChatStepOverlayProps {
     examType: string;
     paperKind?: PaperKind;
     arrearMonth?: string;
+    regulation?: string;
   }) => void;
 }
 

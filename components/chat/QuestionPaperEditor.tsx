@@ -162,11 +162,11 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     setQuestions(prev => {
       let lastIndexInPart = -1;
       if (part === 'A') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 2);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
       } else if (part === 'B') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
       } else if (part === 'C') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 14 || q.marks === 15);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
       }
 
       let idxToInsert = prev.length;
@@ -174,14 +174,14 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
         idxToInsert = lastIndexInPart + 1;
       } else {
         if (part === 'C') {
-          const lastB = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+          const lastB = prev.findLastIndex(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
           if (lastB !== -1) idxToInsert = lastB + 1;
           else {
-            const lastA = prev.findLastIndex(q => q.marks === 2);
+            const lastA = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
             idxToInsert = lastA !== -1 ? lastA + 1 : 0;
           }
         } else if (part === 'B') {
-          const lastA = prev.findLastIndex(q => q.marks === 2);
+          const lastA = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
           idxToInsert = lastA !== -1 ? lastA + 1 : 0;
         } else {
           idxToInsert = 0;
@@ -238,10 +238,10 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     );
   }
 
-  const partA = questions.filter(q => q.marks === 2);
-  const partB = questions.filter(q => q.marks === 13 || q.marks === 16);
-  const partC = questions.filter(q => q.marks === 14 || q.marks === 15);
-  const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
+  const partA = questions.filter(q => q.marks === 2 || q.marks === 1);
+  const partB = questions.filter(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
+  const partC = questions.filter(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
+  const otherParts = questions.filter(q => q.marks !== 1 && q.marks !== 2 && q.marks !== 3 && q.marks !== 12 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const renderQuestion = (q: EditableQuestion) => (
     <div
