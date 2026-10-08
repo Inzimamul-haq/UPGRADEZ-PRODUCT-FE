@@ -3,11 +3,34 @@ import { MathMarkdown } from '@/components/ui/MathMarkdown';
 import 'katex/dist/katex.min.css';
 import { toDecoded, groupByIndex, formatPartMarks, type DecodedQuestion } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
+const RBT_LABELS: Record<string, string> = {
+  L1: 'Remember',
+  L2: 'Understand',
+  L3: 'Apply',
+  L4: 'Analyze',
+  L5: 'Evaluate',
+  L6: 'Create',
+};
+
 export function CATLayout({ paper, questions }: any) {
   const decoded = questions.map(toDecoded);
   const partA = decoded.filter((q: any) => q.part === 'A');
   const partB = decoded.filter((q: any) => q.part === 'B');
   const partC = decoded.filter((q: any) => q.part === 'C');
+
+  // Collect unique, sorted RBT levels actually present
+  const usedRbts = [...new Set(
+    decoded
+      .map((q: any) => q.meta?.rbt?.trim())
+      .filter(Boolean)
+  )].sort();
+
+  // Collect unique, sorted CO codes actually present
+  const usedCos = [...new Set(
+    decoded
+      .map((q: any) => q.meta?.co?.trim())
+      .filter(Boolean)
+  )].sort();
 
   const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(
     (paper.examType || '').toUpperCase().replace(/\s+/g, '')
@@ -204,6 +227,48 @@ export function CATLayout({ paper, questions }: any) {
           </div>
         );
       })}
+
+      {/* QP Summary */}
+      {(usedRbts.length > 0 || usedCos.length > 0) && (
+        <div style={{
+          marginTop: 28,
+          border: '1px solid black',
+          padding: '12px 16px',
+          pageBreakInside: 'avoid',
+          breakInside: 'avoid',
+        }}>
+          <div style={{
+            fontWeight: 'bold',
+            fontSize: 13,
+            textAlign: 'center',
+            borderBottom: '1px solid black',
+            paddingBottom: 6,
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}>
+            Question Paper Summary
+          </div>
+
+          {usedRbts.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: 'bold', fontSize: 12 }}>RBT Levels Covered: </span>
+              <span style={{ fontSize: 12 }}>
+                {usedRbts
+                  .map(rbt => `${rbt}${RBT_LABELS[rbt as string] ? ` – ${RBT_LABELS[rbt as string]}` : ''}`)
+                  .join('  |  ')}
+              </span>
+            </div>
+          )}
+
+          {usedCos.length > 0 && (
+            <div>
+              <span style={{ fontWeight: 'bold', fontSize: 12 }}>Course Outcomes Covered: </span>
+              <span style={{ fontSize: 12 }}>{usedCos.join('  |  ')}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
