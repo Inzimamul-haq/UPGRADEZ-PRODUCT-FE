@@ -43,22 +43,25 @@ export default function EditPatternPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/admin/patterns" className="p-2 rounded-xl bg-[#252525] border border-[#30302E] text-[#8C8C8A] hover:text-[#ECECEA] transition-colors">
-          <ArrowLeft size={20} />
-        </Link>
+    <div className="mx-auto w-full max-w-4xl px-3 sm:px-6 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6 mt-8 sm:mt-0">
         <div>
-          <h1 className="text-[28px] font-semibold text-[#ECECEA] tracking-tight">
+          <h1 className="text-[16px] font-medium text-[#ECECEA] tracking-tight">
             {isNew ? 'Create Pattern' : 'Edit Pattern'}
           </h1>
-          <p className="text-[14px] text-[#8C8C8A] mt-1">
+          <p className="text-[12px] text-[#8C8C8A] mt-0.5">
             {isNew ? 'Define a new question paper pattern' : `Editing pattern for regulation ${initialData?.regulation}`}
           </p>
         </div>
+        <Link 
+          href="/admin/patterns" 
+          className="rounded-md border border-[#4A4A48] bg-[#2C2C2A] px-3 py-1.5 text-[14px] text-[#ECECEA] transition-colors hover:bg-[#333331] text-center w-full sm:w-auto"
+        >
+          Back to Patterns
+        </Link>
       </div>
 
-      <div className="bg-[#1C1C1B] border border-[#30302E] rounded-2xl p-6">
+      <div className="bg-[#1F1F1E] border border-[#3A3A38] rounded-xl p-4 sm:p-6">
         <PatternBuilder 
           initialData={initialData} 
           onSave={() => router.push('/admin/patterns')}

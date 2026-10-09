@@ -818,7 +818,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     setDifficultyConfirmed(true);
 
     const instruction = buildInstructionFromConfig(config);
-    await handleSend(instruction, undefined, config.difficulty);
+    await handleSend(
+      instruction, 
+      undefined, 
+      config.difficulty,
+      config.slots,
+      config.chapters,
+      config.topics
+    );
   };
 
   const handleSaveTopics = async (config: { chapters: number[]; topics: Record<number, string[]> }) => {
@@ -905,7 +912,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string, editMessageId?: string, forceDifficulty?: DifficultyMode): Promise<boolean> => {
+  const handleSend = async (
+    content: string, 
+    editMessageId?: string, 
+    forceDifficulty?: DifficultyMode,
+    slots?: any[],
+    chapters?: number[],
+    topics?: Record<number, string[]>
+  ): Promise<boolean> => {
     if (!isFaculty && questionsToday >= 10) return false;
 
     // Gate: branch question not answered yet — only for NEW sessions before IQ/Exam is chosen
@@ -983,6 +997,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           linkedPaperId: sessionData?.linkedIQPaperId,
           chatId: chatId,
           history,
+          slots,
+          chapters,
+          topics,
         };
 
         const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
