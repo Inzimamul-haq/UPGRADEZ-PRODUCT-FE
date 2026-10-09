@@ -57,7 +57,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   useEffect(() => {
     if (step === 0.5 && isFaculty) {
       setLoadingSubjects(true);
-      api.get('/api/patterns/regulations')
+      api.get('/api/subjects/regulations')
       .then(res => {
         const regs = res.data.regulations || [];
         setRegulationsList(regs);
@@ -130,7 +130,13 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => { 
-    setExamType(type);
+    // Normalize to backend enums
+    let normalizedType = type.toUpperCase().replace(/\s+/g, '');
+    if (normalizedType === 'MODEL') normalizedType = 'MODEL';
+    if (normalizedType === 'UNIVERSITY') normalizedType = 'UNIVERSITY';
+    if (normalizedType === 'ARREAR') normalizedType = 'ARREAR';
+
+    setExamType(type); // Keep UI label for display, we map it on finalize
     setDuplicateError('');
     if (isFaculty) {
       if (type.toLowerCase().includes('university') || type.toLowerCase().includes('semester') || type.toLowerCase().includes('arrear')) {
@@ -139,7 +145,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         setStep(5);
       }
     }
-    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: type });
+    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: normalizedType });
   };
 
   const handleFinalize = async (finalizeSection: string = '', finalizeKind?: PaperKind, finalizeArrearMonth: string = '') => {
@@ -176,6 +182,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       }
     }
 
+    const normalizedExamType = examType.toUpperCase().replace(/\s+/g, '');
     onComplete({ 
       year, 
       branch, 
@@ -183,7 +190,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       departmentId, 
       section: finalizeSection === 'All Sections' ? '' : finalizeSection, 
       subject: selectedSubject, 
-      examType, 
+      examType: normalizedExamType, 
       paperKind: kindToUse || undefined,
       arrearMonth: finalizeArrearMonth,
       regulation,

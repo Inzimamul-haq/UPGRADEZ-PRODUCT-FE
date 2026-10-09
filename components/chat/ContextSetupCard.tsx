@@ -25,25 +25,7 @@ import {
   QuestionDistribution,
 } from "@/lib/types";
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
-function supportsPartC(examType: string): boolean {
-  const upper = examType.toUpperCase();
-  return upper.includes("MODEL") || upper.includes("UNIVERSITY");
-}
-
-function getMarksOptions(part: "B" | "C"): number[] {
-  if (part === "B") return [13, 16];
-  return [14, 15];
-}
-
-function buildDefaultDistribution(examType: string): QuestionDistribution {
-  return {
-    partA: { enabled: true, count: 10, marks: 2 },
-    partB: { enabled: true, count: 5, marks: 13 },
-    partC: { enabled: supportsPartC(examType), count: 2, marks: 15 },
-  };
-}
 
 const DIFFICULTY_LABELS: Record<DifficultyMode, string> = {
   SIMPLE: "Easy",
@@ -88,45 +70,7 @@ function CountStepper({ value, onChange, disabled }: CountStepperProps) {
   );
 }
 
-interface MarksButtonGroupProps {
-  options: number[];
-  selected: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
-}
 
-function MarksButtonGroup({
-  options,
-  selected,
-  onChange,
-  disabled,
-}: MarksButtonGroupProps) {
-  return (
-    <div
-      className={`flex rounded-lg overflow-hidden border border-[#3A3A38] ${disabled ? "opacity-40" : ""
-        }`}
-    >
-      {options.map((opt, i) => (
-        <button
-          key={opt}
-          onClick={() => !disabled && onChange(opt)}
-          disabled={disabled}
-          className={`
-            px-2.5 py-1 text-[12px] font-semibold transition-all duration-150
-            ${i > 0 ? "border-l border-[#3A3A38]" : ""}
-            ${selected === opt
-              ? "bg-[#1A2A1A] text-[#7AC87A] border-[#3A6A3A]"
-              : "bg-[#242422] text-[#6C6C6A] hover:text-[#ECECEA] hover:bg-[#2C2C2A]"
-            }
-          `}
-          aria-pressed={selected === opt}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -165,6 +109,7 @@ export function ContextSetupCard({
 
   const [pattern, setPattern] = useState<QuestionPaperPatternType | null>(null);
   const [patternLoading, setPatternLoading] = useState(false);
+  const [patternError, setPatternError] = useState(false);
   const [slotConfigs, setSlotConfigs] = useState<{ slotId: string; count: number; marks: number; }[]>([]);
 
   useEffect(() => {
@@ -175,15 +120,20 @@ export function ContextSetupCard({
       setPattern(null);
       setSlotConfigs([]);
       setPatternLoading(false);
+      setPatternError(false);
       return;
     }
 
     setPattern(null);
     setSlotConfigs([]);
+    setPatternError(false);
     setPatternLoading(true);
 
+    const abortController = new AbortController();
+
     api.get('/api/patterns/resolve', {
-      params: { regulation },
+      params: { regulation, examType },
+      signal: abortController.signal,
     })
       .then(res => {
         const resolvedPattern = res.data.pattern;
@@ -191,6 +141,7 @@ export function ContextSetupCard({
         if (!resolvedPattern) {
           setPattern(null);
           setSlotConfigs([]);
+          setPatternError(true);
           return;
         }
 
@@ -200,20 +151,26 @@ export function ContextSetupCard({
           resolvedPattern.parts.flatMap((part: any) =>
             part.slots.map((slot: any) => ({
               slotId: slot.id,
-              count: 1,
-              marks: slot.marks ?? slot.marksOptions?.[0] ?? 0,
+              count: slot.defaultCount ?? 1,
+              marks: slot.marks ?? 0,
             }))
           )
         );
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err.name === 'CanceledError') return;
         setPattern(null);
         setSlotConfigs([]);
+        setPatternError(true);
       })
       .finally(() => {
-        setPatternLoading(false);
+        if (!abortController.signal.aborted) {
+          setPatternLoading(false);
+        }
       });
-  }, [mode, paperKind, regulation]);
+
+    return () => abortController.abort();
+  }, [mode, paperKind, regulation, examType]);
 
   // ── Chapter state ─────────────────────────────────────────────────────────
   const [allChapters, setAllChapters] = useState(false);
@@ -312,20 +269,6 @@ export function ContextSetupCard({
     }));
   };
 
-  // ── Distribution state ────────────────────────────────────────────────────
-  const [dist, setDist] = useState<QuestionDistribution>(
-    buildDefaultDistribution(examType)
-  );
-
-  const setPart = (
-    part: "partA" | "partB" | "partC",
-    patch: Partial<(typeof dist)[typeof part]>
-  ) => {
-    setDist((prev) => ({
-      ...prev,
-      [part]: { ...prev[part], ...patch },
-    }));
-  };
 
   // ── Derived labels for summary ────────────────────────────────────────────
   const chapterLabel = useMemo(() => {
@@ -363,24 +306,12 @@ export function ContextSetupCard({
 
             if (!config || config.count <= 0) return null;
 
-            return `${config.count}×${config.marks}${part.partName.replace('Part ', '')}`;
+            return `${config.count}×${config.marks} (${part.partName.replace('Part ', '')})`;
           })
           .filter(Boolean)
       );
 
       summaryParts.push(...patternSummary);
-    } else {
-      if (dist.partA.enabled) {
-        summaryParts.push(`${dist.partA.count}×2A`);
-      }
-
-      if (dist.partB.enabled) {
-        summaryParts.push(`${dist.partB.count}×${dist.partB.marks}B`);
-      }
-
-      if (dist.partC.enabled) {
-        summaryParts.push(`${dist.partC.count}×${dist.partC.marks}C`);
-      }
     }
   }
 
@@ -407,7 +338,7 @@ export function ContextSetupCard({
 
   const canSaveTopics = hasChapterSelection && hasValidTopics;
 
-  const hasAtLeastOnePart = pattern ? true : (dist.partA.enabled || dist.partB.enabled || dist.partC.enabled);
+  const hasAtLeastOnePart = pattern !== null;
   const canGenerate = hasChapterSelection && hasValidTopics && hasAtLeastOnePart && !!difficulty;
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -447,7 +378,7 @@ export function ContextSetupCard({
     onGenerate({
       chapters,
       topics,
-      questionDistribution: pattern ? undefined : dist,
+      questionDistribution: undefined,
       slots: pattern ? slotConfigs : undefined,
       difficulty,
     });
@@ -699,24 +630,19 @@ export function ContextSetupCard({
                  <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
                     {pattern.parts.map((p: any) => (
                        <div key={p.id} className="p-4 bg-[#242422]">
-                          <div className="text-[14px] font-semibold text-[#ECECEA] mb-3">{p.partName}</div>
+                          <div className="flex items-center justify-between mb-3">
+                             <div className="text-[14px] font-semibold text-[#ECECEA]">{p.partName}</div>
+                             {p.hasChoice && <div className="text-[11px] text-[#8C8C8A] px-2 py-1 rounded bg-[#2C2C2A] border border-[#3A3A38]">Internal Choice (OR)</div>}
+                          </div>
                           <div className="space-y-3">
-                            {p.slots.map((s: any) => {
+                            {p.slots.map((s: any, sIdx: number) => {
                                const conf = slotConfigs.find(sc => sc.slotId === s.id);
                                return (
                                   <div key={s.id} className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
-                                     <span className="text-[13px] text-[#8C8C8A] font-medium">{s.label} {s.isMcq ? '(MCQ)' : ''}</span>
+                                     <span className="text-[13px] text-[#8C8C8A] font-medium">Question {sIdx + 1} {s.isMcq ? '(MCQ)' : ''}</span>
                                      <div className="flex items-center gap-4 self-end sm:self-auto">
                                         <div className="text-[13px] text-[#ECECEA] flex items-center gap-2 bg-[#2C2C2A] px-2 py-1 rounded-lg border border-[#3A3A38]">
-                                           {s.isMcq ? s.marks : s.marksOptions?.length > 1 ? (
-                                              <select 
-                                                value={conf?.marks || s.marksOptions[0]} 
-                                                onChange={e => setSlotConfigs(prev => prev.map(sc => sc.slotId === s.id ? {...sc, marks: parseInt(e.target.value)} : sc))}
-                                                className="bg-transparent border-none outline-none text-[#ECECEA] font-semibold"
-                                              >
-                                                {s.marksOptions.map((m: number) => <option key={m} value={m}>{m}</option>)}
-                                              </select>
-                                           ) : s.marks} marks
+                                           {s.marks} marks
                                         </div>
                                         <CountStepper 
                                           value={conf?.count || 1}
@@ -729,44 +655,19 @@ export function ContextSetupCard({
                           </div>
                        </div>
                     ))}
+                    <div className="p-4 bg-[#1C1C1B] flex justify-between items-center border-t border-[#3A3A38]">
+                      <span className="text-[13px] text-[#8C8C8A] font-semibold uppercase tracking-wider">Total Marks</span>
+                      <span className="text-[16px] font-bold text-[#ECECEA]">
+                         {slotConfigs.reduce((total, sc) => total + (sc.count * sc.marks), 0)}
+                      </span>
+                    </div>
                  </div>
-              ) : (
-                <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
-                  <PartRow
-                    label="Part A"
-                    marksLabel="2 marks"
-                    marksFixed
-                    enabled={dist.partA.enabled}
-                    count={dist.partA.count}
-                    onToggle={(v) => setPart("partA", { enabled: v })}
-                    onCountChange={(v) => setPart("partA", { count: v })}
-                  />
-
-                  <PartRow
-                    label="Part B"
-                    marksLabel={null}
-                    marksOptions={getMarksOptions("B")}
-                    selectedMarks={dist.partB.marks}
-                    onMarksChange={(v) => setPart("partB", { marks: v })}
-                    enabled={dist.partB.enabled}
-                    count={dist.partB.count}
-                    onToggle={(v) => setPart("partB", { enabled: v })}
-                    onCountChange={(v) => setPart("partB", { count: v })}
-                  />
-
-                  <PartRow
-                    label="Part C"
-                    marksLabel={null}
-                    marksOptions={getMarksOptions("C")}
-                    selectedMarks={dist.partC.marks}
-                    onMarksChange={(v) => setPart("partC", { marks: v })}
-                    enabled={dist.partC.enabled}
-                    count={dist.partC.count}
-                    onToggle={(v) => setPart("partC", { enabled: v })}
-                    onCountChange={(v) => setPart("partC", { count: v })}
-                  />
+              ) : patternError ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-[#2A2020] border border-rose-900/50 rounded-xl">
+                  <p className="text-rose-400 text-[13px] font-medium text-center">No question paper pattern configured for this exam type and regulation.</p>
+                  <p className="text-rose-400/70 text-[12px] text-center mt-2">Please configure the pattern in Admin Settings first.</p>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -892,84 +793,4 @@ export function ContextSetupCard({
 
 // ─── PartRow ──────────────────────────────────────────────────────────────────
 
-interface PartRowProps {
-  label: string;
-  marksLabel: string | null;
-  marksFixed?: boolean;
-  marksOptions?: number[];
-  selectedMarks?: number;
-  onMarksChange?: (v: number) => void;
-  enabled: boolean;
-  count: number;
-  onToggle: (v: boolean) => void;
-  onCountChange: (v: number) => void;
-}
 
-function PartRow({
-  label,
-  marksLabel,
-  marksFixed,
-  marksOptions,
-  selectedMarks,
-  onMarksChange,
-  enabled,
-  count,
-  onToggle,
-  onCountChange,
-}: PartRowProps) {
-  return (
-    <div
-      className={`flex items-center gap-3 px-4 py-3 bg-[#343432] transition-opacity duration-150 ${!enabled ? "opacity-50" : ""
-        }`}
-    >
-      <button
-        onClick={() => onToggle(!enabled)}
-        className={`
-          flex-shrink-0 w-9 h-5 rounded-full border transition-all duration-200 relative
-          ${enabled
-            ? "bg-[#7AC87A]/20 border-[#7AC87A]/50"
-            : "bg-[#2C2C2A] border-[#3A3A38]"
-          }
-        `}
-        aria-checked={enabled}
-        role="switch"
-        aria-label={`Toggle ${label}`}
-      >
-        <span
-          className={`
-            absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200
-            ${enabled ? "left-4 bg-[#7AC87A]" : "left-0.5 bg-[#4A4A48]"}
-          `}
-        />
-      </button>
-
-      <span className="w-12 text-[12px] font-semibold text-[#ECECEA] flex-shrink-0">
-        {label}
-      </span>
-
-      <div className="flex-1 flex items-center">
-        {marksFixed ? (
-          <span className="text-[12px] text-[#6C6C6A] bg-[#242422] border border-[#3A3A38] rounded-lg px-2.5 py-1">
-            2 marks
-          </span>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <MarksButtonGroup
-              options={marksOptions ?? []}
-              selected={selectedMarks ?? 0}
-              onChange={onMarksChange ?? (() => { })}
-              disabled={!enabled}
-            />
-            <span className="text-[11px]">marks</span>
-          </div>
-        )}
-      </div>
-
-      <CountStepper
-        value={count}
-        onChange={onCountChange}
-        disabled={!enabled}
-      />
-    </div>
-  );
-}

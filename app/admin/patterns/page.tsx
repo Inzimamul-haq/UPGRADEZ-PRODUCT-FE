@@ -72,7 +72,7 @@ export default function PatternsListPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-xl font-medium text-[#ECECEA]">{pattern.regulation}</h3>
-                  {pattern.label && <p className="text-sm text-[#8C8C8A]">{pattern.label}</p>}
+                  <p className="text-sm text-[#8C8C8A]">{pattern.examType}</p>
                 </div>
                 <div className="flex gap-2">
                   <Link href={`/admin/patterns/${pattern.id}`} className="text-[#8C8C8A] hover:text-[#ECECEA] transition-colors">

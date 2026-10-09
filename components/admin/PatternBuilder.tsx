@@ -14,23 +14,24 @@ interface PatternBuilderProps {
 export default function PatternBuilder({ initialData, onSave }: PatternBuilderProps) {
   const [formData, setFormData] = useState<QuestionPaperPatternType>({
     regulation: '',
-    label: '',
+    examType: 'CAT1',
     parts: [
       {
         partName: 'Part A',
         allowedRbt: ['L1', 'L2'],
         hasChoice: false,
+        sortOrder: 0,
         slots: [
-          { label: 'Short Answer', marks: 2, marksOptions: [], isMcq: false }
+          { marks: 2, isMcq: false, sortOrder: 0, defaultCount: 1 }
         ]
       }
     ]
   });
 
-  const [availableRegulations, setAvailableRegulations] = useState<string[]>([]);
   const [loadingRegs, setLoadingRegs] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [displayExamType, setDisplayExamType] = useState('CAT');
 
   useEffect(() => {
     if (initialData) {
@@ -38,14 +39,16 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
         ...initialData,
         label: initialData.label || '',
       });
+      if (initialData.examType?.startsWith('CAT')) {
+        setDisplayExamType('CAT');
+      } else {
+        setDisplayExamType(initialData.examType);
+      }
     }
   }, [initialData]);
 
   useEffect(() => {
-    api.get('/api/subjects/regulations')
-      .then(res => setAvailableRegulations(res.data.regulations || []))
-      .catch(err => console.error(err))
-      .finally(() => setLoadingRegs(false));
+    setLoadingRegs(false);
   }, []);
 
   const addPart = () => {
@@ -61,7 +64,8 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
           partName: availableNames[0],
           allowedRbt: ['L3', 'L4'],
           hasChoice: true,
-          slots: [{ label: 'Long Answer', marks: 16, marksOptions: [], isMcq: false }]
+          sortOrder: formData.parts.length,
+          slots: [{ marks: 16, isMcq: false, sortOrder: 0, defaultCount: 1 }]
         }
       ]
     });
@@ -84,10 +88,10 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
     if (formData.parts[partIndex].slots.length >= 4) return;
     const newParts = [...formData.parts];
     newParts[partIndex].slots.push({
-      label: 'Question',
       marks: 10,
-      marksOptions: [],
-      isMcq: false
+      isMcq: false,
+      sortOrder: newParts[partIndex].slots.length,
+      defaultCount: 1
     });
     setFormData({ ...formData, parts: newParts });
   };
@@ -102,10 +106,6 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
     const newParts = [...formData.parts];
     const slot = { ...newParts[partIndex].slots[slotIndex], ...updates };
     
-    if (slot.isMcq) {
-      slot.marksOptions = [];
-    }
-    
     newParts[partIndex].slots[slotIndex] = slot;
     setFormData({ ...formData, parts: newParts });
   };
@@ -115,16 +115,40 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
       setError('');
       setSaving(true);
       
-      const parsed = QuestionPaperPatternSchema.parse({
-        regulation: formData.regulation,
-        label: formData.label,
-        parts: formData.parts,
-      });
+      const examTypesToSave = displayExamType === 'CAT' ? ['CAT1', 'CAT2', 'CAT3'] : [displayExamType];
       
       if (initialData?.id) {
-        await api.put(`/api/patterns/${initialData.id}`, parsed);
+        // Fetch existing patterns for this regulation to update or create the group
+        const res = await api.get(`/api/patterns/resolve?regulation=${formData.regulation}`);
+        const existingPatterns = res.data.patterns || [];
+
+        for (const et of examTypesToSave) {
+          const parsed = QuestionPaperPatternSchema.parse({
+            regulation: formData.regulation,
+            examType: et,
+            parts: formData.parts,
+          });
+
+          const existing = existingPatterns.find((p: any) => p.examType === et);
+          if (existing) {
+            await api.put(`/api/patterns/${existing.id}`, parsed);
+          } else {
+            await api.post('/api/patterns', parsed);
+          }
+        }
       } else {
-        await api.post('/api/patterns', parsed);
+        for (const et of examTypesToSave) {
+          const parsed = QuestionPaperPatternSchema.parse({
+            regulation: formData.regulation,
+            examType: et,
+            parts: formData.parts,
+          });
+          try {
+            await api.post('/api/patterns', parsed);
+          } catch (e: any) {
+            if (e.response?.status !== 409) throw e;
+          }
+        }
       }
       onSave();
     } catch (err: any) {
@@ -149,38 +173,27 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div>
+        <div className="col-span-2 md:col-span-1">
           <label className="block text-sm font-medium text-[#ECECEA] mb-2">Regulation</label>
-          <div className="relative">
-            <select
-              value={formData.regulation}
-              onChange={e => setFormData({ ...formData, regulation: e.target.value.toUpperCase().trim() })}
-              className="w-full bg-[#252525] border border-[#3A3A38] rounded-xl px-4 py-3 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
-            >
-              <option value="">Select or type regulation</option>
-              {availableRegulations.map(r => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-            {/* Allow manual entry if not in list */}
-            <input 
-               type="text" 
-               placeholder="Or type regulation (e.g. R-2021)"
-               value={formData.regulation}
-               onChange={e => setFormData({ ...formData, regulation: e.target.value.toUpperCase().trim() })}
-               className="w-full bg-[#252525] border border-[#3A3A38] rounded-xl px-4 py-3 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58] mt-2"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#ECECEA] mb-2">Label (Optional)</label>
-          <input
-            type="text"
-            value={formData.label || ''}
-            onChange={e => setFormData({ ...formData, label: e.target.value })}
-            placeholder="e.g. Standard Model Exam Pattern"
-            className="w-full bg-[#252525] border border-[#3A3A38] rounded-xl px-4 py-3 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
+          <input 
+             type="text" 
+             placeholder="Type regulation (e.g. R-2021)"
+             value={formData.regulation}
+             onChange={e => setFormData({ ...formData, regulation: e.target.value.toUpperCase().trim() })}
+             className="w-full bg-[#252525] border border-[#3A3A38] rounded-xl px-4 py-3 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
           />
+        </div>
+        <div className="col-span-2 md:col-span-1">
+          <label className="block text-sm font-medium text-[#ECECEA] mb-2">Exam Type</label>
+          <select
+            value={displayExamType}
+            onChange={e => setDisplayExamType(e.target.value)}
+            className="w-full bg-[#252525] border border-[#3A3A38] rounded-xl px-4 py-3 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
+          >
+            {['CAT', 'MODEL', 'UNIVERSITY', 'ARREAR', 'ALL'].map(type => (
+              <option key={type} value={type}>{type === 'ALL' ? 'ALL (Global Fallback)' : type}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -264,16 +277,7 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
               <div className="flex flex-col gap-4">
                 {part.slots.map((slot, sIdx) => (
                   <div key={sIdx} className="grid grid-cols-12 gap-4 items-center bg-[#1C1C1B] border border-[#3A3A38] p-3 rounded-lg">
-                    <div className="col-span-4">
-                      <input
-                        type="text"
-                        value={slot.label}
-                        onChange={e => updateSlot(pIdx, sIdx, { label: e.target.value })}
-                        placeholder="Slot Label"
-                        className="w-full bg-transparent border-b border-[#3A3A38] px-2 py-1 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
-                      />
-                    </div>
-                    <div className="col-span-2">
+                    <div className="col-span-8">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-[#8C8C8A]">Marks:</span>
                         <input
@@ -284,7 +288,8 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
                         />
                       </div>
                     </div>
-                    <div className="col-span-2 flex items-center justify-center">
+
+                    <div className="col-span-3 flex items-center justify-center">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -294,23 +299,6 @@ export default function PatternBuilder({ initialData, onSave }: PatternBuilderPr
                         />
                         <span className="text-sm text-[#ECECEA]">MCQ</span>
                       </label>
-                    </div>
-                    <div className="col-span-3">
-                      {!slot.isMcq && (
-                        <div className="flex flex-col">
-                          <span className="text-xs text-[#8C8C8A]">Marks Options (csv)</span>
-                          <input
-                            type="text"
-                            value={(slot.marksOptions || []).join(',')}
-                            onChange={e => {
-                              const opts = e.target.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-                              updateSlot(pIdx, sIdx, { marksOptions: opts });
-                            }}
-                            placeholder="e.g. 10,12"
-                            className="w-full bg-transparent border-b border-[#3A3A38] px-2 py-1 text-sm text-[#ECECEA] focus:outline-none focus:border-[#5A5A58]"
-                          />
-                        </div>
-                      )}
                     </div>
                     <div className="col-span-1 text-right">
                       {part.slots.length > 1 && (
