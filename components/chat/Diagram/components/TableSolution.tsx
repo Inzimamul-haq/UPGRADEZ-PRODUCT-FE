@@ -1,10 +1,5 @@
 import { TableSolutionData } from '@/lib/types';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
-import { fixFlattenedMarkdown } from '@/lib/mathFormat';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
 import { Table } from 'lucide-react';
 
 export function TableSolution({
@@ -24,9 +19,9 @@ export function TableSolution({
         
         {data.description && (
           <div className="text-[13px] text-[#A1A1AA] mb-4 prose prose-invert prose-p:my-1 max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-              {fixFlattenedMarkdown(data.description)}
-            </ReactMarkdown>
+            <MathMarkdown>
+              {data.description}
+            </MathMarkdown>
           </div>
         )}
 
@@ -61,9 +56,9 @@ export function TableSolution({
               <tr>
                 {data.headers.map((header, i) => (
                   <th key={i} className="p-3 border-b border-[#3A3A38] border-r border-[#3A3A38] last:border-r-0 font-semibold text-[#E5E5E5] prose prose-invert prose-p:my-0 max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                      {fixFlattenedMarkdown(header)}
-                    </ReactMarkdown>
+                    <MathMarkdown>
+                      {header}
+                    </MathMarkdown>
                   </th>
                 ))}
               </tr>
@@ -73,9 +68,9 @@ export function TableSolution({
                 <tr key={rowIndex} className="border-b border-[#3A3A38] last:border-b-0 hover:bg-[#252523] transition-colors">
                   {row.map((cell, cellIndex) => (
                     <td key={cellIndex} className="p-3 border-r border-[#3A3A38] last:border-r-0 text-[#D1D1C7] prose prose-invert prose-p:my-0 max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                        {fixFlattenedMarkdown(cell)}
-                      </ReactMarkdown>
+                      <MathMarkdown>
+                        {cell}
+                      </MathMarkdown>
                     </td>
                   ))}
                 </tr>
@@ -86,9 +81,9 @@ export function TableSolution({
 
         {data.summary && (
           <div className="mt-4 p-3 bg-[#252523] rounded-lg border border-[#3A3A38]/50 border-l-[2px] border-l-[#F59E0B] text-[13px] text-[#D1D1C7] leading-relaxed prose prose-invert prose-p:my-1 max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-              {fixFlattenedMarkdown(data.summary)}
-            </ReactMarkdown>
+            <MathMarkdown>
+              {data.summary}
+            </MathMarkdown>
           </div>
         )}
       </div>

@@ -280,6 +280,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             hasLinkedIQ,
             linkedIQPaperId,
             hasLinkedExamPaper,
+            regulation: chat.subject?.regulation ?? undefined,
             year: assignment?.assignedToYear?.toString() || chat.assignedToYear?.toString() || undefined,
             departmentId: departmentInfo?.id || undefined,
             department: departmentInfo?.name || undefined,
@@ -439,6 +440,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
             examType: initialExamType,
             paperKind: isFaculty ? 'EXAM_PAPER' : null,
             hasLinkedIQ: false,
+            regulation: data.subject.regulation ?? undefined,
           });
           setMessages([{
             id: crypto.randomUUID(),
@@ -482,7 +484,7 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
 
   // ── Overlay complete ─────────────────────────────────────────────────────
   const handleCompleteOverlay = async (data: {
-    year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string; paperKind?: PaperKind;
+    year?: string; branch?: string; department?: string; departmentId?: string; section?: string; subject: Subject; examType: string; paperKind?: PaperKind; regulation?: string;
   }) => {
     setShowOverlay(false);
     setSessionLocked(false);
@@ -793,11 +795,15 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
       }
     }
 
-    const { partA, partB, partC } = config.questionDistribution;
     const distLines: string[] = [];
-    if (partA.enabled) distLines.push(`${partA.marks} marks ${partA.count} (part A)`);
-    if (partB.enabled) distLines.push(`${partB.marks} marks ${partB.count} (part B)`);
-    if (partC.enabled) distLines.push(`${partC.marks} marks ${partC.count} (part C)`);
+    if (config.questionDistribution) {
+      const { partA, partB, partC } = config.questionDistribution;
+      if (partA.enabled) distLines.push(`${partA.marks} marks ${partA.count} (part A)`);
+      if (partB.enabled) distLines.push(`${partB.marks} marks ${partB.count} (part B)`);
+      if (partC.enabled) distLines.push(`${partC.marks} marks ${partC.count} (part C)`);
+    } else if (config.slots) {
+      config.slots.forEach(s => distLines.push(`${s.marks} marks ${s.count}`));
+    }
 
     const markStr = distLines.length > 0 ? ` and mark is ${distLines.join(' , ')}` : '';
 
@@ -812,7 +818,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
     setDifficultyConfirmed(true);
 
     const instruction = buildInstructionFromConfig(config);
-    await handleSend(instruction, undefined, config.difficulty);
+    await handleSend(
+      instruction, 
+      undefined, 
+      config.difficulty,
+      config.slots,
+      config.chapters,
+      config.topics
+    );
   };
 
   const handleSaveTopics = async (config: { chapters: number[]; topics: Record<number, string[]> }) => {
@@ -899,7 +912,14 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
   };
 
   // ── Send ─────────────────────────────────────────────────────────────────
-  const handleSend = async (content: string, editMessageId?: string, forceDifficulty?: DifficultyMode): Promise<boolean> => {
+  const handleSend = async (
+    content: string, 
+    editMessageId?: string, 
+    forceDifficulty?: DifficultyMode,
+    slots?: any[],
+    chapters?: number[],
+    topics?: Record<number, string[]>
+  ): Promise<boolean> => {
     if (!isFaculty && questionsToday >= 10) return false;
 
     // Gate: branch question not answered yet — only for NEW sessions before IQ/Exam is chosen
@@ -977,6 +997,9 @@ export function ChatContainer({ initialShowOverlay = false, initialSessionId, in
           linkedPaperId: sessionData?.linkedIQPaperId,
           chatId: chatId,
           history,
+          slots,
+          chapters,
+          topics,
         };
 
         const match = document.cookie.match(new RegExp('(^|;\\s*)(' + 'csrf-token' + ')=([^;]*)'));
@@ -1563,6 +1586,7 @@ return (
         <div className="w-full max-w-3xl pointer-events-auto max-h-[75vh] overflow-y-auto custom-scrollbar rounded-2xl">
           <ContextSetupCard
             examType={sessionData.examType}
+            regulation={sessionData.regulation || ''}
             paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
             subjectName={sessionData.subjectName ?? ''}
             syllabusEntries={syllabusEntries}

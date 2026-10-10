@@ -113,3 +113,101 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background-color: #5A5A58;
 }
+
+/* ─── Math & Prose Typography ─────────────────────────────────────────── */
+
+/* Container line-height: slightly airy for readability */
+.math-md {
+  line-height: 1.55;
+}
+
+/* Inline KaTeX: keep vertically aligned, same font size as surrounding text */
+.math-md .katex {
+  font-size: 1.0em;
+  vertical-align: baseline;
+}
+
+/* Display (block) equations: centered, breathing room, horizontal scroll for overflow */
+.math-md .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0.75em 0;
+  padding: 0.15em 0;
+  text-align: center;
+}
+
+/* Ensure the KaTeX node itself is centered inside the scroll container */
+.math-md .katex-display > .katex {
+  display: inline-block;
+  text-align: left;    /* keeps multi-line aligned left inside the block */
+}
+
+
+
+/* Prose paragraphs inside math-md: compact top/bottom margins */
+.math-md p {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+/* Heading clearance */
+.math-md h1, .math-md h2, .math-md h3 {
+  margin-top: 0.8em;
+  margin-bottom: 0.3em;
+}
+
+/* Markdown tables: horizontal scroll */
+.math-md table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+/* Inline code inside math-md prose */
+.math-md code {
+  font-size: 0.9em;
+}
+
+/* Question text: slightly increased line-height for long wrapped lines */
+.qp-question-text {
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* ─── Print overrides ─────────────────────────────────────────────────── */
+@media print {
+  .math-md .katex {
+    vertical-align: baseline !important;
+    line-height: 1.2 !important;
+  }
+
+  .math-md .katex-html {
+    line-height: 1.2 !important;
+  }
+
+  .math-md .katex .vlist-t {
+    vertical-align: middle !important;
+  }
+
+  .math-md {
+    line-height: 1.55 !important;
+    overflow: visible !important;
+  }
+
+  .math-md p {
+    margin-top: 0.25em !important;
+    margin-bottom: 0.25em !important;
+    line-height: 1.55 !important;
+  }
+
+  .math-md .katex-display {
+    overflow: visible !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .math-md .katex-display > .katex {
+    display: inline-block;
+  }
+}

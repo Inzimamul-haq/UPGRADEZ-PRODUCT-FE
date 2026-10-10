@@ -1,8 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
+import { MathMarkdown } from '../ui/MathMarkdown';
 import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { extractDiagramTag } from '../ui/layoutUtils';
 
@@ -77,18 +74,18 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   if (questions.length === 0) {
     return (
       <div className="text-[14px] text-[#ECECEA] leading-relaxed max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+        <MathMarkdown>
           {content}
-        </ReactMarkdown>
+        </MathMarkdown>
       </div>
     );
   }
 
   // Group by marks dynamically
-  const partA = questions.filter(q => q.marks === 2);
-  const partB = questions.filter(q => q.marks === 13 || q.marks === 16);
-  const partC = questions.filter(q => q.marks === 14 || q.marks === 15);
-  const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
+  const partA = questions.filter(q => q.marks === 2 || q.marks === 1);
+  const partB = questions.filter(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
+  const partC = questions.filter(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
+  const otherParts = questions.filter(q => q.marks !== 1 && q.marks !== 2 && q.marks !== 3 && q.marks !== 12 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const groupQuestions = (arr: ParsedQuestion[]) => {
     const groups: { [key: number]: ParsedQuestion[] } = {};
@@ -106,10 +103,10 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1 min-w-0 flex gap-2">
               <span className="text-[#ECECEA] font-medium text-[14.5px] mt-[1.5px]">{q.qNo}.</span>
-              <div className="text-[#ECECEA] text-[14.5px] leading-relaxed break-words w-full prose-invert prose-p:my-0 prose-ul:my-1 prose-ol:my-1">
-                <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+              <div className="text-[#ECECEA] text-[14.5px] qp-question-text break-words w-full prose-invert prose-p:my-0 prose-ul:my-1 prose-ol:my-1">
+                <MathMarkdown>
                   {q.text}
-                </ReactMarkdown>
+                </MathMarkdown>
 
                 {q.diagramSpec && (() => {
                   const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';

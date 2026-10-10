@@ -3,6 +3,7 @@ import { DiagramRenderer } from '../ui/QuestionDiagram/DiagramRenderer';
 import { DiagramImageEditor } from '../ui/QuestionDiagram/DiagramImageEditor';
 import { Plus, X, Pencil } from 'lucide-react';
 import { extractDiagramTag } from '../ui/layoutUtils';
+import { MathMarkdown } from '../ui/MathMarkdown';
 import api from '@/lib/api';
 
 interface QuestionPaperEditorProps {
@@ -34,6 +35,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const [showConfirm, setShowConfirm] = useState(false);
   const [editingDiagramFor, setEditingDiagramFor] = useState<string | null>(null);
   const [newQuestionId, setNewQuestionId] = useState<string | null>(null);
+  const [previewingIds, setPreviewingIds] = useState<Set<string>>(new Set());
   const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Helper to extract all storage paths from initial content
@@ -160,11 +162,11 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     setQuestions(prev => {
       let lastIndexInPart = -1;
       if (part === 'A') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 2);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
       } else if (part === 'B') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
       } else if (part === 'C') {
-        lastIndexInPart = prev.findLastIndex(q => q.marks === 14 || q.marks === 15);
+        lastIndexInPart = prev.findLastIndex(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
       }
 
       let idxToInsert = prev.length;
@@ -172,14 +174,14 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
         idxToInsert = lastIndexInPart + 1;
       } else {
         if (part === 'C') {
-          const lastB = prev.findLastIndex(q => q.marks === 13 || q.marks === 16);
+          const lastB = prev.findLastIndex(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
           if (lastB !== -1) idxToInsert = lastB + 1;
           else {
-            const lastA = prev.findLastIndex(q => q.marks === 2);
+            const lastA = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
             idxToInsert = lastA !== -1 ? lastA + 1 : 0;
           }
         } else if (part === 'B') {
-          const lastA = prev.findLastIndex(q => q.marks === 2);
+          const lastA = prev.findLastIndex(q => q.marks === 2 || q.marks === 1);
           idxToInsert = lastA !== -1 ? lastA + 1 : 0;
         } else {
           idxToInsert = 0;
@@ -236,10 +238,10 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     );
   }
 
-  const partA = questions.filter(q => q.marks === 2);
-  const partB = questions.filter(q => q.marks === 13 || q.marks === 16);
-  const partC = questions.filter(q => q.marks === 14 || q.marks === 15);
-  const otherParts = questions.filter(q => q.marks !== 2 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
+  const partA = questions.filter(q => q.marks === 2 || q.marks === 1);
+  const partB = questions.filter(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
+  const partC = questions.filter(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
+  const otherParts = questions.filter(q => q.marks !== 1 && q.marks !== 2 && q.marks !== 3 && q.marks !== 12 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
 
   const renderQuestion = (q: EditableQuestion) => (
     <div
@@ -263,19 +265,46 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           />
           <span className="text-[#ECECEA] font-medium text-[14.5px] mt-2.5 flex-shrink-0 min-w-[10px]">{q.qNo}.</span>
           <div className="w-full">
-            <textarea
-              ref={el => {
-                if (el) {
-                  el.style.height = 'auto';
-                  el.style.height = el.scrollHeight + 'px';
+            {/* Edit / Preview tab header */}
+            <div className="flex gap-0 mb-1.5 border-b border-[#3A3A38]">
+              {(['Edit','Preview'] as const).map(tab => {
+                const isActive = tab === 'Preview' ? previewingIds.has(q.id) : !previewingIds.has(q.id);
+                return (
+                  <button key={tab}
+                    onClick={() => setPreviewingIds(prev => {
+                      const s = new Set(prev);
+                      tab === 'Preview' ? s.add(q.id) : s.delete(q.id);
+                      return s;
+                    })}
+                    className={`text-[11px] px-3 py-1.5 font-medium transition-colors border-b-2 -mb-px
+                      ${isActive ? 'text-amber-400 border-amber-400' : 'text-[#8C8C8A] border-transparent hover:text-[#ECECEA]'}`}
+                  >{tab}</button>
+                );
+              })}
+            </div>
+
+            {previewingIds.has(q.id) ? (
+              <div className="min-h-[60px] py-2 px-1">
+                {q.text.trim()
+                  ? <MathMarkdown className="text-[#ECECEA] text-[14.5px] leading-relaxed">{q.text}</MathMarkdown>
+                  : <span className="text-[#4A4A48] text-[13px] italic">Nothing to preview yet.</span>
                 }
-              }}
-              value={q.text}
-              onChange={(e) => handleUpdate(q.id, 'text', e.target.value)}
-              disabled={isSaving}
-              className="w-full bg-transparent border-b border-[#3A3A38] text-[#ECECEA] text-[14.5px] rounded-none py-3 px-1 min-h-[100px] resize-none overflow-hidden focus:outline-none focus:border-white/50 transition-colors leading-relaxed"
-              placeholder="Enter question text here..."
-            />
+              </div>
+            ) : (
+              <textarea
+                ref={el => {
+                  if (el) {
+                    el.style.height = 'auto';
+                    el.style.height = el.scrollHeight + 'px';
+                  }
+                }}
+                value={q.text}
+                onChange={(e) => handleUpdate(q.id, 'text', e.target.value)}
+                disabled={isSaving}
+                className="w-full bg-transparent border-b border-[#3A3A38] text-[#ECECEA] text-[14.5px] rounded-none py-3 px-1 min-h-[100px] resize-none overflow-hidden focus:outline-none focus:border-white/50 transition-colors leading-relaxed"
+                placeholder="Enter question text here..."
+              />
+            )}
           </div>
         </div>
 

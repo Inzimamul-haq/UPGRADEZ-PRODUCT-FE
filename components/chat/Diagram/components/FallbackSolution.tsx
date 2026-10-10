@@ -4,6 +4,7 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { MathMarkdown } from '@/components/ui/MathMarkdown';
 
 function humanize(str: string) {
   return str
@@ -20,9 +21,9 @@ function RecursiveRender({ data }: { data: any }) {
     const content = String(data);
     return (
       <div className="w-full py-2 px-3 overflow-x-auto text-[13px] text-[#D1D1C7] flex flex-col text-left prose prose-invert prose-p:my-1 prose-math:justify-center">
-        <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+        <MathMarkdown>
           {content}
-        </ReactMarkdown>
+        </MathMarkdown>
       </div>
     );
   }

@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
 
   try {
-    const imageRes = await fetch(url, { next: { revalidate: 3600 } });
+    const imageRes = await fetch(url, { next: { revalidate: 31536000 } });
 
     if (!imageRes.ok) {
       return NextResponse.json(
@@ -58,7 +58,9 @@ export async function GET(req: NextRequest) {
     const base64 = Buffer.from(buffer).toString('base64');
     const dataUrl = `data:${contentType};base64,${base64}`;
 
-    return NextResponse.json({ dataUrl });
+    return NextResponse.json({ dataUrl }, {
+      headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=31536000' }
+    });
   } catch (err) {
     console.error('[proxy-image] Fetch error:', err);
     return NextResponse.json({ error: 'Failed to fetch image' }, { status: 500 });

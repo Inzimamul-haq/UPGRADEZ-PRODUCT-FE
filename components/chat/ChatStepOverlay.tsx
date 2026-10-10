@@ -20,7 +20,7 @@ const mapYearToNumber = (y: string) => {
 
 export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverlayProps) {
   const isFaculty = role === 'faculty' || role === 'admin' || role === 'super_admin' || role === 'super-admin';
-  const initialStep = isFaculty ? 1 : 3;
+  const initialStep = isFaculty ? 0.5 : 3;
 
   const [step, setStep] = useState(initialStep);
   const [year, setYear] = useState('');
@@ -41,6 +41,9 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
   const [departmentsList, setDepartmentsList] = useState<Department[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
 
+  const [regulation, setRegulation] = useState('');
+  const [regulationsList, setRegulationsList] = useState<string[]>([]);
+
   useEffect(() => {
     if (step === 2 && isFaculty) {
       setLoadingDepartments(true);
@@ -48,6 +51,21 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         .then(res => setDepartmentsList(res.data.departments || []))
         .catch(err => console.error('Failed to fetch departments', err))
         .finally(() => setLoadingDepartments(false));
+    }
+  }, [step, isFaculty]);
+
+  useEffect(() => {
+    if (step === 0.5 && isFaculty) {
+      setLoadingSubjects(true);
+      api.get('/api/subjects/regulations')
+      .then(res => {
+        const regs = res.data.regulations || [];
+        setRegulationsList(regs);
+      })
+      .catch(err => {
+        console.error('Failed to fetch regulations', err);
+      })
+      .finally(() => setLoadingSubjects(false));
     }
   }, [step, isFaculty]);
 
@@ -62,6 +80,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
               params: {
                 ...(year ? { year: mapYearToNumber(year) } : {}),
                 ...(departmentId ? { departmentId } : {}),
+                ...(regulation ? { regulation } : {}),
               },
             });
             setSubjects(data.subjects ?? []);
@@ -80,7 +99,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       };
       fetchSubjects();
     }
-  }, [step, year, department, isFaculty]);
+  }, [step, year, department, regulation, isFaculty]);
 
   const goBack = () => {
     setDuplicateError('');
@@ -95,16 +114,29 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         setPaperKind(null);
         setStep(4);
       }
+    } else if (step === 1 && isFaculty) {
+      setStep(0.5);
     } else if (step > initialStep) {
       setStep(step - 1);
     }
   };
 
   const handleSelectYear = (y: string) => { setYear(y); setStep(2); };
-  const handleSelectBranch = (d: Department) => { setBranch(d.branch); setDepartment(d.name); setDepartmentId(d.id); setStep(3); };
+  const handleSelectBranch = (d: Department) => { 
+    setBranch(d.branch); 
+    setDepartment(d.name); 
+    setDepartmentId(d.id); 
+    setStep(3);
+  };
   const handleSelectSubject = (subject: Subject) => { setSelectedSubject(subject); setStep(4); };
   const handleSelectExamType = (type: string) => { 
-    setExamType(type);
+    // Normalize to backend enums
+    let normalizedType = type.toUpperCase().replace(/\s+/g, '');
+    if (normalizedType === 'MODEL') normalizedType = 'MODEL';
+    if (normalizedType === 'UNIVERSITY') normalizedType = 'UNIVERSITY';
+    if (normalizedType === 'ARREAR') normalizedType = 'ARREAR';
+
+    setExamType(type); // Keep UI label for display, we map it on finalize
     setDuplicateError('');
     if (isFaculty) {
       if (type.toLowerCase().includes('university') || type.toLowerCase().includes('semester') || type.toLowerCase().includes('arrear')) {
@@ -113,7 +145,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         setStep(5);
       }
     }
-    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: type });
+    else if (selectedSubject) onComplete({ year, branch, department, departmentId, subject: selectedSubject, examType: normalizedType });
   };
 
   const handleFinalize = async (finalizeSection: string = '', finalizeKind?: PaperKind, finalizeArrearMonth: string = '') => {
@@ -150,6 +182,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       }
     }
 
+    const normalizedExamType = examType.toUpperCase().replace(/\s+/g, '');
     onComplete({ 
       year, 
       branch, 
@@ -157,9 +190,10 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       departmentId, 
       section: finalizeSection === 'All Sections' ? '' : finalizeSection, 
       subject: selectedSubject, 
-      examType, 
+      examType: normalizedExamType, 
       paperKind: kindToUse || undefined,
-      arrearMonth: finalizeArrearMonth
+      arrearMonth: finalizeArrearMonth,
+      regulation,
     });
   };
 
@@ -193,8 +227,35 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
         </button>
       )}
 
+      {step === 0.5 && isFaculty && (
+        <div className="w-full max-w-md text-center animate-in fade-in slide-in-from-right-4 duration-500">
+          <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Regulation</h2>
+          <p className="text-[13px] text-[#8C8C8A] mb-8">Select the regulation</p>
+          {loadingSubjects ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="animate-spin text-[#8C8C8A]" size={24} />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {regulationsList.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => { setRegulation(r); setStep(1); }}
+                  className="bg-[#2C2C2A] border border-[#3A3A38] rounded-xl px-4 py-5 text-[15px] font-medium text-[#ECECEA] hover:bg-[#333331] hover:border-[#4A4A48] transition-all"
+                >
+                  {r}
+                </button>
+              ))}
+              {regulationsList.length === 0 && (
+                 <p className="text-[13px] text-[#8C8C8A] text-center py-6 bg-[#2C2C2A] rounded-xl border border-[#3A3A38]">No regulations found.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {step === 1 && isFaculty && (
-        <div className="w-full max-w-md text-center">
+        <div className="w-full max-w-md text-center animate-in fade-in slide-in-from-right-4 duration-500">
           <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Academic Year</h2>
           <p className="text-[13px] text-[#8C8C8A] mb-8">Select the year for the question paper</p>
           <div className="flex flex-col gap-3">
@@ -208,7 +269,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
       )}
 
       {step === 2 && isFaculty && (
-        <div className="w-full max-w-md text-center">
+        <div className="w-full max-w-md text-center animate-in fade-in slide-in-from-right-4 duration-500">
           <h2 className="text-[22px] font-medium text-[#ECECEA] mb-2">Department</h2>
           <p className="text-[13px] text-[#8C8C8A] mb-8">Select department / branch</p>
           {loadingDepartments ? (
@@ -234,7 +295,7 @@ export function ChatStepOverlay({ role = 'student', onComplete }: ChatStepOverla
             {isFaculty ? 'Subject' : 'Which subject?'}
           </h2>
           <p className="text-[13px] text-[#8C8C8A] text-center mb-8">
-            {isFaculty ? `${branch} — ${year}` : 'Pick a subject to start your study session'}
+            {isFaculty ? `${regulation} · ${year} · ${department}` : 'Pick a subject to start your study session'}
           </p>
 
           {loadingSubjects ? (

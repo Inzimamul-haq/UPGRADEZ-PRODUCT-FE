@@ -12,6 +12,7 @@ const adminNavItems = [
   { href: '/admin/departments', icon: Building2, label: 'Departments' },
   { href: '/admin/syllabus', icon: BookOpen, label: 'Syllabus' },
   { href: '/admin/papers', icon: FileText, label: 'Papers' },
+    { href: '/admin/patterns', icon: FileText, label: 'Patterns' },
   { href: '/admin/questions', icon: HelpCircle, label: 'Questions' },
   { href: '/admin/rules', icon: Info, label: 'Rules' },
 ];

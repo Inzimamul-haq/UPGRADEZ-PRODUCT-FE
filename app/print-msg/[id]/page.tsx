@@ -125,70 +125,33 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
         body { background: white !important; color: black !important; }
         
         @media print {
-          body { background: white !important; color: black !important; }
-          * { 
-            color: black !important; 
-            border-color: #ccc !important; 
-            background: white !important;
-            background-color: white !important;
-          }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          .qp-layout table, .qp-layout th, .qp-layout td { border-color: #bbb !important; }
+          tr { break-inside: avoid; page-break-inside: avoid; }
+          td { overflow: visible !important; }
+          .math-md p { margin: 0 !important; }
+          .math-md p + p { margin-top: 4px !important; }
           
-          /* Shape fills: white background, black outline — scoped to exclude <defs> */
-          svg > *:not(defs) circle,
-          svg > *:not(defs) ellipse,
-          svg > *:not(defs) rect,
-          svg > *:not(defs) polygon,
-          svg > *:not(defs) path,
-          svg > *:not(defs) polyline {
-            fill: white !important;
-            stroke: black !important;
-          }
+          .qp-layout, .qp-layout *:not(.katex *) { color: black !important; }
 
-          /* Arrowhead markers must stay solid black */
-          svg marker polygon,
-          svg marker path,
-          svg marker circle {
-            fill: black !important;
-            stroke: black !important;
-          }
+          /* diagram-only styling */
+          .diagram-card-wrapper { background: white !important; border: none !important; box-shadow: none !important; padding: 4px 0 !important; }
+          .diagram-card-wrapper svg > *:not(defs) circle,
+          .diagram-card-wrapper svg > *:not(defs) ellipse,
+          .diagram-card-wrapper svg > *:not(defs) rect,
+          .diagram-card-wrapper svg > *:not(defs) polygon,
+          .diagram-card-wrapper svg > *:not(defs) path,
+          .diagram-card-wrapper svg > *:not(defs) polyline { fill: white !important; stroke: black !important; }
+          .diagram-card-wrapper svg marker polygon,
+          .diagram-card-wrapper svg marker path { fill: black !important; stroke: black !important; }
+          .diagram-card-wrapper svg text, .diagram-card-wrapper svg tspan { fill: black !important; stroke: none !important; }
+          .diagram-card-wrapper svg line { stroke: black !important; }
+          .diagram-card-wrapper svg, .diagram-card-wrapper canvas, .diagram-card-wrapper img { max-width: 100% !important; max-height: 350px !important; object-fit: contain; }
 
-          /* All SVG text: black, no stroke */
-          svg text, svg tspan {
-            fill: black !important;
-            stroke: none !important;
-          }
-
-          /* Edge lines */
-          svg line {
-            stroke: black !important;
-          }
-
-          /* Diagram wrapper: no border */
-          .diagram-card-wrapper {
-            background: white !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 4px 0 !important;
-          }
-          
-          /* Force any SVG or canvas diagrams to stay within max height on print */
-          canvas, svg, img {
-            max-width: 100% !important;
-            max-height: 350px !important;
-            object-fit: contain;
-          }
-
-          .uploaded-diagram-image {
-            max-width: 400px !important;
-            max-height: 250px !important;
-            padding: 4px !important;
-            margin: 10px auto !important;
-            object-fit: contain !important;
-            display: block !important;
-          }
+          .uploaded-diagram-image { max-width: 400px !important; max-height: 250px !important; padding: 4px !important; margin: 10px auto !important; object-fit: contain !important; display: block !important; }
         }
       `}} />
-      <div style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
+      <div className="qp-msg-wrap" style={{ background:'white', minHeight:'100vh', padding:32, maxWidth:800, margin:'0 auto' }}>
         {renderContent}
       </div>
     </>

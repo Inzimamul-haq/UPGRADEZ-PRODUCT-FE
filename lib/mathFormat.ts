@@ -3,145 +3,120 @@ export interface MathExecutionLine {
   isImplies: boolean;
 }
 
-// ── Defensive repair for corrupted LaTeX macro escapes ──────────────────────
-// If a raw "\<letter>..." LaTeX macro ever slips into a JSON string value
-// unescaped, JSON.parse silently interprets the JSON-reserved escape
-// letters ("n" "t" "r" "b" "f") as control characters, destroying the
-// backslash and the first letter with no parse error — e.g. "\neq" becomes
-// an actual newline followed by the literal text "eq".
-//
-// This is a best-effort, read-time repair for content generated before the
-// backend fix (cached/persisted answers) or any residual edge case. It only
-// reconstructs a small curated list of common macros and requires the
-// leftover letters to exactly match a known suffix, to avoid mangling real
-// prose newlines.
+// ── Defensive repair for LaTeX macros eaten by JSON escapes ─────────────────
 const ESCAPE_CHAR_MAP: Record<string, string> = {
   '\n': 'n', '\t': 't', '\r': 'r', '\b': 'b', '\f': 'f',
 };
+const PROSE_SAFE = new Set(['b', 'f']);
 
-// Keyed by the JSON escape letter; each value is the macro name with its
-// first letter (the one JSON consumed) stripped off.
 const MACRO_SUFFIXES: Record<string, string[]> = {
-  n: ['eq', 'abla', 'otin', 'less', 'gtr', 'mid', 'parallel', 'subseteq', 'supseteq', 'subset', 'supset', 'equiv', 'Rightarrow', 'Leftarrow'],
-  t: ['imes', 'herefore', 'heta', 'ext', 'riangle', 'ilde', 'anh', 'extbf', 'extit', 'au'],
-  r: ['ightarrow', 'ho', 'ight', 'angle'],
-  b: ['eta', 'ar', 'inom', 'oxed', 'ullet', 'ig', 'mod', 'ackslash', 'oldsymbol'],
-  f: ['orall', 'rac', 'lat'],
+  n: ['e', 'u', 'eq', 'abla', 'otin', 'less', 'gtr', 'mid', 'parallel', 'subseteq', 'supseteq', 'subset', 'supset', 'equiv', 'Rightarrow', 'Leftarrow', 'leq', 'geq', 'rightarrow'],
+  t: ['o', 'an', 'au', 'anh', 'imes', 'herefore', 'heta', 'ext', 'extbf', 'extit', 'extrm', 'extsf', 'riangle', 'ilde', 'frac'],
+  r: ['ho', 'ight', 'angle', 'floor', 'ceil', 'ightarrow', 'ightleftharpoons'],
+  b: ['eta', 'ar', 'inom', 'oxed', 'ullet', 'ig', 'igg', 'mod', 'ackslash', 'oldsymbol', 'ecause', 'egin', 'ot'],
+  f: ['rac', 'orall', 'lat'],
 };
 
-export function repairCorruptedMacroEscapes(text: string): string {
+export function repairCorruptedMacroEscapes(text: string, scope: 'math' | 'prose' = 'math'): string {
   if (!text) return text;
   let out = '';
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    const escChar = ESCAPE_CHAR_MAP[ch];
-    if (!escChar) { out += ch; continue; }
+    const esc = ESCAPE_CHAR_MAP[ch];
+    if (!esc || (scope === 'prose' && !PROSE_SAFE.has(esc))) { out += ch; continue; }
 
-    const rest = text.slice(i + 1);
-    const letterRun = rest.match(/^[a-zA-Z]+/)?.[0] ?? '';
-    const suffixes = MACRO_SUFFIXES[escChar] ?? [];
-    // Longest match wins (e.g. prefer "ightarrow" over any shorter overlap)
-    const match = suffixes
-      .filter(sfx => letterRun.startsWith(sfx))
-      .sort((a, b) => b.length - a.length)[0];
-
-    if (match) {
-      out += '\\' + escChar + match;
-      i += match.length; // skip the consumed letters
+    const letterRun = text.slice(i + 1, i + 25).match(/^[a-zA-Z]+/)?.[0] ?? '';
+    const suffixes = MACRO_SUFFIXES[esc] ?? [];
+    let match: string | undefined;
+    if (PROSE_SAFE.has(esc)) {
+      match = suffixes.filter(s => letterRun.startsWith(s)).sort((a, b) => b.length - a.length)[0];
     } else {
-      out += ch; // not a recognized macro — leave the control char alone
+      match = suffixes.includes(letterRun) ? letterRun : undefined;
     }
+    if (match) { out += '\\' + esc + match; i += match.length; }
+    else out += ch;
   }
   return out;
 }
 
-/**
- * Returns true when the string looks like programming code rather than a
- * LaTeX/math expression. Used to short-circuit the KaTeX rendering path
- * and fall back to a <pre><code> display instead.
- */
+const MATH_SEGMENT_RE = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g;
+
+export function repairMathSegments(text: string): string {
+  if (!text) return text;
+  return text.split(MATH_SEGMENT_RE).map((part, i) =>
+    repairCorruptedMacroEscapes(part, i % 2 ? 'math' : 'prose')
+  ).join('');
+}
+
+export function normalizeDelimiters(t: string): string {
+  if (!t) return t;
+  return t
+    .replace(/(^|[^\\])\\\[([\s\S]+?)\\\]/g, (_, p, m) => `${p}\n\n$$\n${m.trim()}\n$$\n\n`)
+    .replace(/(^|[^\\])\\\(([\s\S]+?)\\\)/g, (_, p, m) => `${p}$${m.trim()}$`);
+}
+
+export function toBareLatex(s: string): string {
+  if (!s) return '';
+  let t = repairCorruptedMacroEscapes(s.trim(), 'math');
+  t = t.replace(/^\$\$([\s\S]*)\$\$$/, '$1')
+       .replace(/^\$([\s\S]*)\$$/, '$1')
+       .replace(/^\\\[([\s\S]*)\\\]$/, '$1')
+       .replace(/^\\\(([\s\S]*)\\\)$/, '$1');
+  return t.trim();
+}
+
 export function isCodeContent(text: string): boolean {
   if (!text || text.trim().length === 0) return false;
+  const t = text.trim();
 
-  // Fenced code block markers
-  if (/^```/.test(text.trim())) return true;
+  if (/^```/.test(t)) return true;
 
-  // HTML / XML tags  e.g.  <!DOCTYPE  <html  <div  </body>
-  if (/<[!/a-zA-Z][^>]{0,80}>/.test(text)) return true;
+  if (/<\/?(?:html|head|body|div|span|script|style|link|meta|a|br|img|table|tr|td|th|ul|ol|li|input|form|button|h[1-6])(?:\s+[\w-]+\s*=|\s*\/?>)|<\/?p>|<!DOCTYPE/i.test(t)) return true;
 
-  // Literal \n escape sequences inside the string (not actual newline chars)
-  // LLMs often write  \n<head>...  in code equations
-  if (/\\n/.test(text)) return true;
+  if (/\\n(?![a-zA-Z])/.test(t)) return true;
 
-  // Escaped quotes that appear in HTML attributes:  \"stylesheet\"
-  if (/\\"/. test(text)) return true;
+  if (/\\"/.test(t)) return true;
 
-  // Programming language keywords that would never appear in a math formula
-  if (/\b(function|class|const|let|var|import|export|return|if\s*\(|for\s*\(|while\s*\(|def |public |private |static |void |int |String |#include|printf|scanf|System\.out|cout|cin)\b/.test(text)) return true;
+  if (/#include|System\.out|console\.log|printf\s*\(|scanf\s*\(|\bdef\s+\w+\s*\(|\bfunction\s*\w*\s*\(|\b(?:public|private)\s+(?:static\s+)?\w+|\bclass\s+\w+\s*[{:(]|^import\s+[\w.{*]+/m.test(t)) return true;
 
-  // CSS property patterns:  property: value;  or  selector { ... }
-  if (/[a-z-]{2,}:\s*[a-z#0-9"'(]{1,}/.test(text) && text.includes(';')) return true;
+  if (/[\w.#-]+\s*\{[^}]*:[^}]*;[^}]*\}/.test(t)) return true;
 
-  // URL-like content
-  if (/https?:\/\/|www\./.test(text)) return true;
+  if (/https?:\/\/|www\./.test(t)) return true;
 
   return false;
 }
 
-/**
- * Returns true when the string looks like a Markdown table.
- * Markdown tables typically have a separator line containing hyphens and pipes.
- */
 export function isMarkdownTable(text: string): boolean {
   if (!text || text.trim().length === 0) return false;
-  // Matches the header separator line: |---| or |:---:| etc.
   return /\|[\s]*[-:]+[\s]*\|/.test(text);
 }
 
-/**
- * Returns true when the string is likely a plain English sentence or phrase,
- * rather than a math expression. Used to prevent KaTeX from eating spaces
- * and rendering text as cursive math variables.
- */
 export function isPlainText(text: string): boolean {
   if (!text || text.trim().length === 0) return false;
-
   if (isMarkdownTable(text)) return true;
-
-  // If it contains LaTeX macros (e.g. \frac, \text, \implies)
   if (/\\[a-zA-Z]+/.test(text)) return false;
-
-  // If it contains typical math operators (equal, plus, asterisk, caret, etc)
   if (/[=\+\*\^\_\{\}\<\>\|]/.test(text)) return false;
-
-  // If it has a sequence of 3 normal words (length 2+), it's almost certainly a sentence
   if (/\b[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\s+[a-zA-Z]{2,}\b/.test(text)) return true;
-
-  // If it has spaces but no math symbols at all
   if (/\s/.test(text) && !/[+\-*/=<>^_{}\\]/.test(text)) return true;
-
   return false;
 }
 
 export function parseMathLines(raw: string): MathExecutionLine[] {
   if (!raw) return [];
-  raw = repairCorruptedMacroEscapes(raw);
+  raw = repairCorruptedMacroEscapes(raw, 'math');
 
-  // Normalize line-break artifacts BEFORE splitting:
-  // - a real LaTeX line break "\\" right before a newline/end -> becomes an actual \n
-  // - a stray single trailing "\" (not a real LaTeX command) -> strip it so it
-  //   can't glue onto the next segment (this was the "m = 2.4\" + "mm" -> "mmmm" bug)
-  const normalized = raw
-  // "\<newline>unit" where "unit" is a short unit token (mm, cm, m, kg, N, Ω, °C...)
-  // -> not a real line break, just glue it back: "2.4\<nl>mm" -> "2.4 mm"
-  // (this is what was producing the "mmmm" orphan-line duplication)
-  .replace(/\\\s*\n\s*([a-zA-Zµ°Ω]{1,4})\b/g, ' $1')
-  // real LaTeX line break "\\" before newline/end -> actual newline
-  .replace(/\\\\(?=\s*\n|\s*$)/g, '\n')
-  // any remaining stray single trailing backslash -> strip
-  .replace(/\\(?=\s*\n|\s*$)/g, '');
+  const hasEnv = /\\begin\{/.test(raw);
 
-  // Added '=' to the delimiter set so chained computations break into steps.
+  let normalized = raw;
+  if (!hasEnv) {
+    normalized = normalized
+      .replace(/\\\s*\n\s*([a-zA-Zµ°Ω]{1,4})\b/g, ' $1')
+      .replace(/\\\\(?=\s*\n|\s*$)/g, '\n')
+      .replace(/\\(?=\s*\n|\s*$)/g, '');
+  }
+
+  normalized = normalized.replace(/(\d),(?=\d)/g, '$1{,}');
+
   const tokens = normalized.split(/(\\implies|\\Rightarrow|⇒|;|\n|,|:|=)/g);
 
   const lines: MathExecutionLine[] = [];
@@ -149,7 +124,7 @@ export function parseMathLines(raw: string): MathExecutionLine[] {
   let currentIsImplies = false;
   let envDepth = 0;
   let parenDepth = 0;
-  let equalsSeenAtTopLevel = 0; // keep "lhs = firstStep" together, break on every '=' after that
+  let equalsSeenAtTopLevel = 0;
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -165,22 +140,16 @@ export function parseMathLines(raw: string): MathExecutionLine[] {
     if (parenDepth < 0) parenDepth = 0;
 
     const isEquals = token === '=' && envDepth === 0 && parenDepth === 0;
-
     if (isEquals) {
       equalsSeenAtTopLevel++;
-      if (equalsSeenAtTopLevel === 1) {
-        currentContent += token; // "x1 = ..." stays on one line
-        continue;
-      }
-      if (currentContent.trim()) {
-        lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
-      }
-      currentContent = '= '; // continuation lines keep the '=' for readability
+      if (equalsSeenAtTopLevel === 1) { currentContent += token; continue; }
+      if (currentContent.trim()) lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
+      currentContent = '= ';
       currentIsImplies = false;
       continue;
     }
 
-    const isDelimiter = token.match(/^(\\implies|\\Rightarrow|⇒|;|\n|,|:)$/);
+    const isDelimiter = /^(\\implies|\\Rightarrow|⇒|;|\n|,|:)$/.test(token);
     if (isDelimiter && envDepth === 0 && parenDepth === 0) {
       if (currentContent.trim()) {
         lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
@@ -192,17 +161,13 @@ export function parseMathLines(raw: string): MathExecutionLine[] {
     }
   }
 
-  if (currentContent.trim()) {
-    lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
-  }
+  if (currentContent.trim()) lines.push({ content: currentContent.trim(), isImplies: currentIsImplies });
 
-  // After building `lines`, merge a short unit-only line (e.g. "mm", "m", "cm", "N", "kg")
-  // into the previous line instead of leaving it as its own centered block.
   const UNIT_ONLY = /^[a-zA-Zµ°Ω]{1,4}$/;
   const merged: MathExecutionLine[] = [];
   for (const line of lines) {
     if (merged.length > 0 && UNIT_ONLY.test(line.content)) {
-      merged[merged.length - 1].content += ' \\, ' + line.content;
+      merged[merged.length - 1].content += ' \\, \\mathrm{' + line.content + '}';
     } else {
       merged.push(line);
     }
@@ -212,87 +177,92 @@ export function parseMathLines(raw: string): MathExecutionLine[] {
 
 export function ensureBoxedIsMath(text: string): string {
   if (!text) return text;
-  text = repairCorruptedMacroEscapes(text);
-  // If \boxed is already inside math delimiters (naive check), ignore
-  if (text.includes('$\\boxed') || text.includes('$$\\boxed')) {
-    return text;
-  }
-  
+  text = repairCorruptedMacroEscapes(text, 'prose');
+  if (text.includes('$\\boxed') || text.includes('$$\\boxed')) return text;
+
   const idx = text.indexOf('\\boxed{');
   if (idx === -1) return text;
-  
+
   let openCount = 0;
   let closeIdx = -1;
   for (let i = idx; i < text.length; i++) {
     if (text[i] === '{') openCount++;
     if (text[i] === '}') {
       openCount--;
-      if (openCount === 0) {
-        closeIdx = i;
-        break;
-      }
+      if (openCount === 0) { closeIdx = i; break; }
     }
   }
-  
+
   if (closeIdx !== -1) {
     const before = text.substring(0, idx);
     const boxed = text.substring(idx, closeIdx + 1);
     const innerContent = text.substring(idx + 7, closeIdx);
     const after = text.substring(closeIdx + 1);
-    
+
     if (isMarkdownTable(innerContent) || isPlainText(innerContent) || isCodeContent(innerContent)) {
       return before + '\n\n' + innerContent + '\n\n' + ensureBoxedIsMath(after);
     }
-    
     return before + '$$' + boxed + '$$' + ensureBoxedIsMath(after);
   }
-  
   return text;
 }
 
-/**
- * Intelligently wraps English text words inside math mode with \text{} so KaTeX renders them correctly with spacing.
- */
+const KNOWN_MATH_WORDS = new Set([
+  'sin','cos','tan','cot','sec','csc','sinh','cosh','tanh','arcsin','arccos','arctan',
+  'log','ln','exp','lim','max','min','sup','inf','det','dim','gcd','mod','arg','deg','ker',
+  'dx','dy','dz','dt','du','dv','dw',
+]);
+
+const MIXED_TOKEN_RE = new RegExp(
+  [
+    String.raw`\\(?:begin|end)\{[^}]*\}`,
+    String.raw`\\(?:text|textbf|textit|textrm|textsf|mathrm|mathbf|mathit|mathtt|mathbb|mathcal|mathsf|operatorname)\{[^{}]*\}`,
+    String.raw`\\[a-zA-Z]+`,
+    String.raw`[A-Za-z0-9_]+`,
+  ].join('|'),
+  'g'
+);
+
 export function formatMixedMath(content: string, isBlock: boolean = false): string {
   if (!content) return '';
-  content = repairCorruptedMacroEscapes(content);
-  if (content.includes('$') || content.includes('\\[') || content.includes('\\(')) {
-    return isBlock ? (content.startsWith('$$') ? content : `$$${content}$$`) : (content.startsWith('$') ? content : `$${content}$`);
-  }
-  
-  if (isCodeContent(content)) {
-    return content;
-  }
+  content = repairCorruptedMacroEscapes(content, 'math');
 
-  let mathStr = content.replace(/(?<!\\)\b(?!sin\b|cos\b|tan\b|log\b|ln\b|exp\b|lim\b|max\b|min\b|dx\b|dy\b|dt\b|du\b|dv\b|dw\b|dz\b|pmatrix\b|bmatrix\b|Bmatrix\b|vmatrix\b|Vmatrix\b|matrix\b|align\b|aligned\b|cases\b|array\b|equation\b|split\b|gather\b|gathered\b|text\b|textbf\b|textit\b|textrm\b|textsf\b|mathtt\b|mathbf\b|mathit\b|mathrm\b)[a-zA-Z]{2,}\b/g, '\\text{$&}');
-  mathStr = mathStr.replace(/ /g, '\\ ');
+  if (content.includes('$')) return content;
+  if (content.includes('\\[') || content.includes('\\(')) return normalizeDelimiters(content);
+
+  if (isCodeContent(content)) return content;
+
+  let hadText = false;
+  let mathStr = content.replace(MIXED_TOKEN_RE, (m) => {
+    if (m.startsWith('\\')) return m;
+    if (/^[A-Za-z]{2,}$/.test(m) && !KNOWN_MATH_WORDS.has(m)) { hadText = true; return `\\text{${m}}`; }
+    return m;
+  });
+
+  if (hadText) {
+    mathStr = mathStr.split(/(\\text\{[^{}]*\}|\\(?:begin|end)\{[^}]*\})/g)
+      .map((p, i) => (i % 2 ? p : p.replace(/ /g, '\\ ')))
+      .join('');
+  }
 
   return isBlock ? `$$${mathStr}$$` : `$${mathStr}$`;
 }
 
 export function fixFlattenedMarkdown(text: string): string {
   if (!text) return text;
-  
   if (/\|[\s]*[-:]+[\s]*\|/.test(text)) {
-    let fixed = text.replace(/\|\|/g, '|\n|');
+    const fixed = text.replace(/\|\|/g, '|\n|');
     const lines = fixed.split('\n');
-    
     for (let i = 0; i < lines.length; i++) {
-      if (/\|[\s]*[-:]+[\s]*\|/.test(lines[i])) {
-        if (i > 0) {
-          const headerLine = lines[i - 1];
-          const firstPipeIdx = headerLine.indexOf('|');
-          if (firstPipeIdx > 0 && headerLine.substring(0, firstPipeIdx).trim().length > 0) {
-            const beforeText = headerLine.substring(0, firstPipeIdx);
-            const tableHeader = headerLine.substring(firstPipeIdx);
-            lines[i - 1] = beforeText + '\n\n' + tableHeader;
-          }
+      if (/\|[\s]*[-:]+[\s]*\|/.test(lines[i]) && i > 0) {
+        const headerLine = lines[i - 1];
+        const firstPipeIdx = headerLine.indexOf('|');
+        if (firstPipeIdx > 0 && headerLine.substring(0, firstPipeIdx).trim().length > 0) {
+          lines[i - 1] = headerLine.substring(0, firstPipeIdx) + '\n\n' + headerLine.substring(firstPipeIdx);
         }
       }
     }
-    
     return lines.join('\n');
   }
-  
   return text;
 }
