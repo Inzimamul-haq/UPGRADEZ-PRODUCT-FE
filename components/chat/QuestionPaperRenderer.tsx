@@ -11,7 +11,7 @@ interface ParsedQuestion {
   qNo: number;  
   text: string;
   marks: number;
-  meta: { co: string; rbt: string; po?: string };
+  meta: { co: string; rbt: string; po?: string; part?: string };
   diagramSpec?: any;
   diagramType?: string;
   originalBlock: string;
@@ -28,15 +28,24 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
     let body = match[2];
     const metaStr = match[3];
 
-    let meta = { co: "", rbt: "", po: "" };
+    let meta = { co: "", rbt: "", po: "", part: "" };
     try {
       const parsedMeta = JSON.parse(metaStr);
       meta = {
         co: parsedMeta.co || parsedMeta.CO || "",
         rbt: parsedMeta.rbt || parsedMeta.RBT || "",
-        po: parsedMeta.po || parsedMeta.PO || ""
+        po: parsedMeta.po || parsedMeta.PO || "",
+        part: parsedMeta.part || parsedMeta.Part || ""
       };
     } catch (e) { }
+
+    if (!meta.part && match) {
+      const contentBefore = content.substring(0, match.index);
+      const headerMatches = Array.from(contentBefore.matchAll(/(?:^|\n)\s*(?:#+\s*)?(?:\*{0,2})Part\s*[-–—:]?\s*([A-E])/gi));
+      if (headerMatches.length > 0) {
+        meta.part = `Part ${headerMatches[headerMatches.length - 1][1].toUpperCase()}`;
+      }
+    }
 
     let marks = 0;
     const marksRegex = /\(([\d\.]+)\s*Marks?\)/i;
@@ -81,11 +90,25 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
     );
   }
 
-  // Group by marks dynamically
-  const partA = questions.filter(q => q.marks === 2 || q.marks === 1);
-  const partB = questions.filter(q => q.marks === 3 || q.marks === 13 || q.marks === 16);
-  const partC = questions.filter(q => q.marks === 12 || q.marks === 14 || q.marks === 15);
-  const otherParts = questions.filter(q => q.marks !== 1 && q.marks !== 2 && q.marks !== 3 && q.marks !== 12 && q.marks !== 13 && q.marks !== 16 && q.marks !== 14 && q.marks !== 15);
+  // Group by authoritative part (meta/header), with safe fallback
+  const getPartLetter = (q: ParsedQuestion): 'A' | 'B' | 'C' | 'other' => {
+    const p = (q.meta?.part || '').trim();
+    const pMatch = p.match(/Part\s*[-–—:]?\s*([A-E])/i) || p.match(/^([A-E])$/i);
+    if (pMatch) {
+      const letter = pMatch[1].toUpperCase();
+      if (letter === 'A') return 'A';
+      if (letter === 'B') return 'B';
+      if (letter === 'C') return 'C';
+      return 'other';
+    }
+    if (q.marks === 1 || q.marks === 2) return 'A';
+    return 'other';
+  };
+
+  const partA = questions.filter(q => getPartLetter(q) === 'A');
+  const partB = questions.filter(q => getPartLetter(q) === 'B');
+  const partC = questions.filter(q => getPartLetter(q) === 'C');
+  const otherParts = questions.filter(q => getPartLetter(q) === 'other');
 
   const groupQuestions = (arr: ParsedQuestion[]) => {
     const groups: { [key: number]: ParsedQuestion[] } = {};
