@@ -65,8 +65,19 @@ export function MechStructuralDisplay({ data, subtype, width = '100%', height = 
   const props = { nodes, edges, supports, loads, mapX, mapY, getNode };
 
   return (
-    <div className="w-full flex justify-center items-center overflow-hidden bg-[#131312] border border-[#2A2A28] rounded-xl my-4" style={{ height }}>
-      <svg width={width} height="100%" viewBox={`0 0 ${canvasW} ${canvasH}`} preserveAspectRatio="xMidYMid meet">
+    <div className="w-full flex justify-center items-center overflow-hidden bg-[#131312] border border-[#2A2A28] rounded-xl my-4 print:bg-white print:border-transparent print:my-1" style={{ height }}>
+      <svg
+        width={width}
+        height="100%"
+        viewBox={`0 0 ${canvasW} ${canvasH}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{
+          display: 'block',
+          maxWidth: '100%',
+          backgroundColor: '#FFFFFF',
+        }}
+        className="overflow-visible font-sans text-black"
+      >
         {subtype === 'beam' && <BeamRenderer {...props} />}
         {subtype === 'truss' && <TrussRenderer {...props} />}
         {subtype === 'frame' && <FrameRenderer {...props} />}

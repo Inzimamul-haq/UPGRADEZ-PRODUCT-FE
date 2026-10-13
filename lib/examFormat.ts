@@ -5,8 +5,40 @@ export type DecodedQuestion = DecodedQPPrefix & {
   marks?: number;
   diagramSpec?: any;
   diagramType?: string;
-  meta?: { co: string; rbt: string; po?: string };
+  meta?: { co: string; rbt: string; po?: string; correctIndex?: number };
+  stem?: string;
+  options?: string[];
 };
+
+/** Helper to parse MCQ options from question body. */
+export function parseStemAndOptions(text: string): { stem: string; options: string[] } {
+  const lines = text.split('\n');
+  const optionRegex = /^[A-Da-d][\.\)]\s+(.*)$/;
+  const options: string[] = [];
+  const stemLines: string[] = [];
+  let inOptions = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(optionRegex);
+    if (match) {
+      inOptions = true;
+      options.push(match[1].trim());
+    } else if (!inOptions) {
+      stemLines.push(line);
+    } else {
+      // Continuation of last option if any
+      if (options.length > 0 && trimmed) {
+        options[options.length - 1] += ' ' + trimmed;
+      }
+    }
+  }
+
+  return {
+    stem: stemLines.join('\n').trim(),
+    options,
+  };
+}
 
 /** Decode a raw DB questionText into structured metadata + clean text. */
 export function toDecoded(q: any): DecodedQuestion {
@@ -30,22 +62,40 @@ export function toDecoded(q: any): DecodedQuestion {
     } catch (e) { }
   }
 
-  let meta = q.co || q.rbt || q.po
-    ? { co: q.co || '', rbt: q.rbt || '', po: q.po || '' }
-    : undefined;
+  let meta: { co: string; rbt: string; po?: string; correctIndex?: number } | undefined = undefined;
 
-  if (!meta) {
-    const META_PREFIX_RE = /\[\[meta:(\{.*?\})\]\]/i;
-    const metaMatch = decoded.text.match(META_PREFIX_RE);
-    if (metaMatch) {
-      try {
-        const parsed = JSON.parse(metaMatch[1]);
-        meta = {
-          co: parsed.co || parsed.CO || '',
-          rbt: parsed.rbt || parsed.RBT || '',
-          po: parsed.po || parsed.PO || ''
-        };
-      } catch (e) { }
+  const META_PREFIX_RE = /\[\[meta:(\{.*?\})\]\]/i;
+  const metaMatch = decoded.text.match(META_PREFIX_RE);
+  if (metaMatch) {
+    try {
+      const parsed = JSON.parse(metaMatch[1]);
+      meta = {
+        co: parsed.co || parsed.CO || '',
+        rbt: parsed.rbt || parsed.RBT || '',
+        po: parsed.po || parsed.PO || '',
+        correctIndex: typeof parsed.correctIndex === 'number' ? parsed.correctIndex : undefined,
+      };
+    } catch (e) { }
+  }
+
+  if (!meta && (q.co || q.rbt || q.po)) {
+    meta = { co: q.co || '', rbt: q.rbt || '', po: q.po || '' };
+  }
+
+  // 1. Fallback or override correctIndex from plain Answer: line if present
+  const answerLineMatch = decoded.text.match(/(?:^|\n)\s*(?:\*\*)?Answer:\s*(?:\*\*)?\s*([A-Da-d0-9\)])[^\n]*/i);
+  if (answerLineMatch) {
+    const rawLetter = answerLineMatch[1].replace(/[\)\.]/g, '').toUpperCase();
+    const charCode = rawLetter.charCodeAt(0);
+    let resolvedIndex: number | undefined = undefined;
+    if (charCode >= 65 && charCode <= 90) {
+      resolvedIndex = charCode - 65;
+    } else if (!isNaN(parseInt(rawLetter, 10))) {
+      const numVal = parseInt(rawLetter, 10);
+      if (numVal >= 1 && numVal <= 10) resolvedIndex = numVal - 1;
+    }
+    if (resolvedIndex !== undefined) {
+      meta = { ...(meta || { co: '', rbt: '' }), correctIndex: resolvedIndex };
     }
   }
 
@@ -56,20 +106,33 @@ export function toDecoded(q: any): DecodedQuestion {
     displayMarks = parseInt(trueMarksMatch[1], 10);
   }
 
-  // Also strip the meta prefix from text if it exists
+  // Also strip the meta prefix, comments, and Answer line from text if they exist
   let cleanText = decoded.text
+    .replace(/<!--QMETA[\s\S]*?-->/gi, '')
     .replace(/\[\[meta:(\{.*?\})\]\]/gi, '')
     .replace(/\[\[(?:graph|tree|diagram|circuit|block|flowchart|architecture|network|structural|schematic|waveform|geometry):([\s\S]*?)\]\]/gi, '')
     .replace(/\[\[flagged:.*?\]\]/gi, '')
+    .replace(/(?:^|\n)\s*(?:\*\*)?Answer:\s*[^\n]*/gi, '')
     .replace(/[\s#*]*Part\s+[A-E]\b[^\n]{0,30}?marks?\.?[\s*]*/gi, '')
     .replace(/^\s*\**OR\**\s*$/gim, '')
-    .replace(/\s*[\(\[]\s*\d+\s*marks?\s*[\)\]]\s*/gi, '')
-    .replace(new RegExp(`\\s*[\\(\\[]\\s*${displayMarks || '\\d+'}\\s*(?:marks?)?\\s*[\\)\\]]\\s*$`, 'gi'), '')
+    // Strip trailing marks only at line boundaries so we never swallow subsequent newlines/options
+    .replace(/[\(\[]\s*\d+\s*marks?\s*[\)\]]\s*$/gim, '')
     .trim();
+
+  const { stem, options } = parseStemAndOptions(cleanText);
 
   decoded.text = cleanText;
 
-  return { ...decoded, id: q.id, marks: displayMarks, diagramSpec, diagramType, meta };
+  return {
+    ...decoded,
+    id: q.id,
+    marks: displayMarks,
+    diagramSpec,
+    diagramType,
+    meta,
+    stem,
+    options: options.length > 0 ? options : undefined,
+  };
 }
 
 export interface GroupedQuestion {

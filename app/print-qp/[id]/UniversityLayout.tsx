@@ -3,6 +3,7 @@ import { MathMarkdown } from '@/components/ui/MathMarkdown';
 import 'katex/dist/katex.min.css';
 import { toDecoded, groupByIndex } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
+import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
 
 export function UniversityLayout({ paper, questions }: any) {
   const decoded = questions.map(toDecoded);
@@ -74,7 +75,7 @@ export function UniversityLayout({ paper, questions }: any) {
                 <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{i + 1}.</span>
                   <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                    <MathMarkdown>{q.text}</MathMarkdown>
+                    <QuestionDisplay stem={q.stem} options={q.options} fallbackText={q.text} showAnswer={false} />
                   </div>
                 </div>
                 <div style={{ fontSize: 16, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({q.marks || 2})</div>
@@ -109,7 +110,7 @@ export function UniversityLayout({ paper, questions }: any) {
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{qIdx}. {grp.b ? 'a)' : ''}</span>
                           <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                            <MathMarkdown>{grp.a.text}</MathMarkdown>
+                            <QuestionDisplay stem={grp.a.stem} options={grp.a.options} fallbackText={grp.a.text} showAnswer={false} />
                             {grp.a.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
                                 <DiagramRenderer type={grp.a.diagramSpec.type || grp.a.diagramType || 'unknown'} subtype={grp.a.diagramSpec.subtype} spec={grp.a.diagramSpec} width={400} height={250} />
@@ -132,7 +133,7 @@ export function UniversityLayout({ paper, questions }: any) {
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>b)</span>
                           <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                            <MathMarkdown>{grp.b.text}</MathMarkdown>
+                            <QuestionDisplay stem={grp.b.stem} options={grp.b.options} fallbackText={grp.b.text} showAnswer={false} />
                             {grp.b.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
                                 <DiagramRenderer type={grp.b.diagramSpec.type || grp.b.diagramType || 'unknown'} subtype={grp.b.diagramSpec.subtype} spec={grp.b.diagramSpec} width={400} height={250} />

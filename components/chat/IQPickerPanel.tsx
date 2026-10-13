@@ -9,12 +9,16 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import { extractDiagramTag } from '../ui/layoutUtils';
-
+import { QuestionDisplay } from './QuestionDisplay';
+import { parseStemAndOptions } from '@/lib/examFormat';
 
 interface IQQuestion {
   id: string;
   number: number;
   text: string;
+  stem?: string;
+  options?: string[];
+  correctIndex?: number;
   marks: number | null;
   metadata?: Record<string, string>;
   diagramSpec?: any;
@@ -79,17 +83,23 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
 
             // 2. Extract [[meta:{...}]] if present
             const metaTagMatch = text.match(/\[\[meta:(\{.*?\})\]\]/i);
+            let metaCorrectIndex: number | undefined = undefined;
             if (metaTagMatch) {
               try {
-                metadata = { ...metadata, ...JSON.parse(metaTagMatch[1]) };
+                const parsed = JSON.parse(metaTagMatch[1]);
+                if (parsed.co || parsed.CO) metadata['CO'] = parsed.co || parsed.CO;
+                if (parsed.rbt || parsed.RBT) metadata['RBT'] = parsed.rbt || parsed.RBT;
+                if (parsed.po || parsed.PO) metadata['PO'] = parsed.po || parsed.PO;
+                if (typeof parsed.correctIndex === 'number') metaCorrectIndex = parsed.correctIndex;
               } catch (e) { }
             }
 
-            // 3. Clean up bracket tags
+            // 3. Clean up bracket tags and comments
+            text = text.replace(/<!--QMETA[\s\S]*?-->/gi, '');
             text = text.replace(/\[\[meta:.*?\]\]/gi, '');
             text = text.replace(/\[\[flagged:.*?\]\]/gi, '');
 
-            // 3. Extract actual marks from text to override DB marks (e.g. (2 Marks))
+            // 4. Extract actual marks from text to override DB marks (e.g. (2 Marks))
             let extractedMarks = q.marks;
             const marksRegex = /\s*[\(\[]\s*(\d+)\s*[M|m]arks?\s*[\)\]]/g;
             let matchMarks;
@@ -99,35 +109,29 @@ export function IQPickerPanel({ paperId, examType, subjectName, onConfirm, onCan
             // Strip all marks text from the string
             text = text.replace(/\s*[\(\[]\s*\d+\s*[M|m]arks?\s*[\)\]]/g, '').trim();
 
-            // 5. Extract JSON metadata if present (legacy fallback for bare {CO: "CO1"} without meta wrapper)
-            const metaJsonMatch = text.match(/\{[^{}]*(?:CO|PO|RBT|Marks|marks)[^{}]*\}/i);
-            if (metaJsonMatch) {
-              try {
-                const raw = metaJsonMatch[0].replace(/([a-zA-Z0-9_]+):/g, '"$1":').replace(/'/g, '"');
-                metadata = { ...metadata, ...JSON.parse(raw) };
-                text = text.replace(metaJsonMatch[0], '');
-              } catch (e) { }
+            // 5. Check for Answer: line if present
+            const answerLineMatch = text.match(/(?:^|\n)\s*(?:\*\*)?Answer:\s*(?:\*\*)?\s*([A-Da-d0-9\)])[^\n]*/i);
+            if (answerLineMatch) {
+              const rawLetter = answerLineMatch[1].replace(/[\)\.]/g, '').toUpperCase();
+              const charCode = rawLetter.charCodeAt(0);
+              if (charCode >= 65 && charCode <= 90) {
+                metaCorrectIndex = charCode - 65;
+              } else if (!isNaN(parseInt(rawLetter, 10))) {
+                const numVal = parseInt(rawLetter, 10);
+                if (numVal >= 1 && numVal <= 10) metaCorrectIndex = numVal - 1;
+              }
             }
+            text = text.replace(/(?:^|\n)\s*(?:\*\*)?Answer:\s*[^\n]*/gi, '').trim();
 
-            // 5. Extract trailing bare text tokens (CO3, PO2, L4)
-            const coMatch = text.match(/\b(CO[1-6])\b/gi);
-            if (coMatch) metadata['CO'] = Array.from(new Set(coMatch.map((s: string) => s.toUpperCase()))).join(', ');
-
-            const poMatch = text.match(/\b(PO\d+)\b/gi);
-            if (poMatch) metadata['PO'] = Array.from(new Set(poMatch.map((s: string) => s.toUpperCase()))).join(', ');
-
-            const rbtMatch = text.match(/\b(L[1-6])\b/gi);
-            if (rbtMatch) metadata['RBT'] = Array.from(new Set(rbtMatch.map((s: string) => s.toUpperCase()))).join(', ');
-
-            // Remove the bare tokens from text to clean it up
-            text = text.replace(/\b(CO[1-6]|PO\d+|L[1-6])\b/gi, '');
-            // Clean up any lingering bullets or weird punctuation left behind at the end
-            text = text.replace(/[•\s\-,]+$/g, '').trim();
+            const { stem, options } = parseStemAndOptions(text);
 
             return {
               ...q,
               marks: extractedMarks,
               text,
+              stem,
+              options: options.length > 0 ? options : undefined,
+              correctIndex: metaCorrectIndex,
               metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
               diagramSpec
             };
@@ -430,11 +434,13 @@ function QuestionRow({ question, displayLabel, onSelect }: { question: IQQuestio
         )}
       </div>
       <div className="flex-1 text-[13.5px] leading-relaxed text-[#D1D1C7] min-w-0">
-        <div className="prose prose-invert prose-sm max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-            {displayText}
-          </ReactMarkdown>
-        </div>
+        <QuestionDisplay
+          stem={question.stem}
+          options={question.options}
+          fallbackText={displayText}
+          showAnswer={true}
+          correctIndex={question.correctIndex}
+        />
 
         {/* Render Metadata Badges */}
         {question.metadata && Object.keys(question.metadata).length > 0 && (

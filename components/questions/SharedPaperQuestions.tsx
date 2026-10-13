@@ -9,6 +9,7 @@ import { decodeQPPrefix, stripQPPrefix, extractGraphPrefix, stripGraphPrefix, st
 import { getMarksColor } from '@/lib/utils';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 import { toDecoded, groupByIndex, type DecodedQuestion } from '@/lib/examFormat';
+import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,14 @@ function QuestionBlock({
           <span className="text-[15px] font-semibold flex-shrink-0 text-white mt-[2px]">
             {label}.
           </span>
-          <p className="text-[15px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap break-words flex-1 min-w-0">{question.text}</p>
+          <div className="text-[15px] text-[#ECECEA] leading-relaxed break-words flex-1 min-w-0">
+            <QuestionDisplay
+              stem={question.stem}
+              options={question.options}
+              fallbackText={question.text}
+              showAnswer={false}
+            />
+          </div>
         </div>
         {question.marks && (
           <span className={`text-[12px] font-medium flex-shrink-0 mt-[4px] ${getMarksColor(question.marks)}`}>

@@ -155,6 +155,20 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
             max-height: 350px !important;
             object-fit: contain;
           }
+            .diagram-card-wrapper {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  print-color-adjust: exact !important;
+  -webkit-print-color-adjust: exact !important;
+}
+
+.diagram-card-wrapper svg {
+  background: #FFFFFF !important;
+}
+
+.diagram-card-wrapper canvas {
+  background: #FFFFFF !important;
+}
 
 
           .uploaded-diagram-image {

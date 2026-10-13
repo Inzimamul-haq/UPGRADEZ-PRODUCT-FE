@@ -12,6 +12,7 @@ import { extractErrorMessage, cleanQuestionText } from '@/lib/utils';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { toDecoded } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
+import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
 import { useProgressiveList } from '@/hooks/useProgressiveList';
 import { SkeletonList, PaperCardSkeleton, QuestionModalSkeleton } from '@/components/ui/Skeletons';
 import { LoadingNext } from '@/components/ui/LoadingNext';
@@ -524,10 +525,16 @@ export default function PapersPage() {
                           )}
                         </div>
 
-                        {/* Question Text */}
-                        <p className="text-[12px] sm:text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">
-                          {cleanQuestionText(q.text)}
-                        </p>
+                        {/* Question Text & Options & Faculty Answer */}
+                        <div className="text-[12px] sm:text-[13px] text-[#ECECEA] leading-relaxed">
+                          <QuestionDisplay
+                            stem={q.stem}
+                            options={q.options}
+                            fallbackText={cleanQuestionText(q.text)}
+                            showAnswer={true}
+                            correctIndex={q.meta?.correctIndex}
+                          />
+                        </div>
 
                         {/* Diagram */}
                         {q.diagramSpec && (

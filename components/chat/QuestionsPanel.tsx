@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { cleanQuestionText } from '@/lib/utils';
 import { toDecoded, type DecodedQuestion } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
+import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
 
 interface QuestionsPanelProps {
   isOpen: boolean;
@@ -92,9 +93,14 @@ export function QuestionsPanel({ isOpen, onClose, questions }: QuestionsPanelPro
                   </div>
 
                   {/* Question Text */}
-                  <p className="text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">
-                    {cleanQuestionText(q.text)}
-                  </p>
+                  <div className="text-[13px] text-[#ECECEA] leading-relaxed">
+                    <QuestionDisplay
+                      stem={q.stem}
+                      options={q.options}
+                      fallbackText={cleanQuestionText(q.text)}
+                      showAnswer={false}
+                    />
+                  </div>
 
                   {/* Diagram */}
                   {q.diagramSpec && (

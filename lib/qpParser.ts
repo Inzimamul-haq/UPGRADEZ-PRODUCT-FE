@@ -169,8 +169,45 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
 
   const flushBuffer = () => {
     if (!bufferText.trim()) return;
-    const { cleanText, marks: endMarks } = extractMarks(bufferText.trim());
-    const totalMarks = extractTotalMarks(bufferText) || endMarks;
+
+    // ── Keep cleanup logic strictly in sync with questionPapers.service.ts (BE is authority) ──
+    // 1. Defensively strip QMETA and flagged tags
+    let workingText = bufferText.replace(/<!--QMETA\s+[\s\S]*?-->/gi, '').replace(/\[\[flagged:.*?\]\]/gi, '').trim();
+
+    // 2. Extract marks FIRST before stripping any marks text
+    const { cleanText: marksStrippedText, marks: endMarks } = extractMarks(workingText);
+    const totalMarks = extractTotalMarks(workingText) || endMarks;
+    workingText = marksStrippedText;
+
+    // 3. Resolve Answer / correctIndex (Answer line has priority over [[meta]] correctIndex)
+    let resolvedCorrectIndex: number | undefined = undefined;
+    const answerLineMatch = workingText.match(/(?:^|\n)\s*(?:\*\*)?Answer:\s*(?:\*\*)?\s*([A-Da-d0-9\)])[^\n]*/i);
+    if (answerLineMatch) {
+      const rawLetter = answerLineMatch[1].replace(/[\)\.]/g, '').toUpperCase();
+      const charCode = rawLetter.charCodeAt(0);
+      if (charCode >= 65 && charCode <= 90) {
+        resolvedCorrectIndex = charCode - 65;
+      } else if (!isNaN(parseInt(rawLetter, 10))) {
+        const numVal = parseInt(rawLetter, 10);
+        if (numVal >= 1 && numVal <= 10) resolvedCorrectIndex = numVal - 1;
+      }
+    }
+
+    const metaTagMatch = workingText.match(/\[\[meta:(\{[\s\S]*?\})\]\]/i);
+    if (metaTagMatch) {
+      try {
+        const metaParsed = JSON.parse(metaTagMatch[1]);
+        if (resolvedCorrectIndex !== undefined) {
+          metaParsed.correctIndex = resolvedCorrectIndex;
+        }
+        workingText = workingText.replace(metaTagMatch[0], `[[meta:${JSON.stringify(metaParsed)}]]`);
+      } catch (e) { }
+    } else if (resolvedCorrectIndex !== undefined) {
+      workingText += `\n[[meta:{"correctIndex":${resolvedCorrectIndex}}]]`;
+    }
+
+    // 4. Strip the Answer line completely from stored text
+    workingText = workingText.replace(/(?:^|\n)\s*(?:\*\*)?Answer:\s*[^\n]*/gi, '').trim();
 
     // Auto-transition to Part B/C if not explicit and marks indicate it
     if (!seenExplicitPartHeader) {
@@ -195,9 +232,9 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
       }
     }
 
-    if (cleanText) {
+    if (workingText) {
       results.push({
-        text: cleanText,
+        text: workingText,
         part: bufferPart,
         groupIndex: bufferGroupIndex,
         subLabel: bufferSubLabel,
