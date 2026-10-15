@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
 import {
   BookOpen,
   ChevronRight,
@@ -13,9 +14,11 @@ import {
   List,
   ChevronDown,
   X,
-  Loader2
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { QuestionPaperPatternType } from '@/lib/patternSchema';
 import {
   TocEntry,
@@ -24,8 +27,6 @@ import {
   ContextSetupConfig,
   QuestionDistribution,
 } from "@/lib/types";
-
-
 
 const DIFFICULTY_LABELS: Record<DifficultyMode, string> = {
   SIMPLE: "Easy",
@@ -75,6 +76,7 @@ function CountStepper({ value, onChange, disabled }: CountStepperProps) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export interface ContextSetupCardProps {
+  subjectId: string;
   examType: string;
   paperKind: PaperKind;
   subjectName: string;
@@ -89,7 +91,15 @@ export interface ContextSetupCardProps {
   regulation?: string;
 }
 
+interface PatternErrorInfo {
+  code: 'NO_REGULATION' | 'NO_PATTERN' | 'NETWORK_ERROR';
+  regulation?: string;
+  examType?: string;
+  message?: string;
+}
+
 export function ContextSetupCard({
+  subjectId,
   examType,
   paperKind,
   subjectName,
@@ -103,36 +113,45 @@ export function ContextSetupCard({
   prefillTopicsConfig,
   regulation,
 }: ContextSetupCardProps) {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin' || role === 'super_admin';
+
   const hasChapters = syllabusEntries.length > 0;
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   const [pattern, setPattern] = useState<QuestionPaperPatternType | null>(null);
   const [patternLoading, setPatternLoading] = useState(false);
-  const [patternError, setPatternError] = useState(false);
+  const [patternError, setPatternError] = useState<PatternErrorInfo | null>(null);
+  const [patternSource, setPatternSource] = useState<'exact' | 'fallback_all' | null>(null);
+  const [resolvedRegulation, setResolvedRegulation] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const [slotConfigs, setSlotConfigs] = useState<{ slotId: string; count: number; marks: number; }[]>([]);
 
   useEffect(() => {
-    if (
-      mode !== 'full' ||
-      !regulation
-    ) {
+    if (mode !== 'full' || !subjectId || !examType) {
       setPattern(null);
       setSlotConfigs([]);
       setPatternLoading(false);
-      setPatternError(false);
+      setPatternError(null);
+      setPatternSource(null);
       return;
     }
 
     setPattern(null);
     setSlotConfigs([]);
-    setPatternError(false);
+    setPatternError(null);
+    setPatternSource(null);
     setPatternLoading(true);
 
     const abortController = new AbortController();
 
     api.get('/api/patterns/resolve', {
-      params: { regulation, examType },
+      params: {
+        subjectId,
+        examType,
+        ...(regulation ? { regulation } : {}),
+      },
       signal: abortController.signal,
     })
       .then(res => {
@@ -141,11 +160,18 @@ export function ContextSetupCard({
         if (!resolvedPattern) {
           setPattern(null);
           setSlotConfigs([]);
-          setPatternError(true);
+          setPatternError({
+            code: 'NO_PATTERN',
+            regulation: res.data.regulation || regulation,
+            examType,
+            message: 'No pattern returned by server',
+          });
           return;
         }
 
         setPattern(resolvedPattern);
+        setPatternSource(res.data.source || 'exact');
+        setResolvedRegulation(res.data.regulation || regulation || null);
 
         setSlotConfigs(
           resolvedPattern.parts.flatMap((part: any) =>
@@ -158,10 +184,31 @@ export function ContextSetupCard({
         );
       })
       .catch((err) => {
-        if (err.name === 'CanceledError') return;
+        if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
         setPattern(null);
         setSlotConfigs([]);
-        setPatternError(true);
+
+        const resData = err.response?.data;
+        const errorCode = resData?.code;
+
+        if (errorCode === 'NO_REGULATION') {
+          setPatternError({
+            code: 'NO_REGULATION',
+            message: resData.message || 'This subject has no regulation assigned.',
+          });
+        } else if (errorCode === 'NO_PATTERN') {
+          setPatternError({
+            code: 'NO_PATTERN',
+            regulation: resData.regulation || regulation,
+            examType: resData.examType || examType,
+            message: resData.message || `No pattern configured for ${resData.regulation || regulation || 'this regulation'} · ${examType}`,
+          });
+        } else {
+          setPatternError({
+            code: 'NETWORK_ERROR',
+            message: resData?.message || 'Failed to load question distribution.',
+          });
+        }
       })
       .finally(() => {
         if (!abortController.signal.aborted) {
@@ -170,7 +217,7 @@ export function ContextSetupCard({
       });
 
     return () => abortController.abort();
-  }, [mode, paperKind, regulation, examType]);
+  }, [mode, subjectId, examType, regulation, retryKey]);
 
   // ── Chapter state ─────────────────────────────────────────────────────────
   const [allChapters, setAllChapters] = useState(false);
@@ -338,7 +385,7 @@ export function ContextSetupCard({
 
   const canSaveTopics = hasChapterSelection && hasValidTopics;
 
-  const hasAtLeastOnePart = pattern !== null;
+  const hasAtLeastOnePart = pattern !== null && !patternLoading && !patternError;
   const canGenerate = hasChapterSelection && hasValidTopics && hasAtLeastOnePart && !!difficulty;
 
   // ── Helpers ───────────────────────────────────────────────────────
@@ -625,49 +672,116 @@ export function ContextSetupCard({
               </div>
 
               {patternLoading ? (
-                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#8C8C8A]" size={24} /></div>
+                <div className="flex flex-col items-center justify-center py-12 px-4 bg-[#242422] border border-[#2E2E2C] rounded-xl gap-3">
+                  <Loader2 className="animate-spin text-[#ECECEA]" size={22} />
+                  <p className="text-[13px] text-[#8C8C8A]">Loading question distribution pattern...</p>
+                </div>
               ) : pattern ? (
-                 <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
+                <div className="space-y-3">
+                  {patternSource === 'fallback_all' && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#242422] border border-[#3A3A38] text-[12px] text-[#A0A09E]">
+                      <span>Using general pattern for regulation {resolvedRegulation || regulation}.</span>
+                    </div>
+                  )}
+                  <div className="rounded-xl border border-[#2E2E2C] overflow-hidden divide-y divide-[#222220]">
                     {pattern.parts.map((p: any) => (
-                       <div key={p.id} className="p-4 bg-[#242422]">
-                          <div className="flex items-center justify-between mb-3">
-                             <div className="text-[14px] font-semibold text-[#ECECEA]">{p.partName}</div>
-                             {p.hasChoice && <div className="text-[11px] text-[#8C8C8A] px-2 py-1 rounded bg-[#2C2C2A] border border-[#3A3A38]">Internal Choice (OR)</div>}
-                          </div>
-                          <div className="space-y-3">
-                            {p.slots.map((s: any, sIdx: number) => {
-                               const conf = slotConfigs.find(sc => sc.slotId === s.id);
-                               return (
-                                  <div key={s.id} className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
-                                     <span className="text-[13px] text-[#8C8C8A] font-medium">Question {sIdx + 1} {s.isMcq ? '(MCQ)' : ''}</span>
-                                     <div className="flex items-center gap-4 self-end sm:self-auto">
-                                        <div className="text-[13px] text-[#ECECEA] flex items-center gap-2 bg-[#2C2C2A] px-2 py-1 rounded-lg border border-[#3A3A38]">
-                                           {s.marks} marks
-                                        </div>
-                                        <CountStepper 
-                                          value={conf?.count || 1}
-                                          onChange={v => setSlotConfigs(prev => prev.map(sc => sc.slotId === s.id ? {...sc, count: v} : sc))}
-                                        />
-                                     </div>
+                      <div key={p.id} className="p-4 bg-[#242422]">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-[14px] font-semibold text-[#ECECEA]">{p.partName}</div>
+                          {p.hasChoice && <div className="text-[11px] text-[#8C8C8A] px-2 py-1 rounded bg-[#2C2C2A] border border-[#3A3A38]">Internal Choice (OR)</div>}
+                        </div>
+                        <div className="space-y-3">
+                          {p.slots.map((s: any, sIdx: number) => {
+                            const conf = slotConfigs.find(sc => sc.slotId === s.id);
+                            return (
+                              <div key={s.id} className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
+                                <span className="text-[13px] text-[#8C8C8A] font-medium">Question {sIdx + 1} {s.isMcq ? '(MCQ)' : ''}</span>
+                                <div className="flex items-center gap-4 self-end sm:self-auto">
+                                  <div className="text-[13px] text-[#ECECEA] flex items-center gap-2 bg-[#2C2C2A] px-2 py-1 rounded-lg border border-[#3A3A38]">
+                                    {s.marks} marks
                                   </div>
-                               )
-                            })}
-                          </div>
-                       </div>
+                                  <CountStepper 
+                                    value={conf?.count || 1}
+                                    onChange={v => setSlotConfigs(prev => prev.map(sc => sc.slotId === s.id ? {...sc, count: v} : sc))}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     ))}
                     <div className="p-4 bg-[#1C1C1B] flex justify-between items-center border-t border-[#3A3A38]">
                       <span className="text-[13px] text-[#8C8C8A] font-semibold uppercase tracking-wider">Total Marks</span>
                       <span className="text-[16px] font-bold text-[#ECECEA]">
-                         {slotConfigs.reduce((total, sc) => total + (sc.count * sc.marks), 0)}
+                        {slotConfigs.reduce((total, sc) => total + (sc.count * sc.marks), 0)}
                       </span>
                     </div>
-                 </div>
-              ) : patternError ? (
-                <div className="flex flex-col items-center justify-center p-8 bg-[#2A2020] border border-rose-900/50 rounded-xl">
-                  <p className="text-rose-400 text-[13px] font-medium text-center">No question paper pattern configured for this exam type and regulation.</p>
-                  <p className="text-rose-400/70 text-[12px] text-center mt-2">Please configure the pattern in Admin Settings first.</p>
+                  </div>
                 </div>
-              ) : null}
+              ) : patternError?.code === 'NO_REGULATION' ? (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#242422] border border-[#3A3A38] rounded-xl text-center">
+                  <div className="w-9 h-9 rounded-full bg-[#2C2C2A] flex items-center justify-center mb-2.5 text-[#8C8C8A]">
+                    <BookOpen size={18} />
+                  </div>
+                  <p className="text-[13px] font-medium text-[#ECECEA]">This subject has no regulation assigned.</p>
+                  <p className="text-[12px] text-[#8C8C8A] mt-1 max-w-sm">A regulation is required to determine the question paper structure and marks distribution.</p>
+                  {isAdmin ? (
+                    <Link
+                      href="/admin/syllabus"
+                      className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2C2C2A] hover:bg-[#343432] text-[#7AC87A] border border-[#3A6A3A]/40 transition-colors"
+                    >
+                      Edit Subject in Admin → Syllabus
+                    </Link>
+                  ) : (
+                    <p className="text-[11px] text-[#6C6C6A] mt-3">Please ask your college admin to assign a regulation to this subject.</p>
+                  )}
+                </div>
+              ) : patternError?.code === 'NO_PATTERN' ? (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#242422] border border-[#3A3A38] rounded-xl text-center">
+                  <div className="w-9 h-9 rounded-full bg-[#2C2C2A] flex items-center justify-center mb-2.5 text-[#8C8C8A]">
+                    <Layers size={18} />
+                  </div>
+                  <p className="text-[13px] font-medium text-[#ECECEA]">
+                    No pattern configured for {patternError.regulation || resolvedRegulation || regulation || 'this regulation'} · {patternError.examType || examType}.
+                  </p>
+                  <p className="text-[12px] text-[#8C8C8A] mt-1 max-w-sm">
+                    Configure the parts, question counts, and marks distribution for this examination type.
+                  </p>
+                  {isAdmin ? (
+                    <Link
+                      href="/admin/patterns"
+                      className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2C2C2A] hover:bg-[#343432] text-[#7AC87A] border border-[#3A6A3A]/40 transition-colors"
+                    >
+                      Configure Pattern in Admin → Patterns
+                    </Link>
+                  ) : (
+                    <p className="text-[11px] text-[#6C6C6A] mt-3">Please ask your college admin to configure this exam pattern.</p>
+                  )}
+                </div>
+              ) : patternError ? (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#2A2020] border border-rose-900/40 rounded-xl text-center">
+                  <p className="text-rose-400 text-[13px] font-medium">{patternError.message || 'Failed to load question distribution.'}</p>
+                  <button
+                    onClick={() => setRetryKey(k => k + 1)}
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2C2C2A] hover:bg-[#343432] text-[#ECECEA] border border-[#3A3A38] transition-colors"
+                  >
+                    <RefreshCw size={13} />
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#242422] border border-[#3A3A38] rounded-xl text-center">
+                  <p className="text-[13px] text-[#8C8C8A]">Unable to load question pattern.</p>
+                  <button
+                    onClick={() => setRetryKey(k => k + 1)}
+                    className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold bg-[#2C2C2A] hover:bg-[#343432] text-[#ECECEA] border border-[#3A3A38] transition-colors"
+                  >
+                    <RefreshCw size={13} />
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -93,12 +93,6 @@ export function SubjectConfigModal({
                 <SlidersHorizontal size={14} className="text-[#8C8C8A] flex-shrink-0" />
                 <p className="text-[13px] font-medium text-[#ECECEA] truncate">AI Config</p>
               </div>
-              <button 
-                onClick={() => setIsDetailsOpen(true)}
-                className="text-[11px] text-[#8C8C8A] hover:text-[#ECECEA] hover:underline focus:outline-none focus:ring-1 focus:ring-[#8C8C8A] rounded px-1 transition-colors whitespace-nowrap"
-              >
-                View details
-              </button>
             </div>
             <p className="text-[11px] text-[#5A5A58] truncate mt-1">Choose how the AI writes questions for this subject.</p>
           </div>
@@ -115,9 +109,19 @@ export function SubjectConfigModal({
         <div className="px-4 py-4 space-y-5">
           {/* Prompt Type */}
           <div>
-            <label className="mb-1.5 block text-[11px] text-[#8C8C8A] font-medium tracking-wide uppercase">
-              Subject Type
-            </label>
+<div className="mb-1.5 flex items-center justify-between">
+  <label className="block text-[11px] text-[#8C8C8A] font-medium tracking-wide uppercase">
+    Subject Type
+  </label>
+
+  <button
+    type="button"
+    onClick={() => setIsDetailsOpen(true)}
+    className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-400 transition-colors hover:border-red-500/50 hover:bg-red-500/15 hover:text-red-300 focus:outline-none focus:ring-1 focus:ring-red-500/50"
+  >
+    View details
+  </button>
+</div>
             <select
               value={promptType}
               onChange={(e) => setPromptType(e.target.value)}

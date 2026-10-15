@@ -1585,6 +1585,7 @@ return (
       <div className="absolute bottom-[80px] sm:bottom-[90px] left-0 right-0 z-30 flex justify-center px-2 sm:px-4 pointer-events-none">
         <div className="w-full max-w-3xl pointer-events-auto max-h-[75vh] overflow-y-auto custom-scrollbar rounded-2xl">
           <ContextSetupCard
+            subjectId={sessionData.subjectId}
             examType={sessionData.examType}
             regulation={sessionData.regulation || ''}
             paperKind={sessionData.paperKind ?? 'EXAM_PAPER'}
