@@ -1,17 +1,92 @@
 import React from 'react';
-import { MathMarkdown } from '@/components/ui/MathMarkdown';
 import 'katex/dist/katex.min.css';
-import { toDecoded, groupByIndex, formatPartMarks, type DecodedQuestion } from '@/lib/examFormat';
+import { toDecoded, groupByIndex } from '@/lib/examFormat';
 import { DiagramRenderer } from '@/components/ui/QuestionDiagram/DiagramRenderer';
 import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
+
 const RBT_LABELS: Record<string, string> = {
   L1: 'Remember',
   L2: 'Understand',
   L3: 'Apply',
-  L4: 'Analyze',
+  L4: 'Analyse',
   L5: 'Evaluate',
   L6: 'Create',
 };
+
+const TEST_TITLES: Record<string, string> = {
+  CAT1: 'CONTINUOUS ASSESSMENT TEST- I',
+  CAT2: 'CONTINUOUS ASSESSMENT TEST- II',
+  CAT3: 'CONTINUOUS ASSESSMENT TEST- III',
+};
+
+const BORDER = '1px solid #999';
+const td: React.CSSProperties = {
+  border: BORDER,
+  padding: '5px 10px',
+  fontSize: 13,
+  verticalAlign: 'top',
+  lineHeight: 1.35,
+};
+const tdCenter: React.CSSProperties = {
+  ...td,
+  textAlign: 'center',
+  fontWeight: 'bold',
+  fontSize: 12,
+};
+const COL = { no: 50, co: 44, rbt: 56 };
+
+const unitMarks = (g: any, letter: string, paper: any) =>
+  g.a?.marks ||
+  g.b?.marks ||
+  paper?.questionDistribution?.[`part${letter}`]?.marks ||
+  (letter === 'A' ? 1 : 0);
+
+function partStats(letter: string, qs: any[], paper: any) {
+  const units = groupByIndex(qs).map((g: any) => unitMarks(g, letter, paper));
+  const total = units.reduce((s: number, m: number) => s + m, 0);
+  const allSame = units.length > 0 && units.every((m: number) => m === units[0]);
+  const label = !total
+    ? `PART-${letter}`
+    : allSame && letter !== 'C'
+      ? `PART-${letter} (${units.length} X ${units[0]} = ${total} Marks)`
+      : `PART-${letter} (${total} Marks)`;
+  return { label, total };
+}
+
+function formatDuration(mins?: number, fallback: string = '1h 30m') {
+  if (!mins || mins <= 0) return fallback;
+  const hours = Math.floor(mins / 60);
+  const minutes = mins % 60;
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
+}
+
+function QRow({ no, q }: { no: string; q: any }) {
+  return (
+    <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+      <td style={{ ...tdCenter, width: COL.no }}>{no}</td>
+      <td style={td}>
+        <div className="qp-question-text" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+          <QuestionDisplay stem={q.stem} options={q.options} fallbackText={q.text} showAnswer={false} />
+          {q.diagramSpec && (
+            <div className="diagram-card-wrapper mt-2">
+              <DiagramRenderer
+                type={q.diagramSpec.type || q.diagramType || 'unknown'}
+                subtype={q.diagramSpec.subtype}
+                spec={q.diagramSpec}
+                width={400}
+                height={250}
+              />
+            </div>
+          )}
+        </div>
+      </td>
+      <td style={{ ...tdCenter, width: COL.co }}>{q.meta?.co || ''}</td>
+      <td style={{ ...tdCenter, width: COL.rbt }}>{q.meta?.rbt || ''}</td>
+    </tr>
+  );
+}
 
 export function CATLayout({ paper, questions }: any) {
   const decoded = questions.map(toDecoded);
@@ -19,257 +94,237 @@ export function CATLayout({ paper, questions }: any) {
   const partB = decoded.filter((q: any) => q.part === 'B');
   const partC = decoded.filter((q: any) => q.part === 'C');
 
-  // Collect unique, sorted RBT levels actually present
-  const usedRbts = [...new Set(
-    decoded
-      .map((q: any) => q.meta?.rbt?.trim())
-      .filter(Boolean)
-  )].sort();
+  const examKey = (paper.examType || '').toUpperCase().replace(/\s+/g, '').replace(/^CIA/, 'CAT');
+  const testTitle = TEST_TITLES[examKey] || (paper.examType ? paper.examType.toUpperCase() : 'CONTINUOUS ASSESSMENT TEST');
 
-  // Collect unique, sorted CO codes actually present
-  const usedCos = [...new Set(
-    decoded
-      .map((q: any) => q.meta?.co?.trim())
-      .filter(Boolean)
-  )].sort();
+  const statsA = partStats('A', partA, paper);
+  const statsB = partStats('B', partB, paper);
+  const statsC = partStats('C', partC, paper);
+  const totalMarks = statsA.total + statsB.total + statsC.total || paper.totalMarks || 0;
 
-  const isCAT = ['CAT1', 'CAT2', 'CAT3', 'CAT 1', 'CAT 2', 'CAT 3'].includes(
-    (paper.examType || '').toUpperCase().replace(/\s+/g, '')
+  const college = paper.subject?.college || {};
+  const dept = paper.subject?.subjectDepartments?.[0]?.department || {};
+  const collegeName = college.name || 'College Name';
+  const logoUrl = college.logoUrl || '';
+  const formCode = college.formCode || 'CAHCET/AD/S&H/CF-05';
+  const deptName = dept.name || 'Department';
+  const hodLabel = dept.shortName ? `HOD/${dept.shortName}` : 'HOD';
+  const subjectLine = `${paper.subject?.code || 'SUB CODE'}-${paper.subject?.name || 'Subject Name'}`;
+  const degreeBranch = paper.degreeBranch || (dept.branch ? `B.E. / ${dept.branch}` : 'B. E. /B.Tech');
+  const academicYear = `${paper.academicYear || '2026 - 2027'}${paper.semesterType ? ` (${paper.semesterType})` : ''}`;
+  const examDate = (paper.examDate ? new Date(paper.examDate) : new Date())
+    .toLocaleDateString('en-GB')
+    .replace(/\//g, '.');
+  const duration = paper.duration || formatDuration(paper.durationMinutes, '1h 30m');
+  const outcomes: { code: string; description: string }[] = paper.subject?.courseOutcomes || [];
+
+  const bStart = partA.length + 1;
+  const cStart = partA.length + groupByIndex(partB).length + 1;
+
+  const renderGroups = (qs: any[], start: number) =>
+    groupByIndex(qs).map((grp: any, gIdx: number) => {
+      const n = start + gIdx;
+      return (
+        <React.Fragment key={gIdx}>
+          {grp.a && <QRow no={`${n}${grp.b ? 'a' : ''}`} q={grp.a} />}
+          {grp.b && (
+            <tr>
+              <td colSpan={4} style={{ ...tdCenter, background: '#f9f9f9' }}>
+                OR
+              </td>
+            </tr>
+          )}
+          {grp.b && <QRow no={`${n}b`} q={grp.b} />}
+        </React.Fragment>
+      );
+    });
+
+  const partHeading = (text: string) => (
+    <div
+      style={{
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: 12,
+        margin: '14px 0 6px',
+        breakAfter: 'avoid',
+      }}
+    >
+      {text}
+    </div>
   );
 
-  const totalMarks = isCAT ? 50 : 100;
-  const duration = isCAT ? '1.5 Hrs' : '03 Hrs';
-
-  const collegeName = paper.subject?.college?.name || 'College Name';
-  const logoUrl = paper.subject?.college?.logoUrl || '';
-  const collegeId = paper.subject?.college?.id || '';
-  const academicYear = paper.academicYear || '2023-2024';
-  const examType = paper.examType || 'Exam';
-  const branchName = paper.subject?.subjectDepartments?.[0]?.department?.branch || 'Branch Name';
-  const deptName = paper.subject?.subjectDepartments?.[0]?.department?.name || 'Dept Name';
-  const subjectCode = paper.subject?.code || 'SUB CODE';
-  const subjectName = paper.subject?.name || 'Subject Name';
-  const examDate = paper.examDate ? new Date(paper.examDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
-
   return (
-    <div className="bg-white text-black qp-layout">
-      <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 12, border: '1px solid black' }}>
+    <div
+      className="bg-white text-black qp-layout"
+      style={{ fontFamily: '"Times New Roman", Times, "Liberation Serif", serif' }}
+    >
+      {/* ── Header Table ── */}
+      <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            <td rowSpan={2} style={{ border: '1px solid black', width: 80, padding: 4, verticalAlign: 'middle', textAlign: 'center' }}>
+            <td style={{ border: BORDER, width: 110, padding: 6, textAlign: 'center', verticalAlign: 'middle' }}>
               {logoUrl ? (
                 <img
                   src={logoUrl}
-                  onError={(e) => { e.currentTarget.src = `/api/proxy-image?collegeId=${collegeId}`; }}
-                  style={{ width: 60, height: 60, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                  onError={(e) => {
+                    e.currentTarget.src = `/api/proxy-image?collegeId=${college.id || ''}`;
+                  }}
+                  style={{ width: 90, height: 90, objectFit: 'contain', display: 'block', margin: '0 auto' }}
                   alt="College Logo"
                 />
               ) : (
-                <div style={{ height: 60, width: 60, margin: '0 auto', border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>Logo</div>
+                <div
+                  style={{
+                    height: 80,
+                    width: 80,
+                    margin: '0 auto',
+                    border: '1px dashed #ccc',
+                    fontSize: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  Logo
+                </div>
               )}
             </td>
-            <td style={{ border: '1px solid black', padding: '4px 8px', fontWeight: 'bold', fontSize: 16 }}>
-              {collegeName}
+
+            <td style={{ border: BORDER, padding: 0, textAlign: 'center', verticalAlign: 'top' }}>
+              <div style={{ padding: '6px 10px' }}>
+                <div style={{ fontSize: 13 }}>{collegeName}</div>
+                <div style={{ fontSize: 13 }}>Department of {deptName}</div>
+                <div style={{ fontSize: 13, fontWeight: 'bold', marginTop: 2 }}>{testTitle}</div>
+              </div>
+              <div style={{ borderTop: BORDER, padding: '6px 10px' }}>
+                <div style={{ fontSize: 13, fontWeight: 'bold' }}>{subjectLine}</div>
+                <div style={{ fontSize: 12, marginTop: 3 }}>Degree/Branch: {degreeBranch}</div>
+                <div style={{ fontSize: 12, marginTop: 3 }}>Academic year {academicYear}</div>
+              </div>
             </td>
-            <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 13, width: 140 }}>
-              Date: {examDate}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 13 }}>
-              Dept of {branchName} ({deptName})
-            </td>
-            <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 13 }}>
-              Marks: {totalMarks}
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ border: '1px solid black', padding: '4px 8px', fontSize: 13 }}>
-              Acad Year: {academicYear} / {subjectCode} {subjectName}
-            </td>
-            <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 13 }}>
-              Duration: {duration}
+
+            <td style={{ border: BORDER, width: 170, padding: 0, verticalAlign: 'top' }}>
+              <div style={{ padding: 6, textAlign: 'center', minHeight: 75 }}>
+                <img
+                  src="/tuv-iso21001.png"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  style={{ width: 75, height: 75, objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                  alt=""
+                />
+              </div>
+              <div style={{ borderTop: BORDER, padding: '6px 10px', fontSize: 12, lineHeight: 1.5 }}>
+                <div>Date: {examDate}</div>
+                <div>Duration: {duration}</div>
+                <div>
+                  Marks: <b>{totalMarks}</b>
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div style={{ textAlign: 'center', fontWeight: 'bold', margin: '16px 0', fontSize: 16 }}>Answer All Questions</div>
-
-      {/* Part A */}
+      {/* ── Part A ── */}
       {partA.length > 0 && (
-        <div style={{ marginBottom: 20, breakInside: 'auto' }}>
-          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 14, marginBottom: 8, breakAfter: 'avoid' }}>
-            PART A — ({formatPartMarks(partA, isCAT ? '5 x 2 = 10' : '10 x 2 = 20')} marks)
-          </div>
-          <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid black' }}>
+        <>
+          {partHeading(statsA.label)}
+          <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th style={{ border: '1px solid black', padding: 4, width: 40, fontSize: 13 }}>Q.No</th>
-                <th style={{ border: '1px solid black', padding: 4, fontSize: 13 }}>Questions</th>
-                <th style={{ border: '1px solid black', padding: 4, width: 50, fontSize: 13 }}>COs</th>
-                <th style={{ border: '1px solid black', padding: 4, width: 70, fontSize: 13 }}>RBT Level</th>
+                <th style={{ ...tdCenter, width: COL.no, fontSize: 12, textAlign: 'left' }}>
+                  Q.<br />No
+                </th>
+                <th
+                  style={{
+                    ...td,
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                    fontWeight: 'bold',
+                    fontSize: 22,
+                    padding: '12px 10px',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  ANSWER ALL QUESTIONS
+                </th>
+                <th style={{ ...tdCenter, width: COL.co, fontSize: 12, verticalAlign: 'bottom' }}>CO</th>
+                <th style={{ ...tdCenter, width: COL.rbt, fontSize: 11 }}>
+                  RBT<br />Level
+                </th>
               </tr>
             </thead>
             <tbody>
               {partA.map((q: any, i: number) => (
-                <tr key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                  <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 14, verticalAlign: 'top' }}>
-                    {i + 1}
-                  </td>
-                  <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 14, verticalAlign: 'top' }}>
-                    <div className="qp-question-text" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                      <QuestionDisplay stem={q.stem} options={q.options} fallbackText={q.text} showAnswer={false} />
-                    </div>
-                  </td>
-                  <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                    {q.meta?.co || '-'}
-                  </td>
-                  <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                    {q.meta?.rbt || '-'}
-                  </td>
-                </tr>
+                <QRow key={i} no={`${i + 1}.`} q={q} />
               ))}
             </tbody>
           </table>
-        </div>
+        </>
       )}
 
-      {/* Part B & C */}
-      {[
-        { qs: partB, title: 'B', startIndex: partA.length + 1, defaultFormula: isCAT ? '2 x 20 = 40' : '5 x 13 = 65' },
-        { qs: partC, title: 'C', startIndex: partA.length + groupByIndex(partB).length + 1, defaultFormula: isCAT ? '' : '1 x 15 = 15' }
-      ].map((part) => {
-        if (part.qs.length === 0) return null;
-        const groups = groupByIndex(part.qs);
+      {/* ── Part B ── */}
+      {partB.length > 0 && (
+        <>
+          {partHeading(statsB.label)}
+          <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
+            <tbody>{renderGroups(partB, bStart)}</tbody>
+          </table>
+        </>
+      )}
 
-        return (
-          <div key={part.title} style={{ marginBottom: 20, breakInside: 'auto' }}>
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 14, marginBottom: 8, breakAfter: 'avoid' }}>
-              PART {part.title} — ({formatPartMarks(part.qs, part.defaultFormula)} marks)
-            </div>
-            <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid black' }}>
-              <thead>
-                <tr>
-                  <th style={{ border: '1px solid black', padding: 4, width: 40, fontSize: 13 }}>Q.No</th>
-                  <th style={{ border: '1px solid black', padding: 4, fontSize: 13 }}>Questions</th>
-                  <th style={{ border: '1px solid black', padding: 4, width: 50, fontSize: 13 }}>COs</th>
-                  <th style={{ border: '1px solid black', padding: 4, width: 70, fontSize: 13 }}>RBT Level</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((grp, gIdx) => {
-                  const qIdx = part.startIndex + gIdx;
-                  return (
-                    <React.Fragment key={gIdx}>
-                      {/* Side A */}
-                      {grp.a && (
-                        <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 14, verticalAlign: 'top' }}>
-                            {qIdx}{grp.b ? 'a' : ''}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 14, verticalAlign: 'top' }}>
-                            <div className="qp-question-text" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                              <QuestionDisplay stem={grp.a.stem} options={grp.a.options} fallbackText={grp.a.text} showAnswer={false} />
-                              {grp.a.diagramSpec && (
-                                <div className="diagram-card-wrapper mt-2">
-                                  <DiagramRenderer type={grp.a.diagramSpec.type || grp.a.diagramType || 'unknown'} subtype={grp.a.diagramSpec.subtype} spec={grp.a.diagramSpec} width={400} height={250} />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                            {grp.a.meta?.co || '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                            {grp.a.meta?.rbt || '-'}
-                          </td>
-                        </tr>
-                      )}
+      {/* ── Part C ── */}
+      {partC.length > 0 && (
+        <>
+          {partHeading(statsC.label)}
+          <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
+            <tbody>{renderGroups(partC, cStart)}</tbody>
+          </table>
+        </>
+      )}
 
-                      {/* OR Divider */}
-                      {grp.b && (
-                        <tr>
-                          <td colSpan={4} style={{ textAlign: 'center', fontWeight: 'bold', border: '1px solid black', padding: 4, fontSize: 13, backgroundColor: '#f9f9f9' }}>
-                            OR
-                          </td>
-                        </tr>
-                      )}
+      {/* ── Footer: Bloom legend, signatures, form code, outcomes ── */}
+      <div style={{ marginTop: 22, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+        <div style={{ fontSize: 10, fontWeight: 'bold' }}>Level: Revised Bloom’s Taxonomy - Level No: 1-6</div>
+        <div style={{ fontSize: 10, marginTop: 2 }}>
+          {Object.entries(RBT_LABELS)
+            .map(([k, v]) => `Level ${k.slice(1)}: ${v}`)
+            .join('   ')}
+        </div>
 
-                      {/* Side B */}
-                      {grp.b && (
-                        <tr style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 14, verticalAlign: 'top' }}>
-                            {qIdx}b
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', fontSize: 14, verticalAlign: 'top' }}>
-                            <div className="qp-question-text" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
-                              <QuestionDisplay stem={grp.b.stem} options={grp.b.options} fallbackText={grp.b.text} showAnswer={false} />
-                              {grp.b.diagramSpec && (
-                                <div className="diagram-card-wrapper mt-2">
-                                  <DiagramRenderer type={grp.b.diagramSpec.type || grp.b.diagramType || 'unknown'} subtype={grp.b.diagramSpec.subtype} spec={grp.b.diagramSpec} width={400} height={250} />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                            {grp.b.meta?.co || '-'}
-                          </td>
-                          <td style={{ border: '1px solid black', padding: '4px 8px', textAlign: 'center', fontSize: 12, verticalAlign: 'top' }}>
-                            {grp.b.meta?.rbt || '-'}
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-      })}
-
-      {/* QP Summary */}
-      {(usedRbts.length > 0 || usedCos.length > 0) && (
-        <div style={{
-          marginTop: 28,
-          border: '1px solid black',
-          padding: '12px 16px',
-          pageBreakInside: 'avoid',
-          breakInside: 'avoid',
-        }}>
-          <div style={{
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: 44,
+            fontSize: 11,
             fontWeight: 'bold',
-            fontSize: 13,
-            textAlign: 'center',
-            borderBottom: '1px solid black',
-            paddingBottom: 6,
-            marginBottom: 10,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-          }}>
-            Question Paper Summary
-          </div>
-
-          {usedRbts.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <span style={{ fontWeight: 'bold', fontSize: 12 }}>RBT Levels Covered: </span>
-              <span style={{ fontSize: 12 }}>
-                {usedRbts
-                  .map(rbt => `${rbt}${RBT_LABELS[rbt as string] ? ` – ${RBT_LABELS[rbt as string]}` : ''}`)
-                  .join('  |  ')}
-              </span>
-            </div>
-          )}
-
-          {usedCos.length > 0 && (
-            <div>
-              <span style={{ fontWeight: 'bold', fontSize: 12 }}>Course Outcomes Covered: </span>
-              <span style={{ fontSize: 12 }}>{usedCos.join('  |  ')}</span>
-            </div>
-          )}
+            padding: '0 40px',
+          }}
+        >
+          <span>Course Handler</span>
+          <span>Program Coordinator</span>
+          <span>{hodLabel}</span>
         </div>
-      )}
+
+        {formCode && (
+          <div style={{ textAlign: 'right', fontSize: 11, marginTop: 16, color: '#333' }}>
+            {formCode}
+          </div>
+        )}
+
+        {outcomes.length > 0 && (
+          <div style={{ marginTop: 14, fontSize: 11 }}>
+            <div style={{ fontWeight: 'bold' }}>OUTCOMES: At the end of the course the students would be able to</div>
+            {outcomes.map((o) => (
+              <div key={o.code}>
+                <b>{o.code}</b>&nbsp;&nbsp;{o.description}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

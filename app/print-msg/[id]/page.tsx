@@ -102,6 +102,11 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
         examDate: new Date(),
         durationMinutes: ['CAT1', 'CAT2', 'CAT3'].includes(chat.examType || examType) ? 90 : 180,
         totalMarks: calculatedMarks || (['CAT1', 'CAT2', 'CAT3'].includes(chat.examType || examType) ? 50 : 100),
+        questionDistribution: chat.questionDistribution || {
+          partA: { count: 5, marks: 1 },
+          partB: { count: 1, marks: 15 },
+          partC: { count: 1, marks: 30 },
+        },
       };
 
       if (['CAT1', 'CAT2', 'CAT3'].includes(mockPaper.examType)) {

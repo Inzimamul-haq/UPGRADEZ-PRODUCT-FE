@@ -32,12 +32,12 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   return (
     <div className={`qp-question-display space-y-2 ${className}`}>
       {stem && (
-        <div className="qp-question-stem">
+        <div className="qp-question-stem font-bold">
           <MathMarkdown>{stem}</MathMarkdown>
         </div>
       )}
 
-      <div className="qp-options-list space-y-1 pl-3 text-sm">
+      <div className="qp-options-list flex flex-wrap items-center gap-x-8 gap-y-1.5 pl-2 text-[13px] font-normal">
         {options.map((opt, idx) => {
           const letter = optionLetters[idx] || String.fromCharCode(65 + idx);
           const isCorrect = showAnswer && correctIndex === idx;
@@ -45,12 +45,12 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
           return (
             <div
               key={idx}
-              className={`flex items-start gap-2 ${
+              className={`inline-flex items-center gap-1.5 ${
                 isCorrect ? 'font-semibold text-emerald-600 dark:text-emerald-400' : ''
               }`}
             >
-              <span className="font-medium shrink-0">{letter})</span>
-              <div className="flex-1">
+              <span className="font-semibold shrink-0">{letter})</span>
+              <div className="inline [&_p]:inline font-normal">
                 <MathMarkdown>{opt}</MathMarkdown>
               </div>
             </div>
