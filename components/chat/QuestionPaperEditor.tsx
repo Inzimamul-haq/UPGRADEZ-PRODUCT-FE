@@ -16,9 +16,10 @@ interface QuestionPaperEditorProps {
 interface EditableQuestion {
   id: string;
   qNo: number;
+  choice?: 'A' | 'B';
   text: string;
   marks: number;
-  meta: { co: string; rbt: string; po?: string; part?: string };
+  meta: { co: string; rbt: string; po?: string; part?: string; choice?: string };
   diagramSpec?: any;
   diagramType?: string;
   selected?: boolean;
@@ -54,24 +55,39 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
 
   useEffect(() => {
     const parsedQuestions: EditableQuestion[] = [];
-    const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
+    const questionRegex = /^\s*(\d+)\.\s*(?:\(([aAbB])\)\s*)?([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
 
     let match;
     while ((match = questionRegex.exec(initialContent)) !== null) {
       const qNo = parseInt(match[1], 10);
-      let body = match[2];
-      const metaStr = match[3];
+      const rawChoiceLabel = match[2];
+      let body = match[3];
+      const metaStr = match[4];
 
-      let meta = { co: "", rbt: "", po: "", part: "" };
+      let meta: { co: string; rbt: string; po: string; part: string; choice?: string } = { co: "", rbt: "", po: "", part: "" };
       try {
         const parsedMeta = JSON.parse(metaStr);
         meta = {
           co: parsedMeta.co || parsedMeta.CO || "",
           rbt: parsedMeta.rbt || parsedMeta.RBT || "",
           po: parsedMeta.po || parsedMeta.PO || "",
-          part: parsedMeta.part || parsedMeta.Part || ""
+          part: parsedMeta.part || parsedMeta.Part || "",
+          choice: parsedMeta.choice || parsedMeta.Choice || undefined,
         };
       } catch (e) { }
+
+      let choice: 'A' | 'B' | undefined = undefined;
+      if (rawChoiceLabel) {
+        const ch = rawChoiceLabel.toUpperCase();
+        if (ch === 'A' || ch === 'B') choice = ch;
+      } else if (meta.choice) {
+        const ch = meta.choice.toUpperCase();
+        if (ch === 'A' || ch === 'B') choice = ch;
+      }
+
+      // Strip accidental leading (a)/(b) from body
+      body = body.replace(/^\s*\(([aAbB])\)\s*/, '');
+
 
       if (!meta.part && match) {
         const contentBefore = initialContent.substring(0, match.index);
@@ -105,6 +121,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
       parsedQuestions.push({
         id: Math.random().toString(36).substring(7),
         qNo,
+        choice,
         text,
         marks,
         meta,
@@ -140,7 +157,16 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   };
 
   const renumberQuestions = (qs: EditableQuestion[]) => {
-    return qs.map((q, idx) => ({ ...q, qNo: idx + 1 }));
+    let currentQNo = 0;
+    return qs.map((q, idx) => {
+      // If this question is choice 'B' and follows choice 'A', it shares the same qNo
+      const prev = idx > 0 ? qs[idx - 1] : null;
+      if (q.choice === 'B' && prev && prev.choice === 'A') {
+        return { ...q, qNo: currentQNo };
+      }
+      currentQNo += 1;
+      return { ...q, qNo: currentQNo };
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -212,14 +238,17 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
     }
 
     const serialized = questions.map(q => {
-      let block = `${q.qNo}. ${q.text.trim()}`;
+      const label = q.choice ? `${q.qNo}. (${q.choice.toLowerCase()})` : `${q.qNo}.`;
+      let block = `${label} ${q.text.trim()}`;
       if (q.marks > 0) {
         block += ` (${q.marks} Marks)`;
       }
       if (q.diagramSpec) {
         block += `\n[[${q.diagramType || 'diagram'}:${JSON.stringify(q.diagramSpec)}]]`;
       }
-      block += `\n[[meta:${JSON.stringify(q.meta)}]]`;
+      // Ensure choice is preserved in meta
+      const metaToSave = q.choice ? { ...q.meta, choice: q.choice } : q.meta;
+      block += `\n[[meta:${JSON.stringify(metaToSave)}]]`;
       return block;
     }).join('\n\n');
 
@@ -266,28 +295,77 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
   const partC = questions.filter(q => getPartLetter(q) === 'C');
   const otherParts = questions.filter(q => getPartLetter(q) === 'other');
 
-  const renderQuestion = (q: EditableQuestion) => (
-    <div
-      id={`question-${q.id}`}
-      key={q.id}
-      ref={(el) => {
-        if (el) questionRefs.current.set(q.id, el);
-        else questionRefs.current.delete(q.id);
-      }}
-      className={`flex flex-col mt-4 py-6  border-[#2C2C2A] last:border-b-0 transition-colors bg-[#2C2C2A]/40 rounded-lg -mx-4 px-4 ${q.selected ? 'bg-[#1C1C1B]/80 ring-1 ring-amber-500/30' : ''}`}
-    >
-      <div className="flex flex-col gap-4">
+  const groupQuestions = (arr: EditableQuestion[]) => {
+    const groups: { [key: number]: EditableQuestion[] } = {};
+    arr.forEach(q => {
+      if (!groups[q.qNo]) groups[q.qNo] = [];
+      groups[q.qNo].push(q);
+    });
+    // Sort each group so choice A appears before choice B
+    Object.values(groups).forEach(g => {
+      if (g.length > 1) {
+        g.sort((a, b) => {
+          if (a.choice === 'A' && b.choice === 'B') return -1;
+          if (a.choice === 'B' && b.choice === 'A') return 1;
+          return 0;
+        });
+      }
+    });
+    return Object.values(groups);
+  };
 
-        {/* Top Row: Checkbox, Question Number and Text Area */}
-        <div className="flex gap-3 items-start">
-          <input
-            type="checkbox"
-            checked={!!q.selected}
-            onChange={() => handleToggleSelection(q.id)}
-            className="mt-3 cursor-pointer w-4 h-4 rounded border-[#3A3A38] bg-[#161615] text-amber-500 focus:ring-amber-500/50"
-          />
-          <span className="text-[#ECECEA] font-medium text-[14.5px] mt-2.5 flex-shrink-0 min-w-[10px]">{q.qNo}.</span>
-          <div className="w-full">
+  const renderQuestionGroup = (group: EditableQuestion[], groupIdx: number) => {
+    const isChoicePair =
+      group.length === 2 &&
+      group[0].choice === 'A' &&
+      group[1].choice === 'B' &&
+      group[0].qNo === group[1].qNo;
+
+    return (
+      <div key={groupIdx} className="flex flex-col">
+        {group.map((q, qIdx) => (
+          <React.Fragment key={q.id}>
+            {renderQuestion(q, isChoicePair)}
+            {qIdx < group.length - 1 && isChoicePair && (
+              <div className="flex items-center gap-3 py-1 px-1 my-3">
+                <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+                <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
+                <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
+
+  const renderQuestion = (q: EditableQuestion, isChoicePair?: boolean) => {
+    const qNoLabel = isChoicePair
+      ? (q.choice === 'A' ? `${q.qNo}. (a)` : `(b)`)
+      : (q.choice ? `${q.qNo}. (${q.choice.toLowerCase()})` : `${q.qNo}.`);
+
+    return (
+      <div
+        id={`question-${q.id}`}
+        key={q.id}
+        ref={(el) => {
+          if (el) questionRefs.current.set(q.id, el);
+          else questionRefs.current.delete(q.id);
+        }}
+        className={`flex flex-col mt-4 py-6 border-[#2C2C2A] last:border-b-0 transition-colors bg-[#2C2C2A]/40 rounded-lg -mx-4 px-4 ${q.selected ? 'bg-[#1C1C1B]/80 ring-1 ring-amber-500/30' : ''}`}
+      >
+        <div className="flex flex-col gap-4">
+
+          {/* Top Row: Checkbox, Question Number and Text Area */}
+          <div className="flex gap-3 items-start">
+            <input
+              type="checkbox"
+              checked={!!q.selected}
+              onChange={() => handleToggleSelection(q.id)}
+              className="mt-3 cursor-pointer w-4 h-4 rounded border-[#3A3A38] bg-[#161615] text-amber-500 focus:ring-amber-500/50"
+            />
+            <span className="text-[#ECECEA] font-medium text-[14.5px] mt-2.5 flex-shrink-0 min-w-[20px]">{qNoLabel}</span>
+            <div className="w-full">
             {/* Edit / Preview tab header */}
             <div className="flex gap-0 mb-1.5 border-b border-[#3A3A38]">
               {(['Edit','Preview'] as const).map(tab => {
@@ -445,8 +523,9 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
           </div> */}
         </div>
 
-    </div>
+      </div>
   );
+};
 
   return (
     <div className="flex flex-col relative bg-[#1C1C1B]/50 rounded-xl border border-[#3A3A38] w-[90vw] sm:w-[500px] md:w-[700px] lg:w-[850px] max-w-full my-4">
@@ -461,7 +540,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
                 <Plus size={14} /> Add Question to Part A
               </button>
             </div>
-            <div className="flex flex-col">{partA.map(renderQuestion)}</div>
+            <div className="flex flex-col">{groupQuestions(partA).map(renderQuestionGroup)}</div>
           </div>
         )}
         {partB.length > 0 && (
@@ -472,7 +551,7 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
                 <Plus size={14} /> Add Question to Part B
               </button>
             </div>
-            <div className="flex flex-col">{partB.map(renderQuestion)}</div>
+            <div className="flex flex-col">{groupQuestions(partB).map(renderQuestionGroup)}</div>
           </div>
         )}
         {partC.length > 0 && (
@@ -483,13 +562,13 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
                 <Plus size={14} /> Add Question to Part C
               </button>
             </div>
-            <div className="flex flex-col">{partC.map(renderQuestion)}</div>
+            <div className="flex flex-col">{groupQuestions(partC).map(renderQuestionGroup)}</div>
           </div>
         )}
         {otherParts.length > 0 && (
           <div className="mb-10">
             <h3 className="text-center text-[16px] font-semibold text-[#ECECEA] mb-4 tracking-widest uppercase">Other Questions</h3>
-            <div className="flex flex-col">{otherParts.map(renderQuestion)}</div>
+            <div className="flex flex-col">{groupQuestions(otherParts).map(renderQuestionGroup)}</div>
           </div>
         )}
       </div>
@@ -577,6 +656,6 @@ export function QuestionPaperEditor({ initialContent, onCancel, onSave, isSaving
         />
       )}
 
-    </div>
-  );
+    </div>  
+  );    
 }

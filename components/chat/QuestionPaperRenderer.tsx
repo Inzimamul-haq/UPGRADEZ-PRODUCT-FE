@@ -10,12 +10,13 @@ interface QuestionPaperRendererProps {
 }
 
 interface ParsedQuestion {
-  qNo: number;  
+  qNo: number;
+  choice?: 'A' | 'B';
   text: string;
   stem?: string;
   options?: string[];
   marks: number;
-  meta: { co: string; rbt: string; po?: string; part?: string; correctIndex?: number };
+  meta: { co: string; rbt: string; po?: string; part?: string; correctIndex?: number; choice?: string };
   diagramSpec?: any;
   diagramType?: string;
   originalBlock: string;
@@ -24,15 +25,16 @@ interface ParsedQuestion {
 export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
   const questions: ParsedQuestion[] = [];
 
-  const questionRegex = /^\s*(\d+)\.\s+([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
+  const questionRegex = /^\s*(\d+)\.\s*(?:\(([aAbB])\)\s*)?([\s\S]*?)\[\[meta:(\{.*?\})\]\]/gmi;
 
   let match;
   while ((match = questionRegex.exec(content)) !== null) {
     const qNo = parseInt(match[1], 10);
-    let body = match[2];
-    const metaStr = match[3];
+    const rawChoiceLabel = match[2];
+    let body = match[3];
+    const metaStr = match[4];
 
-    let meta: { co: string; rbt: string; po?: string; part?: string; correctIndex?: number } = { co: "", rbt: "", po: "", part: "" };
+    let meta: { co: string; rbt: string; po?: string; part?: string; correctIndex?: number; choice?: string } = { co: "", rbt: "", po: "", part: "" };
     try {
       const parsedMeta = JSON.parse(metaStr);
       meta = {
@@ -41,8 +43,21 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
         po: parsedMeta.po || parsedMeta.PO || "",
         part: parsedMeta.part || parsedMeta.Part || "",
         correctIndex: typeof parsedMeta.correctIndex === 'number' ? parsedMeta.correctIndex : undefined,
+        choice: parsedMeta.choice || parsedMeta.Choice || undefined,
       };
     } catch (e) { }
+
+    let choice: 'A' | 'B' | undefined = undefined;
+    if (rawChoiceLabel) {
+      const ch = rawChoiceLabel.toUpperCase();
+      if (ch === 'A' || ch === 'B') choice = ch;
+    } else if (meta.choice) {
+      const ch = meta.choice.toUpperCase();
+      if (ch === 'A' || ch === 'B') choice = ch;
+    }
+
+    // Strip any accidental leading (a) or (b) from the body text
+    body = body.replace(/^\s*\(([aAbB])\)\s*/, '');
 
     if (!meta.part && match) {
       const contentBefore = content.substring(0, match.index);
@@ -71,11 +86,8 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
       body = body.substring(0, diagMatch.startIndex) + body.substring(diagMatch.endIndex);
     }
 
-    const text = body.trim();
-    const { stem, options } = parseStemAndOptions(text);
-
-    // Fallback or override correctIndex from plain Answer: line if present
-    const answerLineMatch = text.match(/(?:^|\n)\s*(?:\*\*)?Answer:\s*(?:\*\*)?\s*([A-Da-d0-9\)])[^\n]*/i);
+    // Strip explicit Answer: line from body so it doesn't get concatenated into options
+    const answerLineMatch = body.match(/(?:^|\n)\s*(?:\*\*)?Answer:\s*(?:\*\*)?\s*([A-Da-d0-9\)])[^\n]*/i);
     if (answerLineMatch) {
       const rawLetter = answerLineMatch[1].replace(/[\)\.]/g, '').toUpperCase();
       const charCode = rawLetter.charCodeAt(0);
@@ -89,10 +101,15 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
       if (resolvedIndex !== undefined) {
         meta.correctIndex = resolvedIndex;
       }
+      body = body.replace(/(?:^|\n)\s*(?:\*\*)?Answer:\s*([^\n]*)/gi, '');
     }
+
+    const text = body.trim();
+    const { stem, options } = parseStemAndOptions(text);
 
     questions.push({
       qNo,
+      choice,
       text,
       stem,
       options: options.length > 0 ? options : undefined,
@@ -141,59 +158,81 @@ export function QuestionPaperRenderer({ content }: QuestionPaperRendererProps) {
       if (!groups[q.qNo]) groups[q.qNo] = [];
       groups[q.qNo].push(q);
     });
+    // Sort each group so choice A appears before choice B
+    Object.values(groups).forEach(g => {
+      if (g.length > 1) {
+        g.sort((a, b) => {
+          if (a.choice === 'A' && b.choice === 'B') return -1;
+          if (a.choice === 'B' && b.choice === 'A') return 1;
+          return 0;
+        });
+      }
+    });
     return Object.values(groups);
   };
 
-  const renderQuestionGroup = (group: ParsedQuestion[], groupIdx: number) => (
-    <div key={groupIdx} className="flex flex-col py-3 border-b border-[#2E2E2C] last:border-b-0 break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-      {group.map((q, qIdx) => (
-        <React.Fragment key={qIdx}>
-          <div className="flex justify-between items-start gap-4">
-            <div className="flex-1 min-w-0 flex gap-2">
-              <span className="text-[#ECECEA] font-medium text-[14.5px] mt-[1.5px]">{q.qNo}.</span>
-              <div className="text-[#ECECEA] text-[14.5px] qp-question-text break-words w-full">
-                <QuestionDisplay
-                  stem={q.stem}
-                  options={q.options}
-                  fallbackText={q.text}
-                  showAnswer={true}
-                  correctIndex={q.meta.correctIndex}
-                />
+  const renderQuestionGroup = (group: ParsedQuestion[], groupIdx: number) => {
+    const isChoicePair =
+      group.length === 2 &&
+      group[0].choice === 'A' &&
+      group[1].choice === 'B' &&
+      group[0].qNo === group[1].qNo;
 
-                {q.diagramSpec && (() => {
-                  const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
-                  const diagSubtype = q.diagramSpec.subtype || '';
-                  return (
-                    <div className="mt-5 mb-2 flex justify-start rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] max-w-fit p-4 shadow-sm diagram-card-wrapper">
-                      <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={450} height={250} />
-                    </div>
-                  );
-                })()}
+    return (
+      <div key={groupIdx} className="flex flex-col py-3 border-b border-[#2E2E2C] last:border-b-0 break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+        {group.map((q, qIdx) => (
+          <React.Fragment key={qIdx}>
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1 min-w-0 flex gap-2">
+                <span className="text-[#ECECEA] font-medium text-[14.5px] mt-[1.5px] shrink-0">
+                  {isChoicePair
+                    ? (q.choice === 'A' ? `${q.qNo}. (a)` : `(b)`)
+                    : (q.choice ? `${q.qNo}. (${q.choice.toLowerCase()})` : `${q.qNo}.`)}
+                </span>
+                <div className="text-[#ECECEA] text-[14.5px] qp-question-text break-words w-full">
+                  <QuestionDisplay
+                    stem={q.stem}
+                    options={q.options}
+                    fallbackText={q.text}
+                    showAnswer={true}
+                    correctIndex={q.meta.correctIndex}
+                  />
+
+                  {q.diagramSpec && (() => {
+                    const diagType = q.diagramSpec.type || q.diagramSpec.format || q.diagramType || 'unknown';
+                    const diagSubtype = q.diagramSpec.subtype || '';
+                    return (
+                      <div className="mt-5 mb-2 flex justify-start rounded-lg overflow-hidden border border-[#3A3A38] bg-[#1C1C1B] max-w-fit p-4 shadow-sm diagram-card-wrapper">
+                        <DiagramRenderer type={diagType} subtype={diagSubtype} spec={q.diagramSpec} width={450} height={250} />
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Right side: Clean alignment for marks & meta */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-1.5 text-[12px] text-[#A1A19A] tracking-wider whitespace-nowrap mt-1">
+                <span className="font-medium text-[#ECECEA]">({q.marks} Marks)</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase mt-0.5 opacity-80">
+                  {q.meta.co && <span>{q.meta.co}</span>}
+                  {q.meta.co && q.meta.rbt && <span>•</span>}
+                  {q.meta.rbt && <span>{q.meta.rbt}</span>}
+                </div>
               </div>
             </div>
 
-            {/* Right side: Clean alignment for marks & meta */}
-            <div className="flex-shrink-0 flex flex-col items-end gap-1.5 text-[12px] text-[#A1A19A] tracking-wider whitespace-nowrap mt-1">
-              <span className="font-medium text-[#ECECEA]">({q.marks} Marks)</span>
-              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase mt-0.5 opacity-80">
-                {q.meta.co && <span>{q.meta.co}</span>}
-                {q.meta.co && q.meta.rbt && <span>•</span>}
-                {q.meta.rbt && <span>{q.meta.rbt}</span>}
+            {qIdx < group.length - 1 && isChoicePair && (
+              <div className="flex items-center gap-3 py-1 px-1 my-4">
+                <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
+                <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
+                <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
               </div>
-            </div>
-          </div>
-
-          {qIdx < group.length - 1 && (
-            <div className="flex items-center gap-3 py-1 px-1 my-4">
-              <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
-              <span className="text-[11px] font-semibold text-[#8C8C8A] tracking-widest">OR</span>
-              <div className="flex-1 border-t border-dashed border-[#3A3A38]" />
-            </div>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-none bg-transparent pt-2">

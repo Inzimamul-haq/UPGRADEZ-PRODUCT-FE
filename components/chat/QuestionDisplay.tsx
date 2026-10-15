@@ -58,11 +58,6 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         })}
       </div>
 
-      {showAnswer && typeof correctIndex === 'number' && options[correctIndex] !== undefined && (
-        <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400 pt-1">
-          Answer: {optionLetters[correctIndex] || String.fromCharCode(65 + correctIndex)}) {options[correctIndex]}
-        </div>
-      )}
     </div>
   );
 };
