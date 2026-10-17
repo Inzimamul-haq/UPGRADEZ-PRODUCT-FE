@@ -37,7 +37,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         </div>
       )}
 
-      <div className="qp-options-list flex flex-wrap items-center gap-x-8 gap-y-1.5 pl-2 text-[13px] font-normal">
+      <div className="qp-options-list flex flex-wrap items-center gap-x-8 gap-y-1.5 pl-2 text-[13.5px] font-normal">
         {options.map((opt, idx) => {
           const letter = optionLetters[idx] || String.fromCharCode(65 + idx);
           const isCorrect = showAnswer && correctIndex === idx;

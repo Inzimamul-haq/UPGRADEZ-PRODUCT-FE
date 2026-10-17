@@ -95,7 +95,7 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
         @media print {
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 22mm 10mm 14mm 10mm;
           }
 
           html, body {
@@ -125,6 +125,10 @@ export default function PrintQP({ params }: { params: Promise<{ id: string }> })
 
           .math-md p + p {
             margin-top: 4px !important;
+          }
+
+          thead {
+            display: table-row-group !important;
           }
 
           tr {

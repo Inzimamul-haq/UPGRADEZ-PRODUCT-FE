@@ -8,11 +8,10 @@ import { normalizeDelimiters, repairMathSegments } from '@/lib/mathFormat';
 
 const KATEX_OPTS = {
   throwOnError: false,
-  strict: false as const,           // suppress all strict warnings (old data)
+  strict: false as const,           
   errorColor: '#f87171',
   trust: false,
   macros: {
-    // Common shorthand sets
     '\\R':    '\\mathbb{R}',
     '\\N':    '\\mathbb{N}',
     '\\Z':    '\\mathbb{Z}',

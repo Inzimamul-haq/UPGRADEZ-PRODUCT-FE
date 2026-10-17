@@ -51,34 +51,34 @@ export function UniversityLayout({ paper, questions }: any) {
             Logo
           </div>
         )}
-        <div style={{ fontSize: 22, fontWeight: 'bold', textTransform: 'uppercase', marginTop: 10 }}>{collegeName}</div>
-        <div style={{ fontSize: 16, fontWeight: 'bold', marginTop: 12 }}>{examType} DEGREE EXAMINATIONS, {academicYear}</div>
-        <div style={{ fontSize: 15, marginTop: 12 }}>Department Of {branchName}</div>
-        <div style={{ fontSize: 17, fontWeight: 'bold', marginTop: 6 }}>{subjectCode} - {subjectName}</div>
-        <div style={{ fontSize: 14, marginTop: 14 }}>(Regulations 2021)</div>
+        <div style={{ fontSize: 24, fontWeight: 'bold', textTransform: 'uppercase', marginTop: 10 }}>{collegeName}</div>
+        <div style={{ fontSize: 17.5, fontWeight: 'bold', marginTop: 12 }}>{examType} DEGREE EXAMINATIONS, {academicYear}</div>
+        <div style={{ fontSize: 16.5, marginTop: 12 }}>Department Of {branchName}</div>
+        <div style={{ fontSize: 18.5, fontWeight: 'bold', marginTop: 6 }}>{subjectCode} - {subjectName}</div>
+        <div style={{ fontSize: 15, marginTop: 14 }}>(Regulations 2021)</div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 26, fontWeight: 'bold', fontSize: 15 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 26, fontWeight: 'bold', fontSize: 16.5 }}>
           <div>Time : {duration}</div>
           <div>Maximum : {maxMarks} Marks</div>
         </div>
 
-        <div style={{ marginTop: 34, fontWeight: 'bold', fontSize: 16, textDecoration: 'underline' }}>Answer ALL questions.</div>
+        <div style={{ marginTop: 34, fontWeight: 'bold', fontSize: 17.5, textDecoration: 'underline' }}>Answer ALL questions.</div>
       </div>
 
       {/* Part A */}
       {partA.length > 0 && (
         <div style={{ marginBottom: 20, breakInside: 'auto' }}>
-          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24, breakAfter: 'avoid' }}>PART A — ({partA.length} x 2 = {partA.length * 2} marks)</div>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 17.5, marginBottom: 24, breakAfter: 'avoid' }}>PART A — ({partA.length} x 2 = {partA.length * 2} marks)</div>
           <div style={{ padding: '0 24px' }}>
             {partA.map((q: any, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{i + 1}.</span>
-                  <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                  <span style={{ fontSize: 17, fontWeight: 500, paddingTop: 2 }}>{i + 1}.</span>
+                  <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word', fontSize: 17, lineHeight: 1.5 }}>
                     <QuestionDisplay stem={q.stem} options={q.options} fallbackText={q.text} showAnswer={false} />
                   </div>
                 </div>
-                <div style={{ fontSize: 16, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({q.marks || 2})</div>
+                <div style={{ fontSize: 17, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({q.marks || 2})</div>
               </div>
             ))}
           </div>
@@ -96,7 +96,7 @@ export function UniversityLayout({ paper, questions }: any) {
 
         return (
           <div key={part.title} style={{ marginBottom: 20, breakInside: 'auto' }}>
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 24, breakAfter: 'avoid' }}>
+            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 17.5, marginBottom: 24, breakAfter: 'avoid' }}>
               PART {part.title} — ({groups.length} x {marksEach} = {groups.length * marksEach} marks)
             </div>
             <div style={{ padding: '0 24px' }}>
@@ -108,8 +108,8 @@ export function UniversityLayout({ paper, questions }: any) {
                     {grp.a && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>{qIdx}. {grp.b ? 'a)' : ''}</span>
-                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          <span style={{ fontSize: 17, fontWeight: 500, paddingTop: 2 }}>{qIdx}. {grp.b ? 'a)' : ''}</span>
+                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word', fontSize: 17, lineHeight: 1.5 }}>
                             <QuestionDisplay stem={grp.a.stem} options={grp.a.options} fallbackText={grp.a.text} showAnswer={false} />
                             {grp.a.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
@@ -118,21 +118,21 @@ export function UniversityLayout({ paper, questions }: any) {
                             )}
                           </div>
                         </div>
-                        <div style={{ fontSize: 16, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({grp.a.marks || marksEach})</div>
+                        <div style={{ fontSize: 17, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({grp.a.marks || marksEach})</div>
                       </div>
                     )}
 
                     {/* OR divider */}
                     {grp.b && (
-                      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 15, margin: '12px 0' }}>Or</div>
+                      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, margin: '12px 0' }}>Or</div>
                     )}
 
                     {/* Side B */}
                     {grp.b && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 16, fontWeight: 500, paddingTop: 2 }}>b)</span>
-                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          <span style={{ fontSize: 17, fontWeight: 500, paddingTop: 2 }}>b)</span>
+                          <div className="qp-question-text" style={{ flex: 1, wordBreak: 'normal', overflowWrap: 'break-word', fontSize: 17, lineHeight: 1.5 }}>
                             <QuestionDisplay stem={grp.b.stem} options={grp.b.options} fallbackText={grp.b.text} showAnswer={false} />
                             {grp.b.diagramSpec && (
                               <div className="diagram-card-wrapper mt-1 flex justify-center" style={{ marginBottom: -10 }}>
@@ -141,7 +141,7 @@ export function UniversityLayout({ paper, questions }: any) {
                             )}
                           </div>
                         </div>
-                        <div style={{ fontSize: 16, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({grp.b.marks || marksEach})</div>
+                        <div style={{ fontSize: 17, marginLeft: 16, fontWeight: 500, paddingTop: 2 }}>({grp.b.marks || marksEach})</div>
                       </div>
                     )}
                   </div>

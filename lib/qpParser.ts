@@ -285,11 +285,16 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
       continue;
     }
 
-    // ── Numbered question line: "11. a) text" or "1. text" ───────────────────
-    // Regex: mandatory closing parenthesis for sub-labels to prevent false matches like "Briefly" -> "B"
-    const numberedMatch = line.match(/^(\d+)\.\s*(?:([ab])\)\s*)?(.+)/i);
+    // ── Numbered question line: "11. (a) text", "11. a) text", or "1. text" ──
+    const numberedMatch = line.match(/^(\d+)\.\s*(?:\(?([ab])\)\s*)?(.+)/i);
     if (numberedMatch) {
+      const questionCandidate = numberedMatch[3].trim();
+      if (/^answer\s+(all|any|the\s+following|either)\b/i.test(questionCandidate) && questionCandidate.length < 50) {
+        continue;
+      }
+
       flushBuffer();
+      const wasAwaitingB = awaitingBSide;
       awaitingBSide = false;
       const subLabelRaw = (numberedMatch[2] || '').toLowerCase();
 
@@ -301,38 +306,35 @@ export function parseQPStructure(rawText: string): StructuredQuestion[] {
         bufferText = numberedMatch[3];
       } else {
         // Part B or C
-        if (subLabelRaw === 'a' || (!subLabelRaw && !awaitingBSide)) {
-          // Start of a new question group
-          partBCGroupCounter++;
+        if (subLabelRaw === 'b' || (wasAwaitingB && !subLabelRaw)) {
           bufferPart = currentPart;
-          bufferGroupIndex = partBCGroupCounter;
-          bufferSubLabel = subLabelRaw || '';
-          bufferText = numberedMatch[3];
-        } else if (subLabelRaw === 'b') {
-          // Inline b) — shares groupIndex with the preceding a)
-          bufferPart = currentPart;
-          bufferGroupIndex = partBCGroupCounter;
+          bufferGroupIndex = lastBSideGroup || partBCGroupCounter;
           bufferSubLabel = 'b';
           bufferText = numberedMatch[3];
-        } else {
-          // No sub-label, standalone
+        } else if (subLabelRaw === 'a' || !subLabelRaw) {
           partBCGroupCounter++;
           bufferPart = currentPart;
           bufferGroupIndex = partBCGroupCounter;
-          bufferSubLabel = '';
+          bufferSubLabel = subLabelRaw; // '' or 'a'
+          bufferText = numberedMatch[3];
+        } else {
+          partBCGroupCounter++;
+          bufferPart = currentPart;
+          bufferGroupIndex = partBCGroupCounter;
+          bufferSubLabel = subLabelRaw;
           bufferText = numberedMatch[3];
         }
       }
       continue;
     }
 
-    // ── Unlabelled "b)" continuation after OR ────────────────────────────────
-    // Matches: "b) text" at the start of a line (no leading number)
-    const bSideMatch = line.match(/^b\)\s*(.+)/i);
+    // ── Unlabelled "(b)" or "b)" continuation after OR ────────────────────────
+    // Matches: "(b) text" or "b) text" at the start of a line (no leading number)
+    const bSideMatch = line.match(/^\(?b\)\s*(.+)/i);
     if (bSideMatch && awaitingBSide) {
       flushBuffer();
       bufferPart = currentPart;
-      bufferGroupIndex = lastBSideGroup;
+      bufferGroupIndex = lastBSideGroup || partBCGroupCounter;
       bufferSubLabel = 'b';
       bufferText = bSideMatch[1];
       awaitingBSide = false;

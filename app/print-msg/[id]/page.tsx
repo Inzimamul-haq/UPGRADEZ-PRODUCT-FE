@@ -130,8 +130,10 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
         body { background: white !important; color: black !important; }
         
         @media print {
+          @page { size: A4; margin: 16mm 10mm 14mm 10mm; }
           html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
           .qp-layout table, .qp-layout th, .qp-layout td { border-color: #bbb !important; }
+          thead { display: table-row-group !important; }
           tr { break-inside: avoid; page-break-inside: avoid; }
           td { overflow: visible !important; }
           .math-md p { margin: 0 !important; }

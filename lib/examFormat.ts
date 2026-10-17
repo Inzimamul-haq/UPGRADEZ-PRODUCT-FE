@@ -115,6 +115,8 @@ export function toDecoded(q: any): DecodedQuestion {
     .replace(/(?:^|\n)\s*(?:\*\*)?Answer:\s*[^\n]*/gi, '')
     .replace(/[\s#*]*Part\s+[A-E]\b[^\n]{0,30}?marks?\.?[\s*]*/gi, '')
     .replace(/^\s*\**OR\**\s*$/gim, '')
+    // Strip leaked instructional noise lines such as "Answer all the questions"
+    .replace(/(?:^|\n)\s*(?:\*{1,2}|_{1,2})?\s*(?:\(?\s*)?Answer\s+(?:all|any|the\s+following|either)[^\n]*?(?:\s*\)?)?(?:\*{1,2}|_{1,2})?\s*(?:\n|$)/gi, '\n')
     // Strip trailing marks only at line boundaries so we never swallow subsequent newlines/options
     .replace(/[\(\[]\s*\d+\s*marks?\s*[\)\]]\s*$/gim, '')
     .trim();

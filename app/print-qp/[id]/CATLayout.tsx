@@ -22,16 +22,16 @@ const TEST_TITLES: Record<string, string> = {
 const BORDER = '1px solid #999';
 const td: React.CSSProperties = {
   border: BORDER,
-  padding: '5px 10px',
-  fontSize: 13,
+  padding: '6px 10px',
+  fontSize: 14,
   verticalAlign: 'top',
-  lineHeight: 1.35,
+  lineHeight: 1.4,
 };
 const tdCenter: React.CSSProperties = {
   ...td,
   textAlign: 'center',
   fontWeight: 'bold',
-  fontSize: 12,
+  fontSize: 13,
 };
 const COL = { no: 50, co: 44, rbt: 56 };
 
@@ -118,6 +118,74 @@ export function CATLayout({ paper, questions }: any) {
   const duration = paper.duration || formatDuration(paper.durationMinutes, '1h 30m');
   const outcomes: { code: string; description: string }[] = paper.subject?.courseOutcomes || [];
 
+  // Extract unique RBT levels actually used in the questions
+  const usedRbts = Array.from(
+    new Set(
+      decoded
+        .map((q: any) => {
+          const raw = (q.meta?.rbt || '').trim().toUpperCase();
+          const m = raw.match(/L?([1-6])/);
+          return m ? `L${m[1]}` : null;
+        })
+        .filter(Boolean) as string[]
+    )
+  ).sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
+
+  const activeRbtEntries = usedRbts.length > 0 ? usedRbts : Object.keys(RBT_LABELS);
+
+  // Extract unique Course Outcomes present in the questions (e.g. CO2, CO3, CO4)
+  const usedCos = Array.from(
+    new Set(
+      decoded
+        .map((q: any) => {
+          const raw = (q.meta?.co || '').toUpperCase().replace(/\s+/g, '');
+          if (!raw) return null;
+          const m = raw.match(/(?:CO)?(\d+)/i);
+          return m ? `CO${m[1]}` : raw;
+        })
+        .filter(Boolean) as string[]
+    )
+  ).sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, '') || '0', 10);
+    const nb = parseInt(b.replace(/\D/g, '') || '0', 10);
+    return na - nb;
+  });
+
+  const tocEntries: any[] = (paper.subject?.tocPlan as any)?.entries || [];
+  const subjectNameOnly = paper.subject?.name || 'the subject';
+
+  const defaultCoDescriptions: Record<string, string> = {
+    CO1: `Understand foundational principles, concepts, and terminologies of ${subjectNameOnly}.`,
+    CO2: `Apply analytical and problem-solving techniques to solve engineering problems in ${subjectNameOnly}.`,
+    CO3: `Analyze, evaluate, and compare various models, algorithms, and designs in ${subjectNameOnly}.`,
+    CO4: `Design and implement optimal solutions for practical real-world problems in ${subjectNameOnly}.`,
+    CO5: `Formulate and evaluate advanced methodologies, frameworks, and implementations in ${subjectNameOnly}.`,
+    CO6: `Create and synthesize comprehensive solutions integrating core concepts of ${subjectNameOnly}.`,
+  };
+
+  const targetCoKeys = usedCos.length > 0 ? usedCos : ['CO1', 'CO2', 'CO3', 'CO4', 'CO5'];
+
+  const displayOutcomes = targetCoKeys.map((coKey) => {
+    const fromSubject = outcomes.find(o => (o.code || '').toUpperCase().replace(/\s+/g, '') === coKey);
+    if (fromSubject && fromSubject.description) {
+      return { code: coKey, description: fromSubject.description };
+    }
+
+    const coNum = parseInt(coKey.replace(/\D/g, '') || '0', 10);
+    const tocEntry = tocEntries.find(e => 
+      e.chapter === coNum || 
+      (Array.isArray(e.co) && e.co.some((c: string) => c.toUpperCase().replace(/\s+/g, '') === coKey))
+    );
+    if (tocEntry && tocEntry.title) {
+      return { code: coKey, description: `Understand, apply, and analyze the principles of ${tocEntry.title}.` };
+    }
+
+    return {
+      code: coKey,
+      description: defaultCoDescriptions[coKey] || `Apply and analyze core principles associated with ${coKey} in ${subjectNameOnly}.`
+    };
+  });
+
   const bStart = partA.length + 1;
   const cStart = partA.length + groupByIndex(partB).length + 1;
 
@@ -144,7 +212,7 @@ export function CATLayout({ paper, questions }: any) {
       style={{
         textAlign: 'center',
         fontWeight: 'bold',
-        fontSize: 12,
+        fontSize: 13.5,
         margin: '14px 0 6px',
         breakAfter: 'avoid',
       }}
@@ -192,14 +260,14 @@ export function CATLayout({ paper, questions }: any) {
 
             <td style={{ border: BORDER, padding: 0, textAlign: 'center', verticalAlign: 'top' }}>
               <div style={{ padding: '6px 10px' }}>
-                <div style={{ fontSize: 13 }}>{collegeName}</div>
-                <div style={{ fontSize: 13 }}>Department of {deptName}</div>
-                <div style={{ fontSize: 13, fontWeight: 'bold', marginTop: 2 }}>{testTitle}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 'bold' }}>{collegeName}</div>
+                <div style={{ fontSize: 13.5, marginTop: 2 }}>Department of {deptName}</div>
+                <div style={{ fontSize: 14, fontWeight: 'bold', marginTop: 3 }}>{testTitle}</div>
               </div>
               <div style={{ borderTop: BORDER, padding: '6px 10px' }}>
-                <div style={{ fontSize: 13, fontWeight: 'bold' }}>{subjectLine}</div>
-                <div style={{ fontSize: 12, marginTop: 3 }}>Degree/Branch: {degreeBranch}</div>
-                <div style={{ fontSize: 12, marginTop: 3 }}>Academic year {academicYear}</div>
+                <div style={{ fontSize: 14, fontWeight: 'bold' }}>{subjectLine}</div>
+                <div style={{ fontSize: 13, marginTop: 3 }}>Degree/Branch: {degreeBranch}</div>
+                <div style={{ fontSize: 13, marginTop: 3 }}>Academic year {academicYear}</div>
               </div>
             </td>
 
@@ -214,7 +282,7 @@ export function CATLayout({ paper, questions }: any) {
                   alt=""
                 />
               </div>
-              <div style={{ borderTop: BORDER, padding: '6px 10px', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ borderTop: BORDER, padding: '6px 10px', fontSize: 13, lineHeight: 1.5 }}>
                 <div>Date: {examDate}</div>
                 <div>Duration: {duration}</div>
                 <div>
@@ -231,31 +299,30 @@ export function CATLayout({ paper, questions }: any) {
         <>
           {partHeading(statsA.label)}
           <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
-            <thead>
+            <tbody>
+              {/* Header row placed in tbody so it NEVER repeats across page breaks */}
               <tr>
-                <th style={{ ...tdCenter, width: COL.no, fontSize: 12, textAlign: 'left' }}>
+                <td style={{ ...tdCenter, width: COL.no, fontSize: 13, textAlign: 'left' }}>
                   Q.<br />No
-                </th>
-                <th
+                </td>
+                <td
                   style={{
                     ...td,
                     textAlign: 'center',
                     fontStyle: 'italic',
                     fontWeight: 'bold',
-                    fontSize: 22,
-                    padding: '12px 10px',
+                    fontSize: 20,
+                    padding: '10px',
                     verticalAlign: 'middle',
                   }}
                 >
                   ANSWER ALL QUESTIONS
-                </th>
-                <th style={{ ...tdCenter, width: COL.co, fontSize: 12, verticalAlign: 'bottom' }}>CO</th>
-                <th style={{ ...tdCenter, width: COL.rbt, fontSize: 11 }}>
+                </td>
+                <td style={{ ...tdCenter, width: COL.co, fontSize: 13, verticalAlign: 'bottom' }}>CO</td>
+                <td style={{ ...tdCenter, width: COL.rbt, fontSize: 12 }}>
                   RBT<br />Level
-                </th>
+                </td>
               </tr>
-            </thead>
-            <tbody>
               {partA.map((q: any, i: number) => (
                 <QRow key={i} no={`${i + 1}.`} q={q} />
               ))}
@@ -284,21 +351,80 @@ export function CATLayout({ paper, questions }: any) {
         </>
       )}
 
-      {/* ── Footer: Bloom legend, signatures, form code, outcomes ── */}
-      <div style={{ marginTop: 22, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-        <div style={{ fontSize: 10, fontWeight: 'bold' }}>Level: Revised Bloom’s Taxonomy - Level No: 1-6</div>
-        <div style={{ fontSize: 10, marginTop: 2 }}>
-          {Object.entries(RBT_LABELS)
-            .map(([k, v]) => `Level ${k.slice(1)}: ${v}`)
-            .join('   ')}
+      {/* ── Footer: Bloom legend, outcomes table, signatures, form code ── */}
+      <div style={{ marginTop: 20, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+        <div style={{ fontSize: 13, fontWeight: 'bold' }}>Level: Revised Bloom’s Taxonomy - Level No: 1-6</div>
+        <div style={{ fontSize: 12.5, marginTop: 2, lineHeight: 1.35 }}>
+          {activeRbtEntries
+            .map((k) => `Level ${k.slice(1)}: ${RBT_LABELS[k]}`)
+            .join(' ')}
         </div>
+
+        {displayOutcomes.length > 0 && (
+          <table
+            style={{
+              borderCollapse: 'collapse',
+              width: '100%',
+              border: BORDER,
+              marginTop: 6,
+              tableLayout: 'auto',
+            }}
+          >
+            <colgroup>
+              <col style={{ width: 55 }} />
+              <col />
+            </colgroup>
+            <tbody>
+              <tr>
+                <td
+                  colSpan={2}
+                  style={{
+                    border: BORDER,
+                    padding: '3px 8px',
+                    fontWeight: 'bold',
+                    fontSize: 12.5,
+                  }}
+                >
+                  OUTCOMES: At the end of the course the students would be able to
+                </td>
+              </tr>
+              {displayOutcomes.map((o) => (
+                <tr key={o.code}>
+                  <td
+                    style={{
+                      border: BORDER,
+                      padding: '3px 8px',
+                      width: 55,
+                      fontSize: 12,
+                      verticalAlign: 'top',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {o.code.replace(/^(CO)\s*(\d+)$/i, '$1 $2')}
+                  </td>
+                  <td
+                    style={{
+                      border: BORDER,
+                      padding: '3px 8px',
+                      fontSize: 12,
+                      verticalAlign: 'top',
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {o.description}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
         <div
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            marginTop: 44,
-            fontSize: 11,
+            marginTop: 36,
+            fontSize: 13,
             fontWeight: 'bold',
             padding: '0 40px',
           }}
@@ -309,22 +435,12 @@ export function CATLayout({ paper, questions }: any) {
         </div>
 
         {formCode && (
-          <div style={{ textAlign: 'right', fontSize: 11, marginTop: 16, color: '#333' }}>
+          <div style={{ textAlign: 'right', fontSize: 11, marginTop: 12, color: '#333' }}>
             {formCode}
-          </div>
-        )}
-
-        {outcomes.length > 0 && (
-          <div style={{ marginTop: 14, fontSize: 11 }}>
-            <div style={{ fontWeight: 'bold' }}>OUTCOMES: At the end of the course the students would be able to</div>
-            {outcomes.map((o) => (
-              <div key={o.code}>
-                <b>{o.code}</b>&nbsp;&nbsp;{o.description}
-              </div>
-            ))}
           </div>
         )}
       </div>
     </div>
   );
 }
+  
