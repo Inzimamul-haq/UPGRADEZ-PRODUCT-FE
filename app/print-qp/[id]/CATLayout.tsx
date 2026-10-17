@@ -45,12 +45,39 @@ function partStats(letter: string, qs: any[], paper: any) {
   const units = groupByIndex(qs).map((g: any) => unitMarks(g, letter, paper));
   const total = units.reduce((s: number, m: number) => s + m, 0);
   const allSame = units.length > 0 && units.every((m: number) => m === units[0]);
-  const label = !total
-    ? `PART-${letter}`
-    : allSame && letter !== 'C'
-      ? `PART-${letter} (${units.length} X ${units[0]} = ${total} Marks)`
-      : `PART-${letter} (${total} Marks)`;
-  return { label, total };
+
+  if (!total) {
+    return { label: `PART-${letter}`, total: 0 };
+  }
+
+  if (allSame) {
+    return {
+      label: `PART-${letter} (${units.length} X ${units[0]} = ${total} Marks)`,
+      total,
+    };
+  }
+
+  // Handle mixed marks (e.g. Part A with 6 x 1 mark and 5 x 2 marks)
+  const markCounts = units.reduce((acc: Record<number, number>, m: number) => {
+    acc[m] = (acc[m] || 0) + 1;
+    return acc;
+  }, {});
+
+  const markEntries = Object.entries(markCounts).map(([m, cnt]) => ({
+    marks: Number(m),
+    count: Number(cnt),
+    subtotal: Number(m) * Number(cnt),
+  })).sort((a, b) => a.marks - b.marks);
+
+  if (markEntries.length > 1) {
+    const formulaStr = markEntries.map(e => `${e.count} X ${e.marks} = ${e.subtotal}`).join(' & ');
+    return {
+      label: `PART-${letter} (${formulaStr} = ${total} Marks)`,
+      total,
+    };
+  }
+
+  return { label: `PART-${letter} (${total} Marks)`, total };
 }
 
 function formatDuration(mins?: number, fallback: string = '1h 30m') {

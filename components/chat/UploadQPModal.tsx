@@ -7,6 +7,8 @@ import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/hooks/useAuth';
 import { REGEX_PATTERNS } from '@/lib/utils';
 import { getAcademicYear, getAcademicYearOptions } from '@/lib/academicYear';
+import { QuestionDisplay } from '@/components/chat/QuestionDisplay';
+
 
 type ExamType = 'CAT1' | 'CAT2' | 'CAT3' | 'MODEL' | 'UNIVERSITY' | 'ARREAR';
 type PaperKind = 'EXAM_PAPER' | 'IMPORTANT_QUESTIONS';
@@ -16,12 +18,16 @@ interface Subject { id: string; name: string; code: string }
 
 export interface ParsedQuestionOut {
   questionKey: string;
+  questionNumber?: string;
   text: string;
+  stem?: string;
+  options?: string[];
+  correctIndex?: number | null;
   marks: number | null;
   part: 'A' | 'B' | 'C' | 'D' | 'E';
   groupIndex: number;
   subLabel: '' | 'a' | 'b';
-  metadata: { co: string; rbt: string; po: string };
+  metadata: { co: string; rbt: string; po: string; correctIndex?: number };
   diagram: { base64: string; mimeType: string; warnings: string[] } | null;
   page: number;
   warnings: string[];
@@ -270,11 +276,17 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
         examDate: isArrearExam ? `${arrearMonth}-01` : (examDate || null),
         questions: parsedQuestions.map(q => ({
           text: q.text,
+          stem: q.stem,
+          options: q.options,
+          correctIndex: q.correctIndex,
           marks: q.marks,
           part: q.part,
           groupIndex: q.groupIndex,
           subLabel: q.subLabel,
-          metadata: q.metadata,
+          metadata: {
+            ...q.metadata,
+            ...(typeof q.correctIndex === 'number' ? { correctIndex: q.correctIndex } : {})
+          },
           diagram: q.diagram ? { dataUrl: `data:${q.diagram.mimeType};base64,${q.diagram.base64}` } : null
         }))
       };
@@ -491,34 +503,76 @@ export function UploadQPModal({ onClose, onSuccess, preSelectedSubject }: Upload
                     return (
                       <div key={partLabel} className="space-y-2">
                         <h3 className="text-[12px] font-semibold text-[#8C8C8A] uppercase tracking-wider sticky top-0 bg-[#1A1A19] py-1">Part {partLabel}</h3>
-                        {qs.map((q, i) => (
-                          <div key={i} className="rounded-lg border border-[#2E2E2C] bg-[#222221] p-4 flex flex-col gap-2">
-                            {q.warnings.length > 0 && (
-                              <div className="flex items-center gap-1.5 text-[11px] text-amber-400 bg-amber-400/10 px-2 py-1 rounded">
-                                <AlertTriangle size={12} /> {q.warnings.join(' ')}
-                              </div>
-                            )}
-                            <div className="flex items-start gap-3">
-                              <span className={`text-[12px] font-medium flex-shrink-0 mt-0.5 w-8 ${marksColor(q.marks)}`}>
-                                {q.groupIndex}{q.subLabel ? q.subLabel : ''}.
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{q.text}</p>
-                                {q.marks !== null && (
-                                  <p className={`text-[11px] mt-1.5 ${marksColor(q.marks)} font-medium`}>{q.marks} Marks</p>
+                        {qs.map((q, i) => {
+                          const isMcq = (q.marks === 1 || (q.options && q.options.length > 0));
+                          const showOrDivider = q.subLabel === 'b';
+
+                          return (
+                            <React.Fragment key={i}>
+                              {showOrDivider && (
+                                <div className="flex items-center gap-3 my-1">
+                                  <div className="flex-1 border-t border-[#3A3A38] border-dashed" />
+                                  <span className="text-[11px] font-bold text-[#E6C687] uppercase tracking-wider px-2 py-0.5 rounded bg-[#2C2C2A] border border-[#3A3A38]">
+                                    OR
+                                  </span>
+                                  <div className="flex-1 border-t border-[#3A3A38] border-dashed" />
+                                </div>
+                              )}
+                              <div className="rounded-lg border border-[#2E2E2C] bg-[#222221] p-4 flex flex-col gap-2">
+                                {q.warnings.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-amber-400 bg-amber-400/10 px-2 py-1 rounded">
+                                    <AlertTriangle size={12} /> {q.warnings.join(' ')}
+                                  </div>
+                                )}
+                                <div className="flex items-start gap-3">
+                                  <span className={`text-[12px] font-medium flex-shrink-0 mt-0.5 w-10 ${marksColor(q.marks)}`}>
+                                    {q.questionNumber ? (q.questionNumber.endsWith('.') ? q.questionNumber : `${q.questionNumber}.`) : `${q.groupIndex}${q.subLabel ? q.subLabel : ''}.`}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    {isMcq ? (
+                                      <QuestionDisplay
+                                        stem={q.stem}
+                                        options={q.options}
+                                        fallbackText={q.text}
+                                        showAnswer={typeof q.correctIndex === 'number'}
+                                        correctIndex={typeof q.correctIndex === 'number' ? q.correctIndex : undefined}
+                                        className="text-[13px] text-[#ECECEA] leading-relaxed"
+                                      />
+                                    ) : (
+                                      <p className="text-[13px] text-[#ECECEA] leading-relaxed whitespace-pre-wrap">{q.text}</p>
+                                    )}
+
+                                    <div className="flex items-center gap-3 mt-2">
+                                      {q.marks !== null && (
+                                        <span className={`text-[11px] ${marksColor(q.marks)} font-medium`}>
+                                          {q.marks} Mark{q.marks > 1 ? 's' : ''}
+                                        </span>
+                                      )}
+                                      {q.metadata.co && (
+                                        <span className="text-[10px] text-[#8C8C8A] bg-[#2C2C2A] px-1.5 py-0.5 rounded border border-[#3A3A38]">
+                                          {q.metadata.co}
+                                        </span>
+                                      )}
+                                      {q.metadata.rbt && (
+                                        <span className="text-[10px] text-[#8C8C8A] bg-[#2C2C2A] px-1.5 py-0.5 rounded border border-[#3A3A38]">
+                                          {q.metadata.rbt}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Embedded Diagram inside question */}
+                                {q.diagram && (
+                                  <div className="mt-2 ml-11 border border-[#3A3A38] rounded bg-black/30 p-2 w-max">
+                                    <img src={`data:${q.diagram.mimeType};base64,${q.diagram.base64}`} alt="Question diagram" className="max-h-32 object-contain" />
+                                    <p className="text-[10px] text-[#5A5A58] text-center mt-1">Attached Diagram</p>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                            
-                            {/* Embedded Diagram inside question */}
-                            {q.diagram && (
-                              <div className="mt-2 ml-11 border border-[#3A3A38] rounded bg-black/30 p-2 w-max">
-                                <img src={`data:${q.diagram.mimeType};base64,${q.diagram.base64}`} alt="Question diagram" className="max-h-32 object-contain" />
-                                <p className="text-[10px] text-[#5A5A58] text-center mt-1">Attached Diagram</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                            </React.Fragment>
+                          );
+                        })}
                       </div>
                     );
                   })}
