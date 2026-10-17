@@ -7,6 +7,7 @@ export type SubjectDraft = {
   departmentIds: string[];
   year: string;
   regulation: string;
+  courseOutcomes?: { code: string; description: string }[];
   step: 1 | 2 | 3;
   savedAt: number;
 };

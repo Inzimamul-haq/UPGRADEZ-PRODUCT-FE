@@ -37,6 +37,7 @@ type SubjectApiRow = {
   departments?: { id: string; name: string; branch?: string }[];
   departmentIds?: string[];
   tocPlan?: any;
+  courseOutcomes?: { code: string; description: string }[];
   files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number; fileType?: string }[];
 };
 
@@ -60,6 +61,7 @@ const normalizeSubject = (s: SubjectApiRow): Subject => ({
     s.embedding_status ??
     (s.pdfUrl || s.pdf_url ? 'completed' : 'queued')) as Subject['embeddingStatus'],
   tocPlan: s.tocPlan,
+  courseOutcomes: s.courseOutcomes ?? [],
   files: s.files,
 });
 
@@ -192,6 +194,9 @@ export default function FacultySyllabusPage() {
       formData.append("departmentIds", JSON.stringify(values.departmentIds));
       formData.append("year", values.year);
       formData.append("regulation", values.regulation);
+      if (values.courseOutcomes && values.courseOutcomes.length > 0) {
+        formData.append("courseOutcomes", JSON.stringify(values.courseOutcomes));
+      }
 
       const { data } = await api.post("/api/subjects", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -256,9 +261,22 @@ export default function FacultySyllabusPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      if (values.courseOutcomes !== undefined) {
+        try {
+          await api.patch(`/api/subjects/${editingSubject.id}/outcomes`, {
+            courseOutcomes: values.courseOutcomes,
+          });
+        } catch (outcomeErr) {
+          console.error("Failed to update course outcomes:", outcomeErr);
+        }
+      }
+
       if (data?.subject) {
         setSubjects((prev) =>
-          prev.map((s) => (s.id === editingSubject.id ? normalizeSubject(data.subject) : s))
+          prev.map((s) => (s.id === editingSubject.id ? normalizeSubject({
+            ...data.subject,
+            courseOutcomes: values.courseOutcomes ?? data.subject.courseOutcomes
+          }) : s))
         );
       }
       setEditingSubject(null);

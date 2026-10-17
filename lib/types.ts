@@ -365,6 +365,7 @@ export type SubjectFormValues = {
   departmentIds: string[];
   year: string;
   regulation: string;
+  courseOutcomes?: { code: string; description: string }[];
   syllabusFile?: File | null;
   materialFiles?: File[];
   pdfUrl?: string | null;

@@ -9,8 +9,8 @@ interface SyllabusPdfGeneratorModalProps {
   open: boolean;
   onClose: () => void;
   subjectName: string;
-  /** Called with the generated File so the parent can attach it to the form. */
-  onGenerated?: (file: File) => void;
+  /** Called with the generated File and any defined Course Outcomes so the parent can attach them to the form. */
+  onGenerated?: (file: File, outcomes?: { code: string; description: string }[]) => void;
 }
 
 interface ParsedUnit {
@@ -18,6 +18,7 @@ interface ParsedUnit {
   subtitle: string;
   content: string;
   co: string[];
+  description?: string;
 }
 
 export default function SyllabusPdfGeneratorModal({
@@ -309,12 +310,18 @@ export default function SyllabusPdfGeneratorModal({
         return;
       }
 
-      const mappedUnits: ParsedUnit[] = data.units.map((u: any) => ({
-        title: `UNIT ${u.chapter}`,
-        subtitle: u.title,
-        content: Array.isArray(u.topics) ? u.topics.join("\n") : u.topics,
-        co: Array.isArray(u.co) ? u.co : [],
-      }));
+      const mappedUnits: ParsedUnit[] = data.units.map((u: any, idx: number) => {
+        // Auto-select CO per chapter (e.g. CO1 for Chapter 1, CO2 for Chapter 2)
+        const defaultCO = `CO${u.chapter || idx + 1}`;
+        const existingCOs = Array.isArray(u.co) && u.co.length > 0 ? u.co : [defaultCO];
+        return {
+          title: `UNIT ${u.chapter || idx + 1}`,
+          subtitle: u.title || "",
+          content: Array.isArray(u.topics) ? u.topics.join("\n") : u.topics || "",
+          co: existingCOs,
+          description: "",
+        };
+      });
 
       setParsedUnits(mappedUnits);
       setIsEditing(false);
@@ -335,7 +342,16 @@ export default function SyllabusPdfGeneratorModal({
       .filter((val) => val !== null);
 
     if (missingCoChapters.length > 0) {
-      setError(`Please assign CO for chapter ${missingCoChapters.join(", ")} before downloading.`);
+      setError(`Please assign at least one CO for chapter ${missingCoChapters.join(", ")} before downloading.`);
+      return;
+    }
+
+    const missingDescChapters = parsedUnits
+      .map((unit, index) => (unit.description && unit.description.trim() ? null : index + 1))
+      .filter((val) => val !== null);
+
+    if (missingDescChapters.length > 0) {
+      setError(`Please provide a Course Outcome description for chapter ${missingDescChapters.join(", ")} (mandatory).`);
       return;
     }
 
@@ -439,6 +455,15 @@ export default function SyllabusPdfGeneratorModal({
         );
         
         yPos += 7;
+
+        const desc = (unit.description || "").trim();
+        if (desc) {
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(10);
+          const descLines = doc.splitTextToSize(`Outcome: ${desc}`, contentWidth);
+          doc.text(descLines, marginLeft, yPos);
+          yPos += descLines.length * 5 + 3;
+        }
       }
 
       /*
@@ -506,11 +531,25 @@ export default function SyllabusPdfGeneratorModal({
       "_"
     )}_Syllabus.pdf`;
 
-    // Hand the generated file back to the parent wizard (if a callback is provided)
+    // Build structured courseOutcomes: [{ code: "CO1", description: "..." }]
+    const outcomesMap = new Map<string, string>();
+    parsedUnits.forEach((u) => {
+      const desc = (u.description || "").trim();
+      if (!desc) return;
+      (u.co || []).forEach((c) => {
+        const code = String(c).toUpperCase().replace(/\s+/g, "");
+        if (/^CO\d+$/.test(code) && !outcomesMap.has(code)) outcomesMap.set(code, desc);
+      });
+    });
+    const outcomes = Array.from(outcomesMap.entries())
+      .map(([code, description]) => ({ code, description }))
+      .sort((a, b) => parseInt(a.code.slice(2), 10) - parseInt(b.code.slice(2), 10));
+
+    // Hand the generated file + outcomes back to the parent wizard
     if (onGenerated) {
       const pdfBlob = doc.output("blob");
       const pdfFile = new File([pdfBlob], fileName, { type: "application/pdf" });
-      onGenerated(pdfFile);
+      onGenerated(pdfFile, outcomes);
     }
 
     doc.save(fileName);
@@ -655,21 +694,27 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
                       )
                     )}
 
-                    {/* CO Selection */}
-                    <div className="mb-4">
-                      <label className="mb-2 block text-[12px] font-medium text-[#8C8C8A]">
-                        CO Mapping
-                      </label>
-                      <div className="flex flex-wrap gap-2">
+                    {/* CO Selection & Description */}
+                    <div className="mb-4 rounded-md border border-[#3A3A38] bg-[#242422] p-3.5">
+                      <div className="mb-2 flex items-center justify-between">
+                        <label className="block text-[12px] font-semibold text-[#ECECEA]">
+                          CO Mapping
+                        </label>
+                        <span className="text-[11px] text-[#8C8C8A]">
+                          Auto-selected CO {index + 1}
+                        </span>
+                      </div>
+                      <div className="mb-3 flex flex-wrap gap-2">
                         {["CO1", "CO2", "CO3", "CO4", "CO5", "CO6"].map((co) => {
                           const isSelected = unit.co?.includes(co);
                           return (
                             <button
                               key={co}
+                              type="button"
                               onClick={() => toggleCO(index, co)}
                               className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
                                 isSelected
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 font-semibold shadow-sm"
                                   : "border-[#4A4A48] bg-[#1F1F1E] text-[#8C8C8A] hover:border-[#5A5A58] hover:text-[#ECECEA]"
                               }`}
                             >
@@ -677,6 +722,25 @@ Style Sheets: CSS-Introduction to Cascading Style Sheets...`}
                             </button>
                           );
                         })}
+                      </div>
+
+                      {/* Outcome Description Input */}
+                      <div className="mt-2 border-t border-[#3A3A38] pt-2.5">
+                        <div className="mb-1 flex items-center justify-between">
+                          <label className="text-[11px] font-medium text-[#ECECEA]">
+                            Course Outcome Description <span className="text-red-400">*</span>
+                          </label>
+                          <span className="text-[10px] text-[#8C8C8A]">
+                            {(unit.co || []).join(", ") || `CO${index + 1}`}
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={unit.description || ""}
+                          onChange={(e) => updateUnit(index, "description", e.target.value)}
+                          placeholder={`Enter outcome description for ${(unit.co || []).join(", ") || `CO${index + 1}`} (e.g. Understand and apply fundamental concepts...)`}
+                          className="w-full rounded border border-[#3A3A38] bg-[#1A1A18] px-3 py-2 text-[12.5px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:border-emerald-500/50 focus:outline-none"
+                        />
                       </div>
                     </div>
 

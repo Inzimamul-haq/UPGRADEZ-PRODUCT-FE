@@ -34,6 +34,7 @@ export type Subject = {
   embeddingStatus?: 'queued' | 'processing' | 'completed' | 'failed';
   stoppedAcademicYear?: string | null;
   tocPlan?: any;
+  courseOutcomes?: { code: string; description: string }[];
   files?: { id: string; url: string; storagePath: string; status: string; createdAt: string; progress?: number; fileType?: string }[];
   promptType?: string;
   diagramTypes?: string[];

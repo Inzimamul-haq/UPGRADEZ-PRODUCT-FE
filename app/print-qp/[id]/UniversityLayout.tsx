@@ -17,7 +17,11 @@ export function UniversityLayout({ paper, questions }: any) {
   const collegeName = paper.subject?.college?.name || 'College Name';
   const logoUrl = paper.subject?.college?.logoUrl || '';
   const collegeId = paper.subject?.college?.id || '';
-  const academicYear = paper.academicYear || '2023-2024';
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const startYr = now.getMonth() >= 5 ? curYear : curYear - 1;
+  const currentAcademicYear = `${startYr}-${startYr + 1}`;
+  const academicYear = paper.academicYear || currentAcademicYear;
   const examType = paper.examType || 'B.E./B.Tech.';
   const branchName = paper.subject?.subjectDepartments?.[0]?.department?.branch || 'Branch Name';
   const subjectCode = paper.subject?.code || 'SUB CODE';

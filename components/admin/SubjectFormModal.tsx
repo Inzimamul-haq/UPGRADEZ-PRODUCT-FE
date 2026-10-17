@@ -85,6 +85,7 @@ export default function SubjectFormModal({
   const [materialFiles, setMaterialFiles] = useState<File[]>([]);
   const [uploadMode, setUploadMode] = useState<"replace" | "append">("append");
   const [localError, setLocalError] = useState("");
+  const [courseOutcomes, setCourseOutcomes] = useState<{ code: string; description: string }[]>([]);
 
   // ── Wizard state ─────────────────────────────────────────────────────────────
   const [step, setStep] = useState<StepId>(1);
@@ -125,6 +126,7 @@ export default function SubjectFormModal({
           setDepartmentIds(draft.departmentIds);
           setYear(draft.year);
           setRegulation(draft.regulation);
+          setCourseOutcomes(draft.courseOutcomes ?? []);
           setStep(draft.step);
           if (draft.step === 3) setResumedFromDraft(true);
         } else {
@@ -133,6 +135,7 @@ export default function SubjectFormModal({
           setDepartmentIds([]);
           setYear("1");
           setRegulation("R2021");
+          setCourseOutcomes([]);
           setStep(1);
         }
       } else {
@@ -142,6 +145,7 @@ export default function SubjectFormModal({
         setDepartmentIds(initialValues?.departmentIds ?? []);
         setYear(initialValues?.year ?? "1");
         setRegulation(initialValues?.regulation ?? "R2021");
+        setCourseOutcomes(initialValues?.courseOutcomes ?? []);
         setStep(1);
       }
 
@@ -184,11 +188,11 @@ export default function SubjectFormModal({
     if (mode !== "add" || !open) return;
 
     const id = setTimeout(() => {
-      saveDraft({ name, code, departmentIds, year, regulation, step });
+      saveDraft({ name, code, departmentIds, year, regulation, courseOutcomes, step });
     }, 600);
 
     return () => clearTimeout(id);
-  }, [name, code, departmentIds, year, regulation, step, open, mode]);
+  }, [name, code, departmentIds, year, regulation, courseOutcomes, step, open, mode]);
 
   if (!open) return null;
 
@@ -232,8 +236,11 @@ export default function SubjectFormModal({
   };
 
   // ── Syllabus generated callback ──────────────────────────────────────────────
-  const handleSyllabusGenerated = (file: File) => {
+  const handleSyllabusGenerated = (file: File, outcomes?: { code: string; description: string }[]) => {
     setSyllabusFile(file);
+    if (outcomes && outcomes.length > 0) {
+      setCourseOutcomes(outcomes);
+    }
     setSyllabusFileError("");
     setResumedFromDraft(false);
     setSyllabusJustAttached(true);
@@ -297,6 +304,7 @@ export default function SubjectFormModal({
         departmentIds,
         year,
         regulation,
+        courseOutcomes,
         syllabusFile,
         materialFiles,
         uploadMode,
@@ -314,10 +322,10 @@ export default function SubjectFormModal({
     if (e.target !== e.currentTarget || isSubmitting) return;
     if (mode === "add") {
       const hasData =
-        name || code || departmentIds.length > 0 || syllabusFile || materialFiles.length > 0;
+        name || code || departmentIds.length > 0 || syllabusFile || materialFiles.length > 0 || courseOutcomes.length > 0;
       if (hasData) {
         // Silently save draft and close
-        saveDraft({ name, code, departmentIds, year, regulation, step });
+        saveDraft({ name, code, departmentIds, year, regulation, courseOutcomes, step });
       }
     }
     onClose();
@@ -464,15 +472,7 @@ export default function SubjectFormModal({
             {mode === "edit" && (
               <>
                 {/* Syllabus (locked) */}
-                <div>
-                  <label className="mb-2 block text-[12px] text-[#8C8C8A]">Syllabus index pdf</label>
-                  <div className="pointer-events-none opacity-50">
-                    <label className="inline-flex items-center justify-center rounded-md border border-[#3A3A38] bg-[#1F1F1E] px-3 py-2 text-[12px] text-[#ECECEA] cursor-not-allowed">
-                      Syllabus Cannot Be Changed
-                    </label>
-                  </div>
-                </div>
-
+     
                 {/* Materials */}
                 <div>
                   <div className="mb-1 flex items-center justify-between">
@@ -484,7 +484,7 @@ export default function SubjectFormModal({
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] text-[#8C8C8A]">Current file(s):</span>
                         <div className="flex items-center gap-3 text-[11px]">
-                          <label className="flex cursor-pointer items-center gap-1.5 text-[#ECECEA]">
+                         <label className="flex cursor-pointer items-center gap-1.5 text-[#ECECEA]">
                             <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${uploadMode === "append" ? "border-white" : "border-[#5A5A58]"}`}>
                               {uploadMode === "append" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                             </span>
@@ -549,6 +549,72 @@ export default function SubjectFormModal({
                     </label>
                   </div>
                 </div>
+
+                {/* Course Outcomes in Edit Mode */}
+                <div className="rounded-lg border border-[#3A3A38] bg-[#252523] p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-[12px] font-medium text-[#ECECEA]">Course Outcomes (CO)</h4>
+                      <p className="text-[11px] text-[#8C8C8A]">Edit descriptions for this subject</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (courseOutcomes.length < 10) {
+                          const nextNum = courseOutcomes.length + 1;
+                          setCourseOutcomes([...courseOutcomes, { code: `CO${nextNum}`, description: "" }]);
+                        }
+                      }}
+                      disabled={courseOutcomes.length >= 10}
+                      className="rounded border border-[#4A4A48] bg-[#2C2C2A] px-2 py-1 text-[11px] text-[#ECECEA] hover:bg-[#333331] disabled:opacity-40"
+                    >
+                      + Add CO
+                    </button>
+                  </div>
+
+                  {courseOutcomes.length === 0 ? (
+                    <p className="py-2 text-center text-[11px] text-[#6A6A68]">
+                      No course outcomes defined. Click &quot;+ Add CO&quot; to add one.
+                    </p>
+                  ) : (
+                    <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                      {courseOutcomes.map((co, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={co.code}
+                            onChange={(e) => {
+                              const updated = [...courseOutcomes];
+                              updated[idx] = { ...updated[idx], code: e.target.value.toUpperCase().replace(/\s+/g, '') };
+                              setCourseOutcomes(updated);
+                            }}
+                            placeholder="CO1"
+                            className="w-16 rounded border border-[#3A3A38] bg-[#1F1F1E] px-2 py-1 text-center text-[12px] font-medium text-[#ECECEA] focus:outline-none"
+                          />
+                          <input
+                            type="text"
+                            value={co.description}
+                            onChange={(e) => {
+                              const updated = [...courseOutcomes];
+                              updated[idx] = { ...updated[idx], description: e.target.value };
+                              setCourseOutcomes(updated);
+                            }}
+                            placeholder="Outcome description..."
+                            className="flex-1 rounded border border-[#3A3A38] bg-[#1F1F1E] px-2.5 py-1 text-[12px] text-[#ECECEA] placeholder:text-[#5A5A58] focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setCourseOutcomes(courseOutcomes.filter((_, i) => i !== idx))}
+                            className="text-[12px] text-red-400 hover:text-red-300"
+                            title="Remove"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -612,6 +678,13 @@ export default function SubjectFormModal({
             >
               Generate PDF from Text
             </button>
+
+            {courseOutcomes.length > 0 && (
+              <div className="flex items-center justify-between rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-400">
+                <span>✓ {courseOutcomes.length} Course Outcome(s) configured from Syllabus</span>
+                <span className="text-[11px] opacity-80">{courseOutcomes.map(c => c.code).join(", ")}</span>
+              </div>
+            )}
 
             {(localError || serverError) && (
               <p className="text-[12px] text-red-400">{localError || serverError}</p>

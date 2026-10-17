@@ -6,6 +6,7 @@ import { QuestionPaperRenderer } from '@/components/chat/QuestionPaperRenderer';
 import { parseQPStructure, encodeQPPrefix } from '@/lib/qpParser';
 import { CATLayout } from '@/app/print-qp/[id]/CATLayout';
 import { UniversityLayout } from '@/app/print-qp/[id]/UniversityLayout';
+import { getAcademicYear } from '@/lib/academicYear';
 
 export default function PrintMsg({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -91,13 +92,14 @@ export default function PrintMsg({ params }: { params: Promise<{ id: string }> }
 
       const mockPaper = {
         examType: chat.examType || examType,
-        academicYear: chat.academicYear || '2024-2025',
+        academicYear: chat.academicYear || getAcademicYear(),
         subject: { 
           name: subject.name || 'AI Generated Draft', 
           code: subject.code || 'DRAFT', 
           regulation: subject.regulation || 'R2021',
           college: college,
-          subjectDepartments: [{ department }]
+          subjectDepartments: [{ department }],
+          courseOutcomes: subject.courseOutcomes || [],
         },
         examDate: new Date(),
         durationMinutes: ['CAT1', 'CAT2', 'CAT3'].includes(chat.examType || examType) ? 90 : 180,

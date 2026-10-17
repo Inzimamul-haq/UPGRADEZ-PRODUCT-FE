@@ -19,7 +19,7 @@ const TEST_TITLES: Record<string, string> = {
   CAT3: 'CONTINUOUS ASSESSMENT TEST- III',
 };
 
-const BORDER = '1px solid #999';
+const BORDER = '1px solid #b5b2b2ff';
 const td: React.CSSProperties = {
   border: BORDER,
   padding: '6px 10px',
@@ -111,12 +111,27 @@ export function CATLayout({ paper, questions }: any) {
   const hodLabel = dept.shortName ? `HOD/${dept.shortName}` : 'HOD';
   const subjectLine = `${paper.subject?.code || 'SUB CODE'}-${paper.subject?.name || 'Subject Name'}`;
   const degreeBranch = paper.degreeBranch || (dept.branch ? `B.E. / ${dept.branch}` : 'B. E. /B.Tech');
-  const academicYear = `${paper.academicYear || '2026 - 2027'}${paper.semesterType ? ` (${paper.semesterType})` : ''}`;
+  // Dynamic academic year based on current date (June starts the new academic year)
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const startYr = now.getMonth() >= 5 ? curYear : curYear - 1;
+  const currentAcademicYear = `${startYr} - ${startYr + 1}`;
+  const academicYear = `${paper.academicYear || currentAcademicYear}${paper.semesterType ? ` (${paper.semesterType})` : ''}`;
   const examDate = (paper.examDate ? new Date(paper.examDate) : new Date())
     .toLocaleDateString('en-GB')
     .replace(/\//g, '.');
   const duration = paper.duration || formatDuration(paper.durationMinutes, '1h 30m');
-  const outcomes: { code: string; description: string }[] = paper.subject?.courseOutcomes || [];
+  let outcomes: { code: string; description: string }[] = [];
+  try {
+    const rawOutcomes = paper.subject?.courseOutcomes;
+    if (typeof rawOutcomes === 'string') {
+      outcomes = JSON.parse(rawOutcomes);
+    } else if (Array.isArray(rawOutcomes)) {
+      outcomes = rawOutcomes;
+    }
+  } catch {
+    outcomes = [];
+  }
 
   // Extract unique RBT levels actually used in the questions
   const usedRbts = Array.from(
@@ -151,38 +166,17 @@ export function CATLayout({ paper, questions }: any) {
     return na - nb;
   });
 
-  const tocEntries: any[] = (paper.subject?.tocPlan as any)?.entries || [];
-  const subjectNameOnly = paper.subject?.name || 'the subject';
-
-  const defaultCoDescriptions: Record<string, string> = {
-    CO1: `Understand foundational principles, concepts, and terminologies of ${subjectNameOnly}.`,
-    CO2: `Apply analytical and problem-solving techniques to solve engineering problems in ${subjectNameOnly}.`,
-    CO3: `Analyze, evaluate, and compare various models, algorithms, and designs in ${subjectNameOnly}.`,
-    CO4: `Design and implement optimal solutions for practical real-world problems in ${subjectNameOnly}.`,
-    CO5: `Formulate and evaluate advanced methodologies, frameworks, and implementations in ${subjectNameOnly}.`,
-    CO6: `Create and synthesize comprehensive solutions integrating core concepts of ${subjectNameOnly}.`,
-  };
-
-  const targetCoKeys = usedCos.length > 0 ? usedCos : ['CO1', 'CO2', 'CO3', 'CO4', 'CO5'];
-
-  const displayOutcomes = targetCoKeys.map((coKey) => {
-    const fromSubject = outcomes.find(o => (o.code || '').toUpperCase().replace(/\s+/g, '') === coKey);
-    if (fromSubject && fromSubject.description) {
-      return { code: coKey, description: fromSubject.description };
-    }
-
-    const coNum = parseInt(coKey.replace(/\D/g, '') || '0', 10);
-    const tocEntry = tocEntries.find(e => 
-      e.chapter === coNum || 
-      (Array.isArray(e.co) && e.co.some((c: string) => c.toUpperCase().replace(/\s+/g, '') === coKey))
-    );
-    if (tocEntry && tocEntry.title) {
-      return { code: coKey, description: `Understand, apply, and analyze the principles of ${tocEntry.title}.` };
-    }
-
+  // Only render the COs actually used in the questions, matched against subject.courseOutcomes
+  const displayOutcomes = usedCos.map((coKey) => {
+    const num = coKey.replace(/\D/g, '');
+    const fromSubject = outcomes.find((o) => {
+      const codeClean = (o.code || '').toUpperCase().replace(/\s+/g, '');
+      const oNum = codeClean.replace(/\D/g, '');
+      return codeClean === coKey || (num && oNum === num);
+    });
     return {
       code: coKey,
-      description: defaultCoDescriptions[coKey] || `Apply and analyze core principles associated with ${coKey} in ${subjectNameOnly}.`
+      description: fromSubject?.description || '',
     };
   });
 
@@ -230,14 +224,17 @@ export function CATLayout({ paper, questions }: any) {
       <table style={{ borderCollapse: 'collapse', width: '100%', border: BORDER, tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            <td style={{ border: BORDER, width: 110, padding: 6, textAlign: 'center', verticalAlign: 'middle' }}>
+            <td
+              rowSpan={2}
+              style={{ border: BORDER, width: 110, padding: 6, textAlign: 'center', verticalAlign: 'middle' }}
+            >
               {logoUrl ? (
                 <img
                   src={logoUrl}
                   onError={(e) => {
                     e.currentTarget.src = `/api/proxy-image?collegeId=${college.id || ''}`;
                   }}
-                  style={{ width: 90, height: 90, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                  style={{ width: 95, height: 95, objectFit: 'contain', display: 'block', margin: '0 auto' }}
                   alt="College Logo"
                 />
               ) : (
@@ -258,36 +255,52 @@ export function CATLayout({ paper, questions }: any) {
               )}
             </td>
 
-            <td style={{ border: BORDER, padding: 0, textAlign: 'center', verticalAlign: 'top' }}>
-              <div style={{ padding: '6px 10px' }}>
-                <div style={{ fontSize: 14.5, fontWeight: 'bold' }}>{collegeName}</div>
-                <div style={{ fontSize: 13.5, marginTop: 2 }}>Department of {deptName}</div>
-                <div style={{ fontSize: 14, fontWeight: 'bold', marginTop: 3 }}>{testTitle}</div>
-              </div>
-              <div style={{ borderTop: BORDER, padding: '6px 10px' }}>
-                <div style={{ fontSize: 14, fontWeight: 'bold' }}>{subjectLine}</div>
-                <div style={{ fontSize: 13, marginTop: 3 }}>Degree/Branch: {degreeBranch}</div>
-                <div style={{ fontSize: 13, marginTop: 3 }}>Academic year {academicYear}</div>
-              </div>
+            <td style={{ border: BORDER, padding: '8px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
+              <div style={{ fontSize: 15, fontWeight: 'bold' }}>{collegeName}</div>
+              <div style={{ fontSize: 13.5, marginTop: 3 }}>Department of {deptName}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 'bold', marginTop: 4 }}>{testTitle}</div>
             </td>
 
-            <td style={{ border: BORDER, width: 170, padding: 0, verticalAlign: 'top' }}>
-              <div style={{ padding: 6, textAlign: 'center', minHeight: 75 }}>
-                <img
-                  src="/tuv-iso21001.png"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  style={{ width: 75, height: 75, objectFit: 'contain', margin: '0 auto', display: 'block' }}
-                  alt=""
-                />
-              </div>
-              <div style={{ borderTop: BORDER, padding: '6px 10px', fontSize: 13, lineHeight: 1.5 }}>
-                <div>Date: {examDate}</div>
-                <div>Duration: {duration}</div>
-                <div>
-                  Marks: <b>{totalMarks}</b>
-                </div>
+            <td
+              style={{
+                border: BORDER,
+                width: 170,
+                padding: '6px 8px',
+                textAlign: 'center',
+                verticalAlign: 'middle',
+              }}
+            >
+              <img
+                src="/rightside.png"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+                style={{ width:130, height: 80, objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                alt="ISO Certification Logo"
+              />
+            </td>
+          </tr>
+
+          <tr>
+            <td style={{ border: BORDER, padding: '7px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
+              <div style={{ fontSize: 14, fontWeight: 'bold' }}>{subjectLine}</div>
+              <div style={{ fontSize: 13, marginTop: 3 }}>Degree/Branch: {degreeBranch}</div>
+              <div style={{ fontSize: 13, marginTop: 3 }}>Academic year {academicYear}</div>
+            </td>
+
+            <td
+              style={{
+                border: BORDER,
+                padding: '7px 12px',
+                verticalAlign: 'middle',
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}
+            >
+              <div>Date: {examDate}</div>
+              <div>Duration: {duration}</div>
+              <div>
+                Marks: <b>{totalMarks}</b>
               </div>
             </td>
           </tr>
